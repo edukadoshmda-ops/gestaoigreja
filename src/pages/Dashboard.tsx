@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sidebar } from '@/components/Sidebar';
 import { DailyVerse } from '@/components/DailyVerse';
 import { BirthdayCard } from '@/components/BirthdayCard';
-import { SocialLinks } from '@/components/SocialLinks';
 import { mockMembers, mockMinistries } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,7 +23,6 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight">Olá, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-muted-foreground">Bem-vindo ao painel de gestão</p>
         </div>
-        <SocialLinks />
       </div>
 
       {/* Stats Grid */}

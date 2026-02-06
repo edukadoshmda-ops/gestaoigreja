@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, User, Users, Briefcase, ArrowRight, Cross } from 'lucide-react';
+import { Shield, User, Users, Briefcase, ArrowRight, Cross, MapPin, Church } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -75,7 +75,7 @@ export default function NewLogin() {
         }
 
         login(formData.email, pinString, formData.role);
-        navigate('/dashboard');
+        navigate('/cadastro');
     };
 
     return (
@@ -185,7 +185,7 @@ export default function NewLogin() {
                                     <label className="text-sm font-bold text-foreground/70 block uppercase tracking-widest mb-4">
                                         Selecione seu Perfil
                                     </label>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                         <RoleCard
                                             icon={<Shield className="h-5 w-5" />}
                                             label="Pastor"
@@ -203,6 +203,18 @@ export default function NewLogin() {
                                             label="Tesoureiro"
                                             active={formData.role === 'tesoureiro'}
                                             onClick={() => setFormData({ ...formData, role: 'tesoureiro' })}
+                                        />
+                                        <RoleCard
+                                            icon={<MapPin className="h-5 w-5" />}
+                                            label="Líder Célula"
+                                            active={formData.role === 'lider_celula'}
+                                            onClick={() => setFormData({ ...formData, role: 'lider_celula' })}
+                                        />
+                                        <RoleCard
+                                            icon={<Church className="h-5 w-5" />}
+                                            label="Líder Minis."
+                                            active={formData.role === 'lider_ministerio'}
+                                            onClick={() => setFormData({ ...formData, role: 'lider_ministerio' })}
                                         />
                                         <RoleCard
                                             icon={<Users className="h-5 w-5" />}

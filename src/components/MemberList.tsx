@@ -22,9 +22,10 @@ import { useAuth } from '@/contexts/AuthContext';
 interface MemberListProps {
   members: Member[];
   onDelete: (id: string) => void;
+  onEdit: (member: Member) => void;
 }
 
-export function MemberList({ members, onDelete }: MemberListProps) {
+export function MemberList({ members, onDelete, onEdit }: MemberListProps) {
   const [search, setSearch] = useState('');
   const { user } = useAuth();
   const canDelete = user?.role === 'admin';
@@ -80,7 +81,7 @@ export function MemberList({ members, onDelete }: MemberListProps) {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" onClick={() => onEdit(member)}>
                     <Edit className="h-4 w-4" />
                   </Button>
                   {canDelete && (

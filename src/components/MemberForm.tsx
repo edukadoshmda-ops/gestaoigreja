@@ -10,6 +10,7 @@ import { UserPlus } from 'lucide-react';
 interface MemberFormProps {
   onSubmit: (data: MemberFormData) => void;
   onCancel: () => void;
+  initialData?: MemberFormData;
 }
 
 export interface MemberFormData {
@@ -21,8 +22,8 @@ export interface MemberFormData {
   ministries: string[];
 }
 
-export function MemberForm({ onSubmit, onCancel }: MemberFormProps) {
-  const [formData, setFormData] = useState<MemberFormData>({
+export function MemberForm({ onSubmit, onCancel, initialData }: MemberFormProps) {
+  const [formData, setFormData] = useState<MemberFormData>(initialData || {
     name: '',
     birthDate: '',
     address: '',
@@ -50,7 +51,7 @@ export function MemberForm({ onSubmit, onCancel }: MemberFormProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserPlus className="h-5 w-5" />
-          Cadastrar Novo Membro
+          {initialData ? 'Editar Membro' : 'Cadastrar Novo Membro'}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -128,7 +129,7 @@ export function MemberForm({ onSubmit, onCancel }: MemberFormProps) {
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancelar
             </Button>
-            <Button type="submit">Cadastrar</Button>
+            <Button type="submit">{initialData ? 'Salvar Alterações' : 'Cadastrar'}</Button>
           </div>
         </form>
       </CardContent>

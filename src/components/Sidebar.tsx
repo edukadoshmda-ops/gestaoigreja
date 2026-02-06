@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,11 +28,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'secretario', 'tesoureiro', 'membro'] },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio'] },
   { icon: Users, label: 'Membros', href: '/membros', roles: ['admin', 'secretario'] },
-  { icon: Church, label: 'Ministérios', href: '/ministerios', roles: ['admin', 'secretario', 'tesoureiro', 'membro'] },
-  { icon: MapPin, label: 'Células', href: '/celulas', roles: ['admin', 'secretario', 'membro'] },
-  { icon: Calendar, label: 'Eventos', href: '/eventos', roles: ['admin', 'secretario', 'membro'] },
+  { icon: Church, label: 'Ministérios', href: '/ministerios', roles: ['admin', 'secretario', 'tesoureiro', 'membro', 'lider_ministerio'] },
+  { icon: MapPin, label: 'Células', href: '/celulas', roles: ['admin', 'secretario', 'membro', 'lider_celula'] },
+  { icon: Calendar, label: 'Eventos', href: '/eventos', roles: ['admin', 'secretario', 'membro', 'lider_celula', 'lider_ministerio'] },
+  { icon: DollarSign, label: 'Caixa Diário', href: '/caixa-diario', roles: ['admin', 'tesoureiro'] },
   { icon: FileText, label: 'Relatórios', href: '/relatorios', roles: ['admin', 'tesoureiro'] },
   { icon: Upload, label: 'Uploads', href: '/uploads', roles: ['admin', 'secretario', 'tesoureiro'] },
   { icon: Settings, label: 'Institucional', href: '/institucional', roles: ['admin'] },

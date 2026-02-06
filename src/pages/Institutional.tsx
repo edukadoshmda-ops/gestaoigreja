@@ -101,55 +101,6 @@ export default function Institutional() {
           </CardContent>
         </Card>
 
-        {/* Social Media */}
-        <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              Redes Sociais
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="youtube">YouTube</Label>
-                <Input
-                  id="youtube"
-                  value={churchData.youtube}
-                  onChange={(e) => setChurchData({ ...churchData, youtube: e.target.value })}
-                  placeholder="https://youtube.com/@seucanal"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="facebook">Facebook</Label>
-                <Input
-                  id="facebook"
-                  value={churchData.facebook}
-                  onChange={(e) => setChurchData({ ...churchData, facebook: e.target.value })}
-                  placeholder="https://facebook.com/suapagina"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instagram">Instagram</Label>
-                <Input
-                  id="instagram"
-                  value={churchData.instagram}
-                  onChange={(e) => setChurchData({ ...churchData, instagram: e.target.value })}
-                  placeholder="https://instagram.com/seuperfil"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp</Label>
-                <Input
-                  id="whatsapp"
-                  value={churchData.whatsapp}
-                  onChange={(e) => setChurchData({ ...churchData, whatsapp: e.target.value })}
-                  placeholder="5511999999999"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Logo Upload */}
         <Card className="border-none shadow-sm">

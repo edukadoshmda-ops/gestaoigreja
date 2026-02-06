@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 import {
   ChartContainer,
   ChartTooltip,
@@ -106,6 +107,73 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', '#8884d8', '#82c
 
 export default function Reports() {
   const [selectedTab, setSelectedTab] = useState('saude');
+  const { toast } = useToast();
+
+  const handleExport = () => {
+    let dataToExport: any[] = [];
+    let fileName = "";
+
+    switch (selectedTab) {
+      case 'saude':
+        dataToExport = churchHealthData.attendance.map(a => ({
+          Mês: a.month,
+          Total: a.total,
+          Adultos: a.adults,
+          Jovens: a.youth,
+          Crianças: a.children
+        }));
+        fileName = "relatorio_saude_igreja.csv";
+        break;
+      case 'financeiro':
+        dataToExport = financialData.map(f => ({
+          Mês: f.month,
+          Entradas: f.income,
+          Saídas: f.expenses,
+          Dízimos: f.tithes,
+          Ofertas: f.offerings,
+          Saldo: f.income - f.expenses
+        }));
+        fileName = "relatorio_financeiro.csv";
+        break;
+      case 'ministerios':
+        dataToExport = ministriesData.map(m => ({
+          Ministério: m.name,
+          Membros: m.members,
+          Atividades: m.activities,
+          Engajamento: `${m.engagement}%`
+        }));
+        fileName = "relatorio_ministerios.csv";
+        break;
+      case 'crescimento':
+        dataToExport = spiritualGrowthData.bibleStudy.map((b, i) => ({
+          Mês: b.month,
+          Participantes_Estudo: b.participants,
+          Participantes_Oracao: spiritualGrowthData.prayerMeetings[i].participants
+        }));
+        fileName = "relatorio_crescimento.csv";
+        break;
+    }
+
+    if (dataToExport.length > 0) {
+      const headers = Object.keys(dataToExport[0]).join(";");
+      const rows = dataToExport.map(obj => Object.values(obj).join(";"));
+      const csvContent = "\uFEFF" + [headers, ...rows].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Relatório Exportado",
+        description: `O arquivo ${fileName} foi baixado com sucesso.`,
+      });
+    }
+  };
 
   const totalIncome = financialData.reduce((sum, d) => sum + d.income, 0);
   const totalExpenses = financialData.reduce((sum, d) => sum + d.expenses, 0);
@@ -130,7 +198,10 @@ export default function Reports() {
             Análises completas da saúde e crescimento da igreja
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all">
+        <Button
+          onClick={handleExport}
+          className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all"
+        >
           <Download className="h-4 w-4 mr-2" />
           Exportar Relatórios
         </Button>
