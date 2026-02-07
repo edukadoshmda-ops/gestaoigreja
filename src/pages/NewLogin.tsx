@@ -64,11 +64,20 @@ export default function NewLogin() {
     const handleFinalSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        const pinString = formData.pin.join('');
 
-        // Aceita qualquer PIN digitado (mesmo que não esteja completo)
-        login(formData.email, pinString, formData.role, formData.fullName);
-        navigate('/dashboard');
+        try {
+            const pinString = formData.pin.join('');
+
+            // A função login atualiza o estado global, o que fará o App.tsx 
+            // redirecionar automaticamente para o /dashboard
+            login(formData.email, pinString, formData.role, formData.fullName);
+
+            // Não usamos navigate() aqui para evitar conflito com o redirecionamento do App.tsx
+            // Se o login falhar (throw), cairá no catch.
+        } catch (err) {
+            console.error(err);
+            setError('Ocorreu um erro ao tentar entrar. Tente novamente.');
+        }
     };
 
     return (

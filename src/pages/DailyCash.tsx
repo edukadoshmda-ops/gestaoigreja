@@ -30,7 +30,7 @@ export default function DailyCash() {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const { toast } = useToast();
     const { user } = useAuth();
-    const canTransact = user && ['admin', 'secretario', 'tesoureiro'].includes(user.role);
+    const canTransact = user && ['admin', 'tesoureiro'].includes(user.role);
     const canReport = user && !['aluno', 'membro', 'congregado'].includes(user.role);
 
     // Form states
