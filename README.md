@@ -50,3 +50,4 @@ Se quiser, eu posso:
 - executar o primeiro push por você,
 - ou configurar e disparar os workflows (necessário adicionar secrets no GitHub).
 # gest-o.igreja
+# gestao.igreja
