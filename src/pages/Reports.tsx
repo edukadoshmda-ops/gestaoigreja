@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   DollarSign,
@@ -8,7 +8,6 @@ import {
   Users,
   Church,
   BookOpen,
-  Calendar,
   Target,
   Award,
   Activity,
@@ -20,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -42,24 +40,23 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
-  Legend,
   Tooltip
 } from 'recharts';
-
-// Configurações e Utilitários
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', '#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
 
 import { financialService } from '@/services/financial.service';
 import { membersService } from '@/services/members.service';
 import { cellsService } from '@/services/cells.service';
 import { ministriesService } from '@/services/ministries.service';
 import { discipleshipService } from '@/services/discipleship.service';
-import { useEffect } from 'react';
+
+// Configurações e Utilitários
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', '#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
 
 export default function Reports() {
   const [selectedTab, setSelectedTab] = useState('saude');
   const [loading, setLoading] = useState(true);
   const [financialData, setFinancialData] = useState<any[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<any[]>([]);
   const [churchHealthData, setChurchHealthData] = useState<any>({
     attendance: [],
     newMembers: 0,
@@ -87,68 +84,110 @@ export default function Reports() {
     try {
       setLoading(true);
 
-      // Load Financial Data
+      // --- Financial Data ---
       const finSummary = await financialService.getSummary();
-      const formattedFinData = finSummary ? finSummary.map((f: any) => ({
-        month: f.month,
-        income: Number(f.total_income) || 0,
-        expenses: Number(f.total_expenses) || 0,
-        tithes: 0, // Need detailed breakdown if available
-        offerings: 0,
-      })).reverse() : [];
-      setFinancialData(formattedFinData);
+      const rawTransactions = await financialService.getTransactionsForPeriod(6);
 
-      // Load Church Health Data
+      // Process monthly data including breakdown
+      const processedFinData = finSummary.map((f: any) => {
+        // Find transactions for this month to calculate tithes/offerings
+        const monthTransactions = rawTransactions.filter(t => t.date.startsWith(f.month));
+        const tithes = monthTransactions
+          .filter(t => t.category === 'Dízimos')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const offerings = monthTransactions
+          .filter(t => t.category.includes('Ofertas'))
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        return {
+          month: formatMonth(f.month),
+          income: Number(f.total_income) || 0,
+          expenses: Number(f.total_expenses) || 0,
+          tithes,
+          offerings,
+        };
+      }).reverse(); // Most recent last in chart
+
+      setFinancialData(processedFinData);
+
+      // Process Expense Categories (Last 6 months)
+      const expenseMap = new Map<string, number>();
+      rawTransactions
+        .filter(t => t.type === 'saida')
+        .forEach(t => {
+          const current = expenseMap.get(t.category) || 0;
+          expenseMap.set(t.category, current + t.amount);
+        });
+      
+      const expenseChartData = Array.from(expenseMap.entries())
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5); // Top 5 categories
+      
+      setExpenseCategories(expenseChartData);
+
+
+      // --- Church Health Data ---
       const stats = await membersService.getStatistics();
-      const activeCellsCount = await (await cellsService.getActive()).length;
-      const activeMinistriesCount = await (await ministriesService.getActive()).length;
+      const activeCells = await cellsService.getActive();
+      const activeMinistries = await ministriesService.getActive();
 
       // Calculate attendance from cell reports
       const allReports = await cellsService.getAllReports();
       const attendanceByMonthMap = new Map();
 
-      allReports?.forEach((report: any) => {
-        const month = new Date(report.date).toLocaleString('default', { month: 'short' });
-        const current = attendanceByMonthMap.get(month) || { total: 0, adults: 0, youth: 0, children: 0 };
-        attendanceByMonthMap.set(month, {
-          total: current.total + report.members_present + report.visitors,
-          adults: current.adults + report.members_present, // Approximation
-          youth: current.youth,
-          children: current.children,
-          month
+      if (allReports && allReports.length > 0) {
+        allReports.forEach((report: any) => {
+          const date = new Date(report.date);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          const monthLabel = date.toLocaleString('pt-BR', { month: 'short' });
+          
+          const current = attendanceByMonthMap.get(monthKey) || { 
+            total: 0, adults: 0, youth: 0, children: 0, month: monthLabel 
+          };
+          
+          attendanceByMonthMap.set(monthKey, {
+            total: current.total + report.members_present + report.visitors,
+            adults: current.adults + report.members_present, // Approximation
+            youth: current.youth,
+            children: current.children,
+            month: monthLabel
+          });
         });
-      });
+      }
 
-      const attendanceData = Array.from(attendanceByMonthMap.values()).reverse();
+      const attendanceData = Array.from(attendanceByMonthMap.values())
+        .sort((a: any, b: any) => a.month.localeCompare(b.month)) // This sort might need better logic if crossing years
+        .slice(-6); 
 
       setChurchHealthData({
         attendance: attendanceData.length > 0 ? attendanceData : [{ month: 'Sem dados', total: 0, adults: 0, youth: 0, children: 0 }],
         newMembers: stats?.total_members || 0,
         baptisms: stats?.baptized_members || 0,
-        conversions: 0, // Need specific tracking for this
-        activeCells: activeCellsCount,
-        activeMinistries: activeMinistriesCount,
+        conversions: 0,
+        activeCells: activeCells?.length || 0,
+        activeMinistries: activeMinistries?.length || 0,
       });
 
-      // Load Ministries Data
-      const ministries = await ministriesService.getActive();
-      const mappedMinistries = await Promise.all((ministries || []).map(async (m: any) => {
+      // --- Ministries Data ---
+      const ministries = activeMinistries || [];
+      const mappedMinistries = await Promise.all(ministries.map(async (m: any) => {
         const count = await ministriesService.getMemberCount(m.id);
         return {
           name: m.name,
           members: count,
-          activities: 0, // Need activities tracking
-          engagement: 100,
+          activities: 0,
+          engagement: 85, // Placeholder
         };
       }));
       setMinistriesData(mappedMinistries);
 
-      // Load Spiritual Growth Data
+      // --- Spiritual Growth Data ---
       const discStats = await discipleshipService.getStatistics();
       setSpiritualGrowthData({
-        bibleStudy: attendanceData.map(a => ({ month: a.month, participants: a.total })), // Using cell attendance as proxy
+        bibleStudy: attendanceData.map((a: any) => ({ month: a.month, participants: a.total })),
         prayerMeetings: [],
-        discipleship: discStats,
+        discipleship: discStats || { active: 0, completed: 0, inProgress: 0 },
       });
 
     } catch (error) {
@@ -163,13 +202,20 @@ export default function Reports() {
     }
   }
 
+  function formatMonth(yyyyMM: string) {
+    if (!yyyyMM) return '';
+    const [year, month] = yyyyMM.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    return date.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+  }
+
   const handleExport = () => {
     let dataToExport: any[] = [];
     let fileName = "";
 
     switch (selectedTab) {
       case 'saude':
-        dataToExport = churchHealthData.attendance.map(a => ({
+        dataToExport = churchHealthData.attendance.map((a: any) => ({
           Mês: a.month,
           Total: a.total,
           Adultos: a.adults,
@@ -199,10 +245,10 @@ export default function Reports() {
         fileName = "relatorio_ministerios.csv";
         break;
       case 'crescimento':
-        dataToExport = spiritualGrowthData.bibleStudy.map((b, i) => ({
+        dataToExport = spiritualGrowthData.bibleStudy.map((b: any, i: number) => ({
           Mês: b.month,
           Participantes_Estudo: b.participants,
-          Participantes_Oracao: spiritualGrowthData.prayerMeetings[i].participants
+          Participantes_Oracao: spiritualGrowthData.prayerMeetings[i]?.participants || 0
         }));
         fileName = "relatorio_crescimento.csv";
         break;
@@ -236,8 +282,8 @@ export default function Reports() {
   const chartConfig = {
     income: { label: 'Entradas', color: 'hsl(var(--primary))' },
     expenses: { label: 'Saídas', color: 'hsl(var(--destructive))' },
-    tithes: { label: 'Dízimos', color: 'hsl(var(--primary))' },
-    offerings: { label: 'Ofertas', color: 'hsl(var(--secondary))' },
+    tithes: { label: 'Dízimos', color: '#82ca9d' },
+    offerings: { label: 'Ofertas', color: '#8884d8' },
   };
 
   if (loading) {
@@ -310,6 +356,7 @@ export default function Reports() {
             totalExpenses={totalExpenses}
             balance={balance}
             chartConfig={chartConfig}
+            expenseCategories={expenseCategories}
           />
         </TabsContent>
 
@@ -328,7 +375,7 @@ export default function Reports() {
 }
 
 // Church Health Report Component
-function ChurchHealthReport({ data }: { data: typeof churchHealthData }) {
+function ChurchHealthReport({ data }: { data: any }) {
   const latestAttendance = data.attendance[data.attendance.length - 1] || { total: 0 };
   const previousAttendance = data.attendance[data.attendance.length - 2] || { total: 0 };
   const growthRate = previousAttendance.total > 0
@@ -351,7 +398,9 @@ function ChurchHealthReport({ data }: { data: typeof churchHealthData }) {
               {latestAttendance.total}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-green-600 font-semibold">+{growthRate}%</span> vs mês anterior
+              <span className={Number(growthRate) >= 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                {Number(growthRate) >= 0 ? '+' : ''}{growthRate}%
+              </span> vs mês anterior
             </p>
           </CardContent>
         </Card>
@@ -413,7 +462,7 @@ function ChurchHealthReport({ data }: { data: typeof churchHealthData }) {
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
-                <Legend />
+                <ChartLegend content={<ChartLegendContent />} />
                 <Bar dataKey="adults" stackId="a" fill="hsl(var(--primary))" name="Adultos" />
                 <Bar dataKey="youth" stackId="a" fill="hsl(var(--secondary))" name="Jovens" />
                 <Bar dataKey="children" stackId="a" fill="#82ca9d" name="Crianças" />
@@ -468,18 +517,7 @@ function ChurchHealthReport({ data }: { data: typeof churchHealthData }) {
 }
 
 // Financial Report Component
-function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfig }: any) {
-  // Aggregate expenses by category from real data
-  const categoryMap = new Map();
-  data.forEach((item: any) => {
-    // If we had categories in the summary, we would use them. 
-    // For now, let's use a placeholder until we have a real breakdown.
-  });
-
-  const expenseCategories = [
-    { name: 'Geral', value: totalExpenses },
-  ];
-
+function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfig, expenseCategories }: any) {
   return (
     <>
       {/* Summary Cards */}
@@ -488,14 +526,13 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Entradas Totais
+              Entradas Totais (6 meses)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-primary">
               R$ {totalIncome.toLocaleString('pt-BR')}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Últimos 6 meses</p>
           </CardContent>
         </Card>
 
@@ -503,14 +540,13 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              Saídas Totais
+              Saídas Totais (6 meses)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-destructive">
               R$ {totalExpenses.toLocaleString('pt-BR')}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Últimos 6 meses</p>
           </CardContent>
         </Card>
 
@@ -518,14 +554,13 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Saldo
+              Saldo (6 meses)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-green-600">
+            <p className={`text-3xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               R$ {balance.toLocaleString('pt-BR')}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Superávit acumulado</p>
           </CardContent>
         </Card>
       </div>
@@ -556,6 +591,7 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
                 <Line
                   type="monotone"
                   dataKey="income"
+                  name="Entradas"
                   stroke="var(--color-income)"
                   strokeWidth={3}
                   dot={{ fill: 'var(--color-income)', r: 4 }}
@@ -563,6 +599,7 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
                 <Line
                   type="monotone"
                   dataKey="expenses"
+                  name="Saídas"
                   stroke="var(--color-expenses)"
                   strokeWidth={3}
                   dot={{ fill: 'var(--color-expenses)', r: 4 }}
@@ -576,31 +613,37 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChartIcon className="h-5 w-5" />
-              Distribuição de Despesas
+              Maiores Despesas (Top 5)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={expenseCategories}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {expenseCategories.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR')}`} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {expenseCategories.length > 0 ? (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={expenseCategories}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {expenseCategories.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR')}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Sem dados de despesas para exibir.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -635,7 +678,7 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
                     <td className="py-3 px-4 text-right text-destructive">
                       R$ {row.expenses.toLocaleString('pt-BR')}
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-green-600">
+                    <td className={`py-3 px-4 text-right font-bold ${row.income - row.expenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       R$ {(row.income - row.expenses).toLocaleString('pt-BR')}
                     </td>
                   </tr>
@@ -650,7 +693,7 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
 }
 
 // Ministries Report Component
-function MinistriesReport({ data }: { data: typeof ministriesData }) {
+function MinistriesReport({ data }: { data: any[] }) {
   return (
     <>
       {/* Overview */}
@@ -675,7 +718,7 @@ function MinistriesReport({ data }: { data: typeof ministriesData }) {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-primary">
-              {(data.reduce((sum, m) => sum + m.engagement, 0) / data.length).toFixed(0)}%
+              {data.length > 0 ? (data.reduce((sum, m) => sum + m.engagement, 0) / data.length).toFixed(0) : 0}%
             </p>
           </CardContent>
         </Card>
@@ -699,6 +742,10 @@ function MinistriesReport({ data }: { data: typeof ministriesData }) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
+                  <p className="text-muted-foreground">Membros</p>
+                  <p className="text-2xl font-bold text-primary">{ministry.members}</p>
+                </div>
+                <div>
                   <p className="text-muted-foreground">Atividades</p>
                   <p className="text-2xl font-bold text-primary">{ministry.activities}</p>
                 </div>
@@ -719,7 +766,7 @@ function MinistriesReport({ data }: { data: typeof ministriesData }) {
 }
 
 // Spiritual Growth Report Component
-function SpiritualGrowthReport({ data }: { data: typeof spiritualGrowthData }) {
+function SpiritualGrowthReport({ data }: { data: any }) {
   return (
     <>
       {/* KPIs */}

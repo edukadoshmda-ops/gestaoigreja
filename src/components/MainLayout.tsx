@@ -15,13 +15,13 @@ export function MainLayout({ children }: MainLayoutProps) {
     return (
         <div className="flex min-h-screen bg-background">
             {/* Desktop Sidebar - Hidden on mobile/tablet */}
-            <div className="hidden lg:flex">
+            <div className="hidden lg:flex print:hidden">
                 <Sidebar />
             </div>
 
             {/* Mobile/Tablet Header & Sidebar */}
             <div className="flex-1 flex flex-col min-w-0">
-                <header className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-card">
+                <header className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-card print:hidden">
                     <Logo size="sm" />
                     <Sheet open={open} onOpenChange={setOpen}>
                         <SheetTrigger asChild>
