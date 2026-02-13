@@ -29,10 +29,18 @@ export const authService = {
                     name,
                     role,
                 },
+                emailRedirectTo: window.location.origin,
             },
         });
 
         if (error) throw error;
+
+        // Se o usuário foi criado mas não confirmado, tente fazer login de qualquer forma
+        // Nota: Isso só funciona se a confirmação de email estiver desabilitada no Supabase
+        if (data?.user && !data.session) {
+            console.warn('Usuário criado mas email não confirmado. Configure o Supabase para desabilitar confirmação de email.');
+        }
+
         return data;
     },
 
@@ -76,7 +84,7 @@ export const authService = {
     },
 
     /**
-     * Get the current user's profile
+     * Get the current user's profile with church data
      */
     async getProfile() {
         const user = await this.getUser();
@@ -84,11 +92,18 @@ export const authService = {
 
         const { data, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select(`
+                *,
+                church:churches(*)
+            `)
             .eq('id', user.id)
             .single();
 
-        if (error) throw error;
+        if (error && error.code !== 'PGRST116') { // PGRST116 is code for "no rows found"
+            console.error('Error fetching profile:', error);
+            throw error;
+        }
+
         return data;
     },
 

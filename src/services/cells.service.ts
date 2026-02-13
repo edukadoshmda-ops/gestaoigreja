@@ -62,9 +62,9 @@ export const cellsService = {
     /**
      * Create a new cell
      */
-    async create(cell: any) {
+    async create(cell: any, churchId: string) {
         const { data, error } = await (supabase.from('cells') as any)
-            .insert(cell as any)
+            .insert({ ...cell, church_id: churchId } as any)
             .select()
             .single();
 
@@ -162,9 +162,9 @@ export const cellsService = {
     /**
      * Create cell report
      */
-    async createReport(report: any) {
+    async createReport(report: any, churchId: string) {
         const { data, error } = await (supabase.from('cell_reports') as any)
-            .insert(report as any)
+            .insert({ ...report, church_id: churchId } as any)
             .select()
             .single();
 

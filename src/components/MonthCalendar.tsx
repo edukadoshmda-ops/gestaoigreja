@@ -104,7 +104,7 @@ export function MonthCalendar({ year, month, events = [], onDayClick }: MonthCal
                                 : 'text-muted-foreground/40 cursor-not-allowed'
                             }
               ${day.isToday
-                                ? 'bg-gradient-to-br from-primary to-secondary text-white font-bold shadow-lg'
+                                ? 'bg-primary text-primary-foreground font-bold shadow-lg'
                                 : ''
                             }
               ${day.events && !day.isToday
@@ -116,7 +116,7 @@ export function MonthCalendar({ year, month, events = [], onDayClick }: MonthCal
                         <span className="block">{day.date}</span>
                         {day.events && day.events > 0 && (
                             <Badge
-                                className="absolute bottom-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-gradient-to-r from-primary to-secondary"
+                                className="absolute bottom-1 right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-primary text-primary-foreground"
                             >
                                 {day.events}
                             </Badge>

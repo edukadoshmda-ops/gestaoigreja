@@ -6,7 +6,7 @@ create table if not exists profiles (
   id uuid references auth.users on delete cascade primary key,
   email text not null,
   name text not null,
-  role text not null check (role in ('admin', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado')),
+  role text not null check (role in ('admin', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin')),
   phone text,
   avatar_url text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -154,6 +154,97 @@ create table if not exists ministry_members (
   primary key (member_id, ministry_id)
 );
 
+-- Enable Row Level Security (RLS) on all tables
+alter table profiles enable row level security;
+alter table members enable row level security;
+alter table ministries enable row level security;
+alter table events enable row level security;
+alter table cells enable row level security;
+alter table financial_transactions enable row level security;
+alter table cell_members enable row level security;
+alter table cell_reports enable row level security;
+alter table discipleships enable row level security;
+alter table notifications enable row level security;
+alter table ministry_members enable row level security;
+
+-- Create policies (dropping existing ones first to avoid errors)
+
+-- Profiles
+drop policy if exists "Public profiles are viewable by everyone" on profiles;
+create policy "Public profiles are viewable by everyone" on profiles for select using (true);
+
+drop policy if exists "Users can insert their own profile" on profiles;
+create policy "Users can insert their own profile" on profiles for insert with check (auth.uid() = id);
+
+drop policy if exists "Users can update own profile" on profiles;
+create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
+
+-- Members (permissivo para app com login simulado; em produção use Supabase Auth)
+drop policy if exists "Members are viewable by authenticated users" on members;
+create policy "Members are viewable by authenticated users" on members for select using (true);
+drop policy if exists "Members are insertable by admins and secretaries" on members;
+create policy "Members are insertable by admins and secretaries" on members for insert with check (true);
+drop policy if exists "Members are updatable by admins and secretaries" on members;
+create policy "Members are updatable by admins and secretaries" on members for update using (true);
+drop policy if exists "Members are deletable by admins" on members;
+create policy "Members are deletable by admins" on members for delete using (true);
+
+-- Cells (permissivo para funcionar com login simulado; em produção use Supabase Auth)
+drop policy if exists "Cells are viewable by authenticated users" on cells;
+create policy "Cells are viewable by authenticated users" on cells for select using (true);
+
+drop policy if exists "Cells are insertable by admins and leaders" on cells;
+create policy "Cells are insertable by admins and leaders" on cells for insert with check (true);
+
+drop policy if exists "Cells are updatable by admins and leaders" on cells;
+create policy "Cells are updatable by admins and leaders" on cells for update using (true);
+
+drop policy if exists "Cells are deletable by admins" on cells;
+create policy "Cells are deletable by admins" on cells for delete using (true);
+
+-- Ministries (políticas que faltavam; permissivo para login simulado)
+drop policy if exists "Ministries are viewable" on ministries;
+create policy "Ministries are viewable" on ministries for select using (true);
+
+drop policy if exists "Ministries are insertable" on ministries;
+create policy "Ministries are insertable" on ministries for insert with check (true);
+
+drop policy if exists "Ministries are updatable" on ministries;
+create policy "Ministries are updatable" on ministries for update using (true);
+
+drop policy if exists "Ministries are deletable" on ministries;
+create policy "Ministries are deletable" on ministries for delete using (true);
+
+-- Cell members
+drop policy if exists "Cell members viewable" on cell_members;
+create policy "Cell members viewable" on cell_members for select using (true);
+
+drop policy if exists "Cell members insertable" on cell_members;
+create policy "Cell members insertable" on cell_members for insert with check (true);
+
+drop policy if exists "Cell members deletable" on cell_members;
+create policy "Cell members deletable" on cell_members for delete using (true);
+
+-- Ministry members
+drop policy if exists "Ministry members viewable" on ministry_members;
+create policy "Ministry members viewable" on ministry_members for select using (true);
+
+drop policy if exists "Ministry members insertable" on ministry_members;
+create policy "Ministry members insertable" on ministry_members for insert with check (true);
+
+drop policy if exists "Ministry members deletable" on ministry_members;
+create policy "Ministry members deletable" on ministry_members for delete using (true);
+
+-- Financial Transactions (permissivo para app com login simulado)
+drop policy if exists "Financial transactions viewable by admins and treasurers" on financial_transactions;
+create policy "Financial transactions viewable by admins and treasurers" on financial_transactions for select using (true);
+drop policy if exists "Financial transactions insertable by admins and treasurers" on financial_transactions;
+create policy "Financial transactions insertable by admins and treasurers" on financial_transactions for insert with check (true);
+drop policy if exists "Financial transactions updatable by admins and treasurers" on financial_transactions;
+create policy "Financial transactions updatable by admins and treasurers" on financial_transactions for update using (true);
+drop policy if exists "Financial transactions deletable by admins" on financial_transactions;
+create policy "Financial transactions deletable by admins" on financial_transactions for delete using (true);
+
 -- Create views
 create or replace view member_statistics as
 select
@@ -175,3 +266,34 @@ select
   (sum(amount) filter (where type = 'entrada') - sum(amount) filter (where type = 'saida')) as balance
 from financial_transactions
 group by to_char(date, 'YYYY-MM');
+
+-- Function to handle new user signup
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, name, role)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'name', new.email),
+    coalesce(new.raw_user_meta_data->>'role', 'membro')
+  );
+  return new;
+end;
+$$;
+
+-- Trigger for new user signup
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Fix for existing users without profile (Run this manually if needed, but safe to keep here)
+insert into public.profiles (id, email, name, role)
+select id, email, coalesce(raw_user_meta_data->>'name', email), coalesce(raw_user_meta_data->>'role', 'admin')
+from auth.users
+where id not in (select id from public.profiles)
+on conflict (id) do nothing;

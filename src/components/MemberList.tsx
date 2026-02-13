@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Search, Trash2, Edit, Phone, Mail, MapPin } from 'lucide-react';
+import { Search, Trash2, Edit, Phone, Mail, MapPin, Cake } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,18 +54,29 @@ export function MemberList({ members, onDelete, onEdit }: MemberListProps) {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 relative">
                     {member.photoUrl ? (
                       <img
                         src={member.photoUrl}
                         alt={member.name}
-                        className="h-14 w-14 rounded-full object-cover border-2 border-primary/20"
+                        className={`h-14 w-14 rounded-full object-cover border-2 ${(member.birthDate && new Date(member.birthDate).getMonth() === new Date().getMonth() && new Date(member.birthDate).getDate() === new Date().getDate())
+                            ? 'border-primary ring-2 ring-primary/20 animate-pulse'
+                            : 'border-primary/20'
+                          }`}
                       />
                     ) : (
-                      <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/5">
+                      <div className={`h-14 w-14 rounded-full flex items-center justify-center border-2 ${(member.birthDate && new Date(member.birthDate).getMonth() === new Date().getMonth() && new Date(member.birthDate).getDate() === new Date().getDate())
+                          ? 'bg-primary/20 border-primary ring-2 ring-primary/20'
+                          : 'bg-primary/10 border-primary/5'
+                        }`}>
                         <span className="text-primary font-bold text-xl">
                           {member.name.charAt(0).toUpperCase()}
                         </span>
+                      </div>
+                    )}
+                    {(member.birthDate && new Date(member.birthDate).getMonth() === new Date().getMonth() && new Date(member.birthDate).getDate() === new Date().getDate()) && (
+                      <div className="absolute -top-1 -right-1 bg-primary text-white p-1 rounded-full shadow-lg">
+                        <Cake className="h-3 w-3" />
                       </div>
                     )}
                   </div>
@@ -79,9 +90,29 @@ export function MemberList({ members, onDelete, onEdit }: MemberListProps) {
                       <span className="flex items-center gap-1">
                         <Phone className="h-4 w-4" />
                         {member.phone}
+                        {member.phone && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const isBirthday = member.birthDate && new Date(member.birthDate).getMonth() === new Date().getMonth() && new Date(member.birthDate).getDate() === new Date().getDate();
+                              const text = isBirthday
+                                ? `Olá ${member.name.split(' ')[0]}, Graça e Paz! Passando para te desejar um feliz aniversário! 🎉 Que o Senhor te abençoe ricamente neste novo ano de vida!`
+                                : `Olá ${member.name.split(' ')[0]}, Graça e Paz! Tudo bem?`;
+                              window.open(`https://wa.me/55${member.phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                            }}
+                          >
+                            <Phone className="h-3 w-3" />
+                          </Button>
+                        )}
                       </span>
                       <Badge variant={member.category === 'membro' ? 'default' : 'secondary'} className="capitalize">
                         {member.category}
+                      </Badge>
+                      <Badge variant="outline" className="capitalize">
+                        {member.maritalStatus}
                       </Badge>
                       <span className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />

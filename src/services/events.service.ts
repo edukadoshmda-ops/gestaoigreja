@@ -81,10 +81,12 @@ export const eventsService = {
     /**
      * Create a new event
      */
-    async create(event: EventInsert) {
-        const { data, error } = await supabase
-            .from('events')
-            .insert(event)
+    async create(event: EventInsert, churchId: string) {
+        const { data, error } = await (supabase.from('events') as any)
+            .insert({
+                ...event,
+                church_id: churchId
+            })
             .select()
             .single();
 
@@ -96,9 +98,8 @@ export const eventsService = {
      * Update an event
      */
     async update(id: string, updates: EventUpdate) {
-        const { data, error } = await supabase
-            .from('events')
-            .update(updates)
+        const { data, error } = await (supabase.from('events') as any)
+            .update(updates as any)
             .eq('id', id)
             .select()
             .single();
@@ -213,4 +214,34 @@ export const eventsService = {
         if (error) throw error;
         return data;
     },
+
+    /**
+     * Get a single scale item with details
+     */
+    async getScaleItem(id: string) {
+        const { data, error } = await supabase
+            .from('service_scales')
+            .select(`
+                *,
+                member:members(name),
+                event:events(title, date, time)
+            `)
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    /**
+     * Confirm participation via public RPC (bypasses RLS)
+     */
+    async confirmParticipationPublic(scaleId: string) {
+        const { data, error } = await supabase.rpc('confirm_participation' as any, {
+            scale_id: scaleId
+        });
+
+        if (error) throw error;
+        return data;
+    }
 };

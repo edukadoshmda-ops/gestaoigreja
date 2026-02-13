@@ -33,16 +33,16 @@ export interface FinancialSummary {
    SERVIÇO
 ========================= */
 
-async function create(data: CreateFinancialTransactionDTO) {
-  const { error } = await supabase
-    .from('financial_transactions')
+async function create(data: CreateFinancialTransactionDTO, churchId: string) {
+  const { error } = await (supabase.from('financial_transactions') as any)
     .insert({
       type: data.type,
       category: data.category,
       amount: data.amount,
       description: data.description ?? null,
       date: data.date,
-    });
+      church_id: churchId
+    } as any);
 
   if (error) {
     console.error('Erro Supabase (create):', error);
@@ -84,6 +84,23 @@ async function remove(id: string) {
   }
 }
 
+async function update(id: string, data: Partial<CreateFinancialTransactionDTO>) {
+  const { error } = await (supabase.from('financial_transactions') as any)
+    .update({
+      type: data.type,
+      category: data.category,
+      amount: data.amount,
+      description: data.description ?? null,
+      date: data.date,
+    } as any)
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro Supabase (update):', error);
+    throw error;
+  }
+}
+
 async function getSummary(): Promise<FinancialSummary[]> {
   const { data, error } = await supabase
     .from('financial_summary')
@@ -103,7 +120,7 @@ async function getSummary(): Promise<FinancialSummary[]> {
 async function getTransactionsForPeriod(monthsBack: number = 6): Promise<Transaction[]> {
   const today = new Date();
   const startDate = new Date(today.getFullYear(), today.getMonth() - monthsBack, 1);
-  
+
   const { data, error } = await supabase
     .from('financial_transactions')
     .select('*')
@@ -125,6 +142,7 @@ async function getTransactionsForPeriod(monthsBack: number = 6): Promise<Transac
 export const financialService = {
   create,
   list,
+  update,
   delete: remove,
   getSummary,
   getTransactionsForPeriod

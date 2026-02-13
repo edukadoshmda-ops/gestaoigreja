@@ -9,12 +9,35 @@ export type Json =
 export interface Database {
     public: {
         Tables: {
+            churches: {
+                Row: {
+                    id: string
+                    name: string
+                    slug: string
+                    logo_url: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    name: string
+                    slug: string
+                    logo_url?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    name?: string
+                    slug?: string
+                    logo_url?: string | null
+                    created_at?: string
+                }
+            },
             profiles: {
                 Row: {
                     id: string
-                    email: string
-                    name: string
-                    role: 'admin' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado'
+                    church_id: string | null
+                    full_name: string | null
+                    role: 'superadmin' | 'admin' | 'pastor' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado' | null
                     phone: string | null
                     avatar_url: string | null
                     created_at: string
@@ -22,9 +45,9 @@ export interface Database {
                 }
                 Insert: {
                     id: string
-                    email: string
-                    name: string
-                    role: 'admin' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado'
+                    church_id?: string | null
+                    full_name?: string | null
+                    role?: 'superadmin' | 'admin' | 'pastor' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado' | null
                     phone?: string | null
                     avatar_url?: string | null
                     created_at?: string
@@ -32,9 +55,9 @@ export interface Database {
                 }
                 Update: {
                     id?: string
-                    email?: string
-                    name?: string
-                    role?: 'admin' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado'
+                    church_id?: string | null
+                    full_name?: string | null
+                    role?: 'superadmin' | 'admin' | 'pastor' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado' | null
                     phone?: string | null
                     avatar_url?: string | null
                     created_at?: string
@@ -44,6 +67,7 @@ export interface Database {
             members: {
                 Row: {
                     id: string
+                    church_id: string | null
                     name: string
                     email: string | null
                     phone: string | null
@@ -65,6 +89,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
+                    church_id?: string | null
                     name: string
                     email?: string | null
                     phone?: string | null
@@ -86,6 +111,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
+                    church_id?: string | null
                     name?: string
                     email?: string | null
                     phone?: string | null
@@ -109,6 +135,7 @@ export interface Database {
             ministries: {
                 Row: {
                     id: string
+                    church_id: string | null
                     name: string
                     description: string | null
                     leader_id: string | null
@@ -120,6 +147,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
+                    church_id?: string | null
                     name: string
                     description?: string | null
                     leader_id?: string | null
@@ -131,6 +159,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
+                    church_id?: string | null
                     name?: string
                     description?: string | null
                     leader_id?: string | null
@@ -144,6 +173,7 @@ export interface Database {
             events: {
                 Row: {
                     id: string
+                    church_id: string | null
                     title: string
                     description: string | null
                     type: 'culto' | 'evento' | 'reuniao' | 'especial'
@@ -159,6 +189,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
+                    church_id?: string | null
                     title: string
                     description?: string | null
                     type: 'culto' | 'evento' | 'reuniao' | 'especial'
@@ -174,6 +205,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
+                    church_id?: string | null
                     title?: string
                     description?: string | null
                     type?: 'culto' | 'evento' | 'reuniao' | 'especial'
@@ -191,6 +223,7 @@ export interface Database {
             cells: {
                 Row: {
                     id: string
+                    church_id: string | null
                     name: string
                     description: string | null
                     leader_id: string | null
@@ -205,6 +238,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
+                    church_id?: string | null
                     name: string
                     description?: string | null
                     leader_id?: string | null
@@ -219,6 +253,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
+                    church_id?: string | null
                     name?: string
                     description?: string | null
                     leader_id?: string | null
@@ -235,6 +270,7 @@ export interface Database {
             financial_transactions: {
                 Row: {
                     id: string
+                    church_id: string | null
                     type: 'entrada' | 'saida'
                     category: string
                     subcategory: string | null
@@ -251,6 +287,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
+                    church_id?: string | null
                     type: 'entrada' | 'saida'
                     category: string
                     subcategory?: string | null
@@ -267,6 +304,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
+                    church_id?: string | null
                     type?: 'entrada' | 'saida'
                     category?: string
                     subcategory?: string | null
@@ -302,6 +340,7 @@ export interface Database {
             cell_reports: {
                 Row: {
                     id: string
+                    church_id: string | null
                     cell_id: string
                     date: string
                     members_present: number
@@ -312,6 +351,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
+                    church_id?: string | null
                     cell_id: string
                     date: string
                     members_present: number
@@ -322,6 +362,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
+                    church_id?: string | null
                     cell_id?: string
                     date?: string
                     members_present?: number
@@ -334,6 +375,7 @@ export interface Database {
             discipleships: {
                 Row: {
                     id: string
+                    church_id: string | null
                     disciple_id: string
                     mentor_id: string
                     start_date: string
@@ -345,6 +387,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
+                    church_id?: string | null
                     disciple_id: string
                     mentor_id: string
                     start_date: string
@@ -356,6 +399,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
+                    church_id?: string | null
                     disciple_id?: string
                     mentor_id?: string
                     start_date?: string
@@ -369,6 +413,7 @@ export interface Database {
             notifications: {
                 Row: {
                     id: string
+                    church_id: string | null
                     user_id: string
                     title: string
                     message: string
@@ -379,6 +424,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
+                    church_id?: string | null
                     user_id: string
                     title: string
                     message: string
@@ -389,6 +435,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
+                    church_id?: string | null
                     user_id?: string
                     title?: string
                     message?: string
@@ -417,6 +464,58 @@ export interface Database {
                     role?: string | null
                     joined_at?: string
                 }
+            },
+            event_checklists: {
+                Row: {
+                    id: string
+                    event_id: string
+                    task: string
+                    responsible_id: string | null
+                    completed: boolean
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    event_id: string
+                    task: string
+                    responsible_id?: string | null
+                    completed?: boolean
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    event_id?: string
+                    task?: string
+                    responsible_id?: string | null
+                    completed?: boolean
+                    created_at?: string
+                }
+            },
+            service_scales: {
+                Row: {
+                    id: string
+                    event_id: string
+                    member_id: string
+                    role: string
+                    confirmed: boolean
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    event_id: string
+                    member_id: string
+                    role: string
+                    confirmed?: boolean
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    event_id?: string
+                    member_id?: string
+                    role?: string
+                    confirmed?: boolean
+                    created_at?: string
+                }
             }
         }
         Views: {
@@ -442,7 +541,12 @@ export interface Database {
             }
         }
         Functions: {
-            [_ in never]: never
+            confirm_participation: {
+                Args: {
+                    scale_id: string
+                }
+                Returns: Json
+            }
         }
         Enums: {
             [_ in never]: never

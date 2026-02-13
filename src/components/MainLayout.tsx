@@ -11,9 +11,10 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const [open, setOpen] = useState(false);
+    console.log('MainLayout: Rendering children', children ? 'exists' : 'null');
 
     return (
-        <div className="flex min-h-screen bg-background">
+        <div className="flex min-h-screen bg-background" translate="no">
             {/* Desktop Sidebar - Hidden on mobile/tablet */}
             <div className="hidden lg:flex print:hidden">
                 <Sidebar />

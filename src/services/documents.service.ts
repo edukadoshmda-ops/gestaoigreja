@@ -34,10 +34,10 @@ export const documentsService = {
         return data as ChurchDocument[];
     },
 
-    async uploadFile(file: File, category: string, title?: string) {
+    async uploadFile(file: File, category: string, churchId: string, title?: string) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${category}/${fileName}`;
+        const filePath = `${churchId}/${category}/${fileName}`;
 
         // 1. Upload file to Storage
         const { error: uploadError } = await supabase.storage
@@ -52,8 +52,7 @@ export const documentsService = {
             .getPublicUrl(filePath);
 
         // 3. Save reference in Database
-        const { data, error: dbError } = await supabase
-            .from('documents')
+        const { data, error: dbError } = await (supabase.from('documents') as any)
             .insert([
                 {
                     title: title || file.name,
@@ -61,8 +60,9 @@ export const documentsService = {
                     file_type: file.type,
                     file_size: file.size,
                     category: category,
+                    church_id: churchId,
                 },
-            ])
+            ] as any)
             .select()
             .single();
 
@@ -72,10 +72,12 @@ export const documentsService = {
 
     async delete(id: string, fileUrl: string) {
         // Extract path from URL (rough implementation)
-        const urlParts = fileUrl.split('church-documents/');
-        if (urlParts.length > 1) {
-            const filePath = urlParts[1];
-            await supabase.storage.from('church-documents').remove([filePath]);
+        if (fileUrl && fileUrl.includes('church-documents/')) {
+            const urlParts = fileUrl.split('church-documents/');
+            if (urlParts.length > 1) {
+                const filePath = urlParts[1];
+                await supabase.storage.from('church-documents').remove([filePath]);
+            }
         }
 
         const { error } = await supabase
@@ -85,4 +87,14 @@ export const documentsService = {
 
         if (error) throw error;
     },
+
+    async create(doc: Partial<ChurchDocument>) {
+        const { data, error } = await (supabase.from('documents') as any)
+            .insert([doc])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as ChurchDocument;
+    }
 };

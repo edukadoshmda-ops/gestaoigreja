@@ -66,9 +66,9 @@ export const discipleshipService = {
     /**
      * Create a new discipleship
      */
-    async create(discipleship: any) {
+    async create(discipleship: any, churchId: string) {
         const { data, error } = await (supabase.from('discipleships') as any)
-            .insert(discipleship as any)
+            .insert({ ...discipleship, church_id: churchId } as any)
             .select()
             .single();
 

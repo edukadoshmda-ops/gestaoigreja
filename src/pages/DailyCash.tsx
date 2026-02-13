@@ -2,26 +2,30 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { 
-  Printer, 
-  FileDown, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
+import {
+  Printer,
+  FileDown,
+  ArrowUpCircle,
+  ArrowDownCircle,
   DollarSign,
   Plus,
-  Loader2
+  Loader2,
+  Edit,
+  Trash2
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -42,13 +46,12 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-
 import { financialService, CreateFinancialTransactionDTO } from '@/services/financial.service';
 import { cn } from '@/lib/utils';
 
 // Categorias para Entradas
 const INCOME_CATEGORIES = [
+  "Saldo Anterior",
   "Dízimos",
   "Ofertas - Culto Geral",
   "Ofertas - Missões",
@@ -85,13 +88,16 @@ const EXPENSE_CATEGORIES = [
 ];
 
 const DailyCash = () => {
+  console.log('%c CAIXA DIARIO: COMPONENTE INVOCADO ', 'background: blue; color: white; font-weight: bold; padding: 5px;');
+
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  
-  // Form States
   const [amountStr, setAmountStr] = useState('');
   const [newTransaction, setNewTransaction] = useState<Partial<CreateFinancialTransactionDTO>>({
     type: 'entrada',
@@ -100,26 +106,20 @@ const DailyCash = () => {
     category: '',
     description: ''
   });
-
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ['daily-cash', selectedDate],
-    queryFn: async () => {
-      const date = new Date(selectedDate);
-      const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-      const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-      return financialService.list(adjustedDate, adjustedDate);
-    }
-  });
+  const [editingTransaction, setEditingTransaction] = useState<any>(null);
 
   const createMutation = useMutation({
-    mutationFn: financialService.create,
+    mutationFn: (data: CreateFinancialTransactionDTO) => {
+      if (!user?.churchId) throw new Error('Igreja não identificada.');
+      return financialService.create(data, user.churchId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['daily-cash'] });
-      toast.success("Lançamento realizado com sucesso!");
+      toast({ title: "Lançamento realizado", description: "O lançamento foi registrado com sucesso." });
       setIsAddModalOpen(false);
       setNewTransaction({
         type: 'entrada',
-        date: selectedDate, // Mantém a data selecionada na view
+        date: selectedDate,
         amount: 0,
         category: '',
         description: ''
@@ -128,7 +128,43 @@ const DailyCash = () => {
     },
     onError: (error) => {
       console.error(error);
-      toast.error("Erro ao realizar lançamento.");
+      toast({ title: "Erro", description: "Erro ao realizar lançamento.", variant: "destructive" });
+    }
+  });
+  const { data: transactions = [], isLoading, error } = useQuery({
+    queryKey: ['daily-cash', selectedDate],
+    queryFn: async () => {
+      console.log('DailyCash: Carregando dados para', selectedDate);
+      if (!selectedDate) return [];
+      const date = new Date(selectedDate + 'T12:00:00');
+      if (isNaN(date.getTime())) return [];
+      return await financialService.list(date, date);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => financialService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['daily-cash'] });
+      toast({ title: "Lançamento removido", description: "O lançamento foi excluído com sucesso." });
+    },
+    onError: (error) => {
+      console.error(error);
+      toast({ title: "Erro", description: "Erro ao excluir lançamento.", variant: "destructive" });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: CreateFinancialTransactionDTO }) => financialService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['daily-cash'] });
+      toast({ title: "Lançamento atualizado", description: "As alterações foram salvas com sucesso." });
+      setIsAddModalOpen(false);
+      setEditingTransaction(null);
+    },
+    onError: (error: any) => {
+      console.error(error);
+      toast({ title: "Erro", description: error.message || "Erro ao atualizar lançamento.", variant: "destructive" });
     }
   });
 
@@ -160,7 +196,7 @@ const DailyCash = () => {
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const numericValue = value.replace(/\D/g, '');
-    
+
     if (numericValue === '') {
       setAmountStr('');
       setNewTransaction({ ...newTransaction, amount: 0 });
@@ -168,7 +204,6 @@ const DailyCash = () => {
     }
 
     const floatValue = parseFloat(numericValue) / 100;
-    
     const formatted = new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -180,35 +215,75 @@ const DailyCash = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!newTransaction.amount || newTransaction.amount <= 0) {
-      toast.warning("Informe um valor válido.");
+      toast({ title: "Valor inválido", description: "Informe um valor válido.", variant: "destructive" });
       return;
     }
     if (!newTransaction.category) {
-      toast.warning("Informe uma categoria.");
+      toast({ title: "Categoria faltando", description: "Informe uma categoria.", variant: "destructive" });
       return;
     }
 
-    createMutation.mutate(newTransaction as CreateFinancialTransactionDTO);
+    if (editingTransaction) {
+      updateMutation.mutate({
+        id: editingTransaction.id,
+        data: newTransaction as CreateFinancialTransactionDTO
+      });
+    } else {
+      createMutation.mutate(newTransaction as CreateFinancialTransactionDTO);
+    }
   };
 
-  // Determinar quais categorias mostrar baseado no tipo selecionado
-  const currentCategories = newTransaction.type === 'entrada' 
-    ? INCOME_CATEGORIES 
+  const handleEdit = (transaction: any) => {
+    setEditingTransaction(transaction);
+    setNewTransaction({
+      type: transaction.type,
+      date: transaction.date,
+      amount: transaction.amount,
+      category: transaction.category,
+      description: transaction.description
+    });
+    setAmountStr(formatCurrency(transaction.amount));
+    setIsAddModalOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este lançamento?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const currentCategories = newTransaction.type === 'entrada'
+    ? INCOME_CATEGORIES
     : EXPENSE_CATEGORIES;
 
+  if (isLoading) {
+    return (
+      <div key="loading-state" className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-destructive">
+        <span>Erro ao carregar dados do caixa. Verifique as permissões.</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto p-4 space-y-6 print:p-0 print:max-w-none">
+    <div key="daily-cash-content" className="container mx-auto p-4 space-y-6 print:p-0 print:max-w-none" translate="no" >
       {/* Header & Controls - Hidden on Print */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Caixa Diário</h1>
+        <div translate="no">
+          <h1 className="text-3xl font-bold tracking-tight"><span>Caixa Diário</span></h1>
           <p className="text-muted-foreground">
-            Gerenciamento de entradas e saídas do dia
+            <span>Gerenciamento de entradas e saídas do dia</span>
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
           <div className="relative flex-1 md:w-48 w-full">
             <Input
@@ -218,33 +293,33 @@ const DailyCash = () => {
               className="w-full"
             />
           </div>
-          
+
           <div className="flex gap-2 w-full sm:w-auto">
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
               <DialogTrigger asChild>
                 <Button className="flex-1 sm:flex-none">
                   <Plus className="mr-2 h-4 w-4" />
-                  Novo Lançamento
+                  <span>Novo Lançamento</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Novo Lançamento</DialogTitle>
+                  <DialogTitle><span>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</span></DialogTitle>
                   <DialogDescription>
-                    Adicione uma entrada ou saída no caixa.
+                    <span>{editingTransaction ? 'Atualize os dados do lançamento.' : 'Adicione uma entrada ou saída no caixa.'}</span>
                   </DialogDescription>
                 </DialogHeader>
-                
-                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+
+                <form onSubmit={handleSubmit} className="space-y-4 py-4" translate="no">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Tipo</Label>
-                      <Select 
-                        value={newTransaction.type} 
+                      <Label><span>Tipo</span></Label>
+                      <Select
+                        value={newTransaction.type}
                         onValueChange={(val: 'entrada' | 'saida') => {
                           setNewTransaction({
-                            ...newTransaction, 
-                            type: val, 
+                            ...newTransaction,
+                            type: val,
                             category: '' // Reset category when type changes
                           });
                         }}
@@ -253,26 +328,26 @@ const DailyCash = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="entrada">Entrada</SelectItem>
-                          <SelectItem value="saida">Saída</SelectItem>
+                          <SelectItem value="entrada"><span>Entrada</span></SelectItem>
+                          <SelectItem value="saida"><span>Saída</span></SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div className="space-y-2">
-                      <Label>Data</Label>
-                      <Input 
-                        type="date" 
+                      <Label><span>Data</span></Label>
+                      <Input
+                        type="date"
                         value={newTransaction.date}
-                        onChange={(e) => setNewTransaction({...newTransaction, date: e.target.value})}
+                        onChange={(e) => setNewTransaction({ ...newTransaction, date: e.target.value })}
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Valor</Label>
-                    <Input 
-                      type="text" 
+                    <Label><span>Valor</span></Label>
+                    <Input
+                      type="text"
                       placeholder="R$ 0,00"
                       value={amountStr}
                       onChange={handleAmountChange}
@@ -280,18 +355,18 @@ const DailyCash = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Categoria</Label>
-                    <Select 
-                        value={newTransaction.category} 
-                        onValueChange={(val) => setNewTransaction({...newTransaction, category: val})}
-                      >
+                    <Label><span>Categoria</span></Label>
+                    <Select
+                      value={newTransaction.category}
+                      onValueChange={(val) => setNewTransaction({ ...newTransaction, category: val })}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
                         {currentCategories.map((category) => (
                           <SelectItem key={category} value={category}>
-                            {category}
+                            <span>{category}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -299,19 +374,22 @@ const DailyCash = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Descrição (Opcional)</Label>
-                    <Textarea 
+                    <Label><span>Descrição (Opcional)</span></Label>
+                    <Textarea
                       placeholder="Detalhes sobre o lançamento..."
                       value={newTransaction.description || ''}
-                      onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
+                      onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
                     />
                   </div>
 
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancelar</Button>
-                    <Button type="submit" disabled={createMutation.isPending}>
-                      {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Salvar
+                    <Button type="button" variant="outline" onClick={() => {
+                      setIsAddModalOpen(false);
+                      setEditingTransaction(null);
+                    }}><span>Cancelar</span></Button>
+                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                      {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <span>{editingTransaction ? 'Salvar Alterações' : 'Salvar'}</span>
                     </Button>
                   </DialogFooter>
                 </form>
@@ -330,46 +408,45 @@ const DailyCash = () => {
 
       {/* Print Header - Visible only on Print */}
       <div className="hidden print:block mb-8 text-center">
-        <h1 className="text-2xl font-bold">Relatório de Caixa Diário</h1>
+        <h1 className="text-2xl font-bold"><span>Relatório de Caixa Diário</span></h1>
         <p className="text-gray-600">
-          Data: {format(new Date(selectedDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          <span>Data: {format(new Date(selectedDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3 print:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 print:grid-cols-3" translate="no">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Entradas
+              <span>Total Entradas</span>
             </CardTitle>
             <ArrowUpCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totals.income)}
+              <span>{formatCurrency(totals.income)}</span>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Saídas
+              <span>Total Saídas</span>
             </CardTitle>
             <ArrowDownCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(totals.expense)}
+              <span>{formatCurrency(totals.expense)}</span>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Saldo do Dia
+              <span>Saldo do Dia</span>
             </CardTitle>
             <DollarSign className="h-4 w-4 text-blue-500" />
           </CardHeader>
@@ -378,7 +455,7 @@ const DailyCash = () => {
               "text-2xl font-bold",
               balance >= 0 ? "text-blue-600" : "text-red-600"
             )}>
-              {formatCurrency(balance)}
+              <span>{formatCurrency(balance)}</span>
             </div>
           </CardContent>
         </Card>
@@ -387,55 +464,75 @@ const DailyCash = () => {
       {/* Transactions Table */}
       <Card className="print:shadow-none print:border-none">
         <CardHeader className="print:hidden">
-          <CardTitle>Transações</CardTitle>
+          <CardTitle><span>Transações</span></CardTitle>
         </CardHeader>
         <CardContent className="print:p-0">
           <Table>
-            <TableHeader>
+            <TableHeader translate="no">
               <TableRow>
-                <TableHead>Horário</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
+                <TableHead><span>Horário</span></TableHead>
+                <TableHead><span>Descrição</span></TableHead>
+                <TableHead><span>Categoria</span></TableHead>
+                <TableHead><span>Tipo</span></TableHead>
+                <TableHead className="text-right"><span>Valor</span></TableHead>
+                <TableHead className="text-right print:hidden"><span>Ações</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {transactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    Nenhuma transação encontrada para esta data.
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <span>Nenhuma transação encontrada para esta data.</span>
                   </TableCell>
                 </TableRow>
               ) : (
                 transactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>
-                      {format(new Date(transaction.created_at), 'HH:mm')}
+                      <span>
+                        {(() => {
+                          try {
+                            return transaction.created_at ? format(new Date(transaction.created_at), 'HH:mm') : '--:--';
+                          } catch (e) {
+                            console.error('Error formatting date:', transaction.created_at);
+                            return '--:--';
+                          }
+                        })()}
+                      </span>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {transaction.description || 'Sem descrição'}
+                      <span>{transaction.description || 'Sem descrição'}</span>
                     </TableCell>
-                    <TableCell>{transaction.category}</TableCell>
+                    <TableCell><span>{transaction.category}</span></TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant={transaction.type === 'entrada' ? 'default' : 'destructive'}
                         className={cn(
-                          transaction.type === 'entrada' 
-                            ? "bg-green-100 text-green-800 hover:bg-green-100" 
+                          transaction.type === 'entrada'
+                            ? "bg-green-100 text-green-800 hover:bg-green-100"
                             : "bg-red-100 text-red-800 hover:bg-red-100",
                           "print:border print:border-gray-300"
                         )}
                       >
-                        {transaction.type === 'entrada' ? 'Entrada' : 'Saída'}
+                        <span>{transaction.type === 'entrada' ? 'Entrada' : 'Saída'}</span>
                       </Badge>
                     </TableCell>
                     <TableCell className={cn(
                       "text-right font-medium",
                       transaction.type === 'entrada' ? "text-green-600" : "text-red-600"
                     )}>
-                      {transaction.type === 'entrada' ? '+' : '-'} 
-                      {formatCurrency(transaction.amount)}
+                      <span>{transaction.type === 'entrada' ? '+' : '-'}</span>
+                      <span>{formatCurrency(transaction.amount)}</span>
+                    </TableCell>
+                    <TableCell className="text-right print:hidden">
+                      <div className="flex justify-end gap-2 text-foreground">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(transaction)} className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(transaction.id)} className="h-8 w-8 text-red-600 hover:text-red-800 hover:bg-red-50">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

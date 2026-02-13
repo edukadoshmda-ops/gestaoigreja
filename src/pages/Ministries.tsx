@@ -88,13 +88,15 @@ export default function Ministries() {
     if (!newMinistry.name) return;
 
     try {
+      if (!user?.churchId) throw new Error('Igreja não identificada.');
+
       await ministriesService.create({
         name: newMinistry.name,
         description: newMinistry.description,
-        leader_id: newMinistry.leaderId,
+        leader_id: newMinistry.leaderId || null,
         icon: 'Church',
         active: true,
-      });
+      }, user.churchId);
 
       setNewMinistry({ name: '', description: '', leaderId: '' });
       setDialogOpen(false);
@@ -133,11 +135,14 @@ export default function Ministries() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ministérios</h1>
-          <p className="text-muted-foreground">
-            Visualize e gerencie os ministérios da igreja
-          </p>
+        <div className="bg-white p-8 rounded-3xl border border-primary/20 mb-8 overflow-hidden relative group shadow-sm w-full">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-primary/5 rounded-full blur-3xl transition-colors duration-500" />
+          <div className="relative">
+            <h1 className="text-4xl font-extrabold tracking-tight text-primary">Ministérios</h1>
+            <p className="text-muted-foreground mt-2 text-lg max-w-2xl">
+              Gerencie a atuação da igreja em diferentes frentes, designando equipes e acompanhando o crescimento de cada departamento.
+            </p>
+          </div>
         </div>
         {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -218,15 +223,151 @@ export default function Ministries() {
       </div>
 
       {selectedMinistry && (
-        <AddMemberDialog
+        <MinistryDetailsDialog
           open={addMemberOpen}
           onOpenChange={setAddMemberOpen}
-          targetId={selectedMinistry.id}
-          targetName={selectedMinistry.name}
-          type="ministry"
+          ministry={selectedMinistry}
           onSuccess={loadMinistries}
         />
       )}
     </div>
   );
 }
+
+// Sub-component for Details
+function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  ministry: Ministry;
+  onSuccess: () => void;
+}) {
+  const [members, setMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [addingMember, setAddingMember] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      loadDetails();
+    }
+  }, [open, ministry.id]);
+
+  async function loadDetails() {
+    try {
+      setLoading(true);
+      const [minMembers, membersList] = await Promise.all([
+        ministriesService.getMembers(ministry.id),
+        membersService.getAll()
+      ]);
+      setMembers(minMembers || []);
+      setAllMembers(membersList as any || []);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleAddPerson = async (memberId: string) => {
+    try {
+      setAddingMember(true);
+      await ministriesService.addMember(ministry.id, memberId);
+      toast({ title: 'Sucesso', description: 'Membro adicionado ao ministério.' });
+      loadDetails();
+      onSuccess();
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleRemovePerson = async (memberId: string) => {
+    if (!confirm('Deseja remover este membro do ministério?')) return;
+    try {
+      await ministriesService.removeMember(ministry.id, memberId);
+      toast({ title: 'Removido', description: 'Membro removido do ministério.' });
+      loadDetails();
+      onSuccess();
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-primary">
+            {ministry.name}
+          </DialogTitle>
+          <DialogDescription>{ministry.description}</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto space-y-6 py-4">
+          <div className="space-y-4">
+            <Label className="text-lg font-bold">Equipe ({members.length})</Label>
+            <div className="grid gap-2">
+              {members.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-xl">
+                  Nenhum membro cadastrado neste ministério.
+                </p>
+              ) : (
+                members.map((m: any) => (
+                  <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
+                        {m.member?.name?.[0]}
+                      </div>
+                      <div>
+                        <p className="font-bold">{m.member?.name}</p>
+                        <p className="text-xs text-muted-foreground">{m.role || 'Membro'}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => handleRemovePerson(m.member_id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <Label className="text-lg font-bold">Adicionar Membro</Label>
+            <div className="flex gap-2">
+              <Select onValueChange={handleAddPerson} disabled={addingMember}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Selecione um membro para adicionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allMembers
+                    .filter(am => !members.some(m => m.member_id === am.id))
+                    .map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+import { Separator } from '@/components/ui/separator';
+import { Trash2 } from 'lucide-react';

@@ -59,9 +59,9 @@ export const ministriesService = {
     /**
      * Create a new ministry
      */
-    async create(ministry: any) {
+    async create(ministry: any, churchId: string) {
         const { data, error } = await (supabase.from('ministries') as any)
-            .insert(ministry as any)
+            .insert({ ...ministry, church_id: churchId } as any)
             .select()
             .single();
 

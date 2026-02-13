@@ -50,10 +50,13 @@ export const membersService = {
     /**
      * Create a new member
      */
-    async create(member: MemberInsert): Promise<Member> {
+    async create(member: MemberInsert, churchId: string): Promise<Member> {
         const { data, error } = await supabase
             .from('members')
-            .insert(member)
+            .insert({
+                ...member,
+                church_id: churchId
+            })
             .select()
             .single();
 

@@ -61,22 +61,31 @@ export default function NewLogin() {
         }
     };
 
-    const handleFinalSubmit = (e: React.FormEvent) => {
+    const handleFinalSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         try {
             const pinString = formData.pin.join('');
 
-            // A função login atualiza o estado global, o que fará o App.tsx 
-            // redirecionar automaticamente para o /dashboard
-            login(formData.email, pinString, formData.role, formData.fullName);
+            if (pinString.length < 6) {
+                setError('O PIN deve ter exatamente 6 dígitos.');
+                return;
+            }
 
-            // Não usamos navigate() aqui para evitar conflito com o redirecionamento do App.tsx
-            // Se o login falhar (throw), cairá no catch.
-        } catch (err) {
-            console.error(err);
-            setError('Ocorreu um erro ao tentar entrar. Tente novamente.');
+            console.log('Iniciando login para:', formData.email, 'com PIN de', pinString.length, 'digitos');
+
+            // A função login agora é assíncrona e realiza a autenticação real no Supabase
+            const success = await login(formData.email, pinString, formData.role, formData.fullName);
+
+            if (success) {
+                // O App.tsx cuidará do redirecionamento ao detectar que o user não é mais null
+            } else {
+                setError('E-mail ou PIN incorretos.');
+            }
+        } catch (err: any) {
+            console.error('Erro no login:', err);
+            setError(err.message || 'Ocorreu um erro ao tentar entrar. Tente novamente.');
         }
     };
 
@@ -89,7 +98,7 @@ export default function NewLogin() {
                     alt="Céu"
                     className="w-full h-full object-cover opacity-10"
                 />
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
+                <div className="absolute inset-0 bg-background" />
             </div>
 
             <div className="w-full max-w-md relative z-10">
@@ -102,9 +111,10 @@ export default function NewLogin() {
                                     <Logo size="xl" showText={false} />
                                 </div>
                                 <h1 className="text-3xl font-black tracking-tight mb-2">
-                                    Gestão <span className="text-primary">Church</span>
+                                    Gestão Church
                                 </h1>
-                                <div className="h-1 w-20 bg-gradient-to-r from-primary to-secondary mx-auto rounded-full mb-8"></div>
+                                <div className="h-1.5 w-20 bg-primary mx-auto rounded-full mb-8 shadow-sm"
+                                    style={{ backgroundColor: 'hsl(var(--primary))' }}></div>
                                 <h2 className="text-xl font-bold text-foreground/80">Bem-vindo</h2>
                             </div>
 
@@ -225,6 +235,12 @@ export default function NewLogin() {
                                             onClick={() => setFormData({ ...formData, role: 'membro' })}
                                         />
                                         <RoleCard
+                                            icon={<Shield className="h-5 w-5" />}
+                                            label="SuperAdmin"
+                                            active={formData.role === 'superadmin'}
+                                            onClick={() => setFormData({ ...formData, role: 'superadmin' })}
+                                        />
+                                        <RoleCard
                                             icon={<User className="h-5 w-5" />}
                                             label="Congregado"
                                             active={formData.role === 'congregado'}
@@ -240,7 +256,12 @@ export default function NewLogin() {
                                 )}
 
                                 <div className="flex flex-col gap-3">
-                                    <Button type="submit" className="w-full h-14 text-base font-bold shadow-lg shadow-primary/20" size="lg">
+                                    <Button
+                                        type="submit"
+                                        className="w-full h-14 text-base font-bold shadow-lg shadow-primary/20"
+                                        size="lg"
+                                        disabled={formData.pin.some(digit => !digit)}
+                                    >
                                         Entrar no Sistema
                                     </Button>
                                     <button

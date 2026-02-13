@@ -23,6 +23,7 @@ interface MemberFormProps {
 export interface MemberFormData {
   name: string;
   birthDate: string;
+  maritalStatus: string;
   address: string;
   email: string;
   phone: string;
@@ -34,6 +35,7 @@ export function MemberForm({ onSubmit, onCancel, initialData }: MemberFormProps)
   const [formData, setFormData] = useState<MemberFormData>(initialData || {
     name: '',
     birthDate: '',
+    maritalStatus: 'solteiro',
     address: '',
     email: '',
     phone: '',
@@ -176,6 +178,24 @@ export function MemberForm({ onSubmit, onCancel, initialData }: MemberFormProps)
                 required
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="maritalStatus">Estado Civil</Label>
+              <Select
+                value={formData.maritalStatus}
+                onValueChange={(value: any) => setFormData({ ...formData, maritalStatus: value })}
+              >
+                <SelectTrigger id="maritalStatus">
+                  <SelectValue placeholder="Selecione o estado civil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="solteiro">Solteiro(a)</SelectItem>
+                  <SelectItem value="casado">Casado(a)</SelectItem>
+                  <SelectItem value="divorciado">Divorciado(a)</SelectItem>
+                  <SelectItem value="viuvo">Viúvo(a)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="category">Categoria</Label>
               <Select

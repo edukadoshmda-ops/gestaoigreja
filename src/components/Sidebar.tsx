@@ -16,10 +16,14 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  BarChart3,
+  ShieldCheck,
+  Heart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 
@@ -31,22 +35,25 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado'] },
-  { icon: Users, label: 'Membros e Congregados', href: '/membros', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado'] },
-  { icon: Church, label: 'Ministérios', href: '/ministerios', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado'] },
-  { icon: MapPin, label: 'Células', href: '/celulas', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado'] },
-  { icon: Calendar, label: 'Eventos', href: '/eventos', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado'] },
-  { icon: DollarSign, label: 'Caixa Diário', href: '/caixa-diario', roles: ['admin', 'pastor', 'tesoureiro'] },
-  { icon: FileText, label: 'Relatórios', href: '/relatorios', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'lider_celula', 'lider_ministerio'] },
-  { icon: Upload, label: 'Uploads', href: '/uploads', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado'] },
-  { icon: FileText, label: 'Secretaria', href: '/secretaria', roles: ['admin', 'pastor', 'secretario'] },
-  { icon: Settings, label: 'Institucional', href: '/institucional', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado'] },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: Users, label: 'Membros e Congregados', href: '/membros', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: Church, label: 'Ministérios', href: '/ministerios', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: MapPin, label: 'Células', href: '/celulas', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: Heart, label: 'Discipulado', href: '/discipulado', roles: ['admin', 'pastor', 'secretario', 'lider_celula', 'superadmin'] },
+  { icon: Calendar, label: 'Eventos', href: '/eventos', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: DollarSign, label: 'Caixa Diário', href: '/caixa-diario', roles: ['admin', 'pastor', 'tesoureiro', 'superadmin'] },
+  { icon: BarChart3, label: 'Relatórios', href: '/relatorios', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'lider_celula', 'lider_ministerio', 'superadmin'] },
+  { icon: Upload, label: 'Uploads', href: '/uploads', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: FileText, label: 'Secretaria', href: '/secretaria', roles: ['admin', 'pastor', 'secretario', 'superadmin'] },
+  { icon: ShieldCheck, label: 'Painel Root', href: '/superadmin', roles: ['superadmin'] },
+  { icon: Settings, label: 'Configurações', href: '/institucional', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
 ];
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { user, logout, updateAvatar } = useAuth();
+  console.log('Sidebar: rendering for user role:', user?.role);
   const { toast } = useToast();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -114,7 +121,7 @@ export function Sidebar() {
         </Button>
       </div>
 
-      <nav className="flex-1 p-3 space-y-2">
+      <nav className="flex-1 p-3 space-y-2" translate="no">
         {filteredItems.map((item) => {
           const isActive = location.pathname === item.href;
           return (
@@ -124,18 +131,24 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium',
                 isActive
-                  ? 'bg-gradient-to-r from-primary to-secondary text-primary-foreground shadow-md hover:shadow-lg scale-105'
+                  ? 'bg-primary text-primary-foreground shadow-md hover:shadow-lg'
                   : 'text-foreground hover:bg-primary/5 hover:scale-102 hover:shadow-sm'
               )}
             >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
+              <item.icon className={cn(
+                "h-5 w-5 flex-shrink-0",
+                !isActive && "text-primary"
+              )} />
               {!collapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-3 border-t border-border/50">
+      <div className="p-3 border-t border-border/50 space-y-2">
+        {/* Seletor de Temas */}
+        <ThemeSwitcher collapsed={collapsed} />
+
         <input
           type="file"
           ref={avatarInputRef}
@@ -144,7 +157,7 @@ export function Sidebar() {
           onChange={handleAvatarUpload}
         />
         {!collapsed && user && (
-          <div className="px-4 py-3 mb-2 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 flex items-center gap-3 relative group">
+          <div className="px-4 py-3 mb-2 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-3 relative group">
             <div
               className="relative cursor-pointer hover:opacity-80 transition-opacity"
               onClick={handleAvatarClick}
@@ -168,9 +181,9 @@ export function Sidebar() {
                 )}
               </div>
             </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-sm truncate">{user.name}</p>
-              <p className="text-xs text-muted-foreground capitalize truncate">{user.role}</p>
+            <div className="min-w-0" translate="no">
+              <p className="font-semibold text-sm truncate"><span>{user.name}</span></p>
+              <p className="text-xs text-muted-foreground capitalize truncate"><span>{user.role}</span></p>
             </div>
           </div>
         )}

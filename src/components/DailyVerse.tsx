@@ -6,7 +6,7 @@ export function DailyVerse() {
   const verse = getDailyVerse();
 
   return (
-    <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+    <Card className="bg-white border-primary/20 shadow-lg">
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <div className="rounded-full bg-primary/20 p-2">
