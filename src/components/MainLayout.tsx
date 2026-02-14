@@ -24,12 +24,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
             {/* Mobile & Tablet Layout - Header always visible below 1280px */}
             <div className="flex-1 flex flex-col min-w-0">
-                {/* DEBUG BANNER - REMOVER DEPOIS */}
-                <div className="xl:hidden bg-red-600 text-white text-xs text-center py-1 font-bold z-[100] relative">
-                    VERSÃO DEBUG: SE VOCÊ VÊ ISSO, ATUALIZOU!
-                </div>
-
-                <header className="xl:hidden flex items-center justify-between p-4 border-b-4 border-red-500 bg-card print:hidden shadow-sm relative z-50">
+                <header className="xl:hidden flex items-center justify-between p-4 border-b border-border bg-card print:hidden shadow-sm relative z-50">
                     <Logo size="sm" />
                     <div className="flex items-center gap-2 relative z-50">
                         <div className="relative z-50">
@@ -51,8 +46,10 @@ export function MainLayout({ children }: MainLayoutProps) {
                     </div>
                 </header>
 
-                <main className="flex-1 p-3 md:p-6 lg:p-8 overflow-x-hidden">
-                    {children}
+                <main className="flex-1 overflow-y-auto">
+                    <div className="container mx-auto p-4 md:p-8 max-w-7xl animate-in fade-in duration-500">
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>
