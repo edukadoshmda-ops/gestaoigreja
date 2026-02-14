@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, Plus, ListChecks, Users, Clock, MapPin, Tag, Search, Filter, Loader2, CheckCircle2, AlertCircle, MessageSquare, ChevronRight, X } from 'lucide-react';
+import { Calendar, Plus, ListChecks, Users, Clock, MapPin, Tag, Search, Filter, Loader2, CheckCircle2, AlertCircle, MessageSquare, ChevronRight, X, Edit2, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +60,7 @@ export default function Events() {
     const [isCreateChecklistOpen, setIsCreateChecklistOpen] = useState(false);
     const [isCreateScaleOpen, setIsCreateScaleOpen] = useState(false);
     const [selectedEventDetails, setSelectedEventDetails] = useState<Event | null>(null);
+    const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -98,38 +99,47 @@ export default function Events() {
                 type: e.type,
                 date: e.date,
                 time: e.time,
-                location: e.location || '',
-                description: e.description || '',
-                responsible: e.responsible?.name || 'Não definido',
+                location: e.location,
+                description: e.description,
+                responsible: e.responsible?.name || 'Não atribuído',
                 responsiblePhone: e.responsible?.phone,
                 status: e.status,
-                attendees: e.actual_attendees || e.estimated_attendees,
-                checklist: (e.checklist || []).map((c: any) => ({
-                    id: c.id,
-                    task: c.task,
-                    completed: c.completed
-                })),
+                attendees: e.estimated_attendees,
+                checklist: e.checklist,
                 serviceScale: (e.serviceScale || []).map((s: any) => ({
                     id: s.id,
-                    name: s.member?.name || 'Não definido',
-                    phone: s.member?.phone,
+                    name: s.member?.name,
                     role: s.role,
+                    phone: s.member?.phone,
                     confirmed: s.confirmed,
                     declined: s.declined
                 }))
             }));
+
             setEvents(mappedEvents);
-        } catch (error) {
-            console.error('Error loading events:', error);
-            toast({
-                title: 'Erro',
-                description: 'Não foi possível carregar os eventos.',
-                variant: 'destructive',
-            });
+        } catch (error: any) {
+            toast({ title: 'Erro ao carregar eventos', description: error.message, variant: 'destructive' });
         } finally {
             setLoading(false);
         }
     }
+
+    const handleDeleteEvent = async (id: string, title: string) => {
+        if (!confirm(`Tem certeza que deseja excluir o evento "${title}"?`)) return;
+
+        try {
+            setLoading(true);
+            const { error } = await supabase.from('events').delete().eq('id', id);
+            if (error) throw error;
+
+            toast({ title: 'Evento excluído', description: 'O evento foi removido com sucesso.' });
+            loadEvents();
+        } catch (error: any) {
+            toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleToggleTask = async (taskId: string, currentStatus: boolean, eventId: string) => {
         try {
@@ -349,6 +359,9 @@ export default function Events() {
                                     getEventTypeColor={getEventTypeColor}
                                     getStatusBadge={getStatusBadge}
                                     onViewDetails={() => setSelectedEventDetails(event)}
+                                    onEdit={() => setEventToEdit(event)}
+                                    onDelete={() => handleDeleteEvent(event.id, event.title)}
+                                    isAdmin={user?.role && !['aluno', 'membro', 'congregado', 'tesoureiro'].includes(user.role)}
                                 />
                             ))}
                         </div>
@@ -372,26 +385,47 @@ export default function Events() {
                 getEventTypeColor={getEventTypeColor}
                 getStatusBadge={getStatusBadge}
             />
+
+            <Dialog open={!!eventToEdit} onOpenChange={(open) => !open && setEventToEdit(null)}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Editar Evento</DialogTitle>
+                    </DialogHeader>
+                    {eventToEdit && (
+                        <CreateEventForm
+                            onClose={() => setEventToEdit(null)}
+                            onSuccess={() => {
+                                setEventToEdit(null);
+                                loadEvents();
+                            }}
+                            initialData={eventToEdit}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
 
 // Sub-components
 
-function EventCard({ event, getEventTypeColor, getStatusBadge, onViewDetails }: {
+function EventCard({ event, getEventTypeColor, getStatusBadge, onViewDetails, onEdit, onDelete, isAdmin }: {
     event: Event;
     getEventTypeColor: (type: Event['type']) => string;
     getStatusBadge: (status: Event['status']) => string;
     onViewDetails: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
+    isAdmin: boolean;
 }) {
     return (
-        <Card className="border-primary/10 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] overflow-hidden">
+        <Card className="border-primary/10 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] overflow-hidden group">
             <div className={`h-2 ${getEventTypeColor(event.type)}`} />
             <CardHeader>
                 <div className="flex items-start justify-between">
                     <div className="flex-1">
                         <CardTitle className="text-xl font-bold">{event.title}</CardTitle>
-                        <CardDescription className="mt-2 flex flex-wrap gap-2">
+                        <CardDescription className="mt-2 flex flex-wrap gap-2 text-xs">
                             <Badge variant="outline" className={getStatusBadge(event.status)}>
                                 {event.status}
                             </Badge>
@@ -400,6 +434,16 @@ function EventCard({ event, getEventTypeColor, getStatusBadge, onViewDetails }: 
                             </Badge>
                         </CardDescription>
                     </div>
+                    {isAdmin && (
+                        <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={onEdit}>
+                                <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={onDelete}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -680,7 +724,7 @@ function ChecklistView({ events, onToggleTask }: { events: Event[], onToggleTask
 
 // Form Components
 
-function CreateEventForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function CreateEventForm({ onClose, onSuccess, initialData }: { onClose: () => void; onSuccess: () => void; initialData?: Event }) {
     const { user } = useAuth();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
@@ -713,34 +757,42 @@ function CreateEventForm({ onClose, onSuccess }: { onClose: () => void; onSucces
             setLoading(true);
             if (!user?.churchId) throw new Error('Igreja não identificada.');
 
-            const newEvent = await eventsService.create({
+            const eventPayload: any = {
                 title: formData.get('title') as string,
                 type: formData.get('type') as any,
                 date: formData.get('date') as string,
                 time: formData.get('time') as string,
                 location: formData.get('location') as string,
                 description: formData.get('description') as string,
-                status: 'planejado',
                 estimated_attendees: Number(formData.get('attendees')) || 0,
-            }, user.churchId);
+            };
 
-            // Add selected guests to service scale as 'Convidado'
-            if (selectedGuests.length > 0) {
-                await Promise.all(selectedGuests.map(memberId =>
-                    eventsService.addToServiceScale(newEvent.id, memberId, 'Convidado')
-                ));
+            if (initialData) {
+                await eventsService.update(initialData.id, eventPayload);
+                toast({ title: 'Evento atualizado!', description: 'As alterações foram salvas.' });
+            } else {
+                eventPayload.status = 'planejado';
+                const newEvent = await eventsService.create(eventPayload, user.churchId);
+
+                // Add selected guests to service scale as 'Convidado'
+                if (selectedGuests.length > 0) {
+                    await Promise.all(selectedGuests.map(memberId =>
+                        eventsService.addToServiceScale(newEvent.id, memberId, 'Convidado')
+                    ));
+                }
+
+                toast({
+                    title: 'Evento criado!',
+                    description: selectedGuests.length > 0
+                        ? `${selectedGuests.length} convidados foram adicionados.`
+                        : 'Evento criado com sucesso.'
+                });
             }
 
-            toast({
-                title: 'Evento criado!',
-                description: selectedGuests.length > 0
-                    ? `${selectedGuests.length} convidados foram adicionados.`
-                    : 'Evento criado com sucesso.'
-            });
             onSuccess();
             onClose();
         } catch (error: any) {
-            toast({ title: 'Erro ao criar evento', description: error.message, variant: 'destructive' });
+            toast({ title: `Erro ao ${initialData ? 'atualizar' : 'criar'} evento`, description: error.message, variant: 'destructive' });
         } finally {
             setLoading(false);
         }
@@ -751,11 +803,11 @@ function CreateEventForm({ onClose, onSuccess }: { onClose: () => void; onSucces
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2">
                     <Label htmlFor="title">Título do Evento</Label>
-                    <Input id="title" name="title" placeholder="Ex: Conferência de Jovens" required />
+                    <Input id="title" name="title" defaultValue={initialData?.title} placeholder="Ex: Conferência de Jovens" required />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="type">Tipo</Label>
-                    <Select name="type" defaultValue="evento">
+                    <Select name="type" defaultValue={initialData?.type || 'evento'}>
                         <SelectTrigger>
                             <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
@@ -769,77 +821,81 @@ function CreateEventForm({ onClose, onSuccess }: { onClose: () => void; onSucces
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="attendees">Expectativa de Público</Label>
-                    <Input id="attendees" name="attendees" type="number" placeholder="Ex: 100" />
+                    <Input id="attendees" name="attendees" type="number" defaultValue={initialData?.attendees} placeholder="Ex: 100" />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="date">Data</Label>
-                    <Input id="date" name="date" type="date" required />
+                    <Input id="date" name="date" type="date" defaultValue={initialData?.date} required />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="time">Horário</Label>
-                    <Input id="time" name="time" type="time" required />
+                    <Input id="time" name="time" type="time" defaultValue={initialData?.time} required />
                 </div>
                 <div className="space-y-2 col-span-2">
                     <Label htmlFor="location">Local</Label>
-                    <Input id="location" name="location" placeholder="Ex: Templo Principal" />
+                    <Input id="location" name="location" defaultValue={initialData?.location} placeholder="Ex: Templo Principal" />
                 </div>
                 <div className="space-y-2 col-span-2">
                     <Label htmlFor="description">Descrição</Label>
-                    <Textarea id="description" name="description" placeholder="Detalhes sobre o evento..." />
+                    <Textarea id="description" name="description" defaultValue={initialData?.description} placeholder="Detalhes sobre o evento..." />
                 </div>
 
-                <Separator className="col-span-2 my-2" />
+                {!initialData && (
+                    <>
+                        <Separator className="col-span-2 my-2" />
 
-                <div className="col-span-2 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <Label className="text-base font-bold flex items-center gap-2">
-                            <Users className="h-5 w-5 text-primary" />
-                            Convidar Membros (WhatsApp)
-                        </Label>
-                        <Badge variant="secondary">{selectedGuests.length} selecionados</Badge>
-                    </div>
-                    <div className="relative mb-2">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar membros..."
-                            value={memberSearch}
-                            onChange={(e) => setMemberSearch(e.target.value)}
-                            className="pl-9 h-8 text-xs"
-                        />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border rounded-xl p-3 bg-muted/5 max-h-48 overflow-y-auto">
-                        {filteredMembers.length === 0 ? (
-                            <p className="text-xs text-muted-foreground text-center py-4 col-span-2">Nenhum membro encontrado.</p>
-                        ) : (
-                            filteredMembers.map((m: any) => (
-                                <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-primary/5 border border-transparent hover:border-primary/10 transition-all">
-                                    <input
-                                        type="checkbox"
-                                        id={`guest-${m.id}`}
-                                        className="w-4 h-4 rounded border-primary/30 text-primary focus:ring-primary"
-                                        checked={selectedGuests.includes(m.id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) setSelectedGuests([...selectedGuests, m.id]);
-                                            else setSelectedGuests(selectedGuests.filter(id => id !== m.id));
-                                        }}
-                                    />
-                                    <label htmlFor={`guest-${m.id}`} className="text-xs font-medium cursor-pointer flex-1 truncate">
-                                        {m.name}
-                                    </label>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground italic">
-                        * Os selecionados serão adicionados à escala do evento e você poderá enviar o convite individualmente após salvar.
-                    </p>
-                </div>
+                        <div className="col-span-2 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-base font-bold flex items-center gap-2">
+                                    <Users className="h-5 w-5 text-primary" />
+                                    Convidar Membros (WhatsApp)
+                                </Label>
+                                <Badge variant="secondary">{selectedGuests.length} selecionados</Badge>
+                            </div>
+                            <div className="relative mb-2">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                <Input
+                                    placeholder="Buscar membros..."
+                                    value={memberSearch}
+                                    onChange={(e) => setMemberSearch(e.target.value)}
+                                    className="pl-9 h-8 text-xs"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border rounded-xl p-3 bg-muted/5 max-h-48 overflow-y-auto">
+                                {filteredMembers.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground text-center py-4 col-span-2">Nenhum membro encontrado.</p>
+                                ) : (
+                                    filteredMembers.map((m: any) => (
+                                        <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-primary/5 border border-transparent hover:border-primary/10 transition-all">
+                                            <input
+                                                type="checkbox"
+                                                id={`guest-${m.id}`}
+                                                className="w-4 h-4 rounded border-primary/30 text-primary focus:ring-primary"
+                                                checked={selectedGuests.includes(m.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) setSelectedGuests([...selectedGuests, m.id]);
+                                                    else setSelectedGuests(selectedGuests.filter(id => id !== m.id));
+                                                }}
+                                            />
+                                            <label htmlFor={`guest-${m.id}`} className="text-xs font-medium cursor-pointer flex-1 truncate">
+                                                {m.name}
+                                            </label>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground italic">
+                                * Os selecionados serão adicionados à escala do evento e você poderá enviar o convite individualmente após salvar.
+                            </p>
+                        </div>
+                    </>
+                )}
             </div>
             <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
                 <Button type="submit" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Criar Evento
+                    {initialData ? 'Salvar Alterações' : 'Criar Evento'}
                 </Button>
             </div>
         </form>
