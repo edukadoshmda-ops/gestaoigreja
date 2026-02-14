@@ -147,6 +147,7 @@ export default function Events() {
     }
 
     const handleDeleteEvent = async (id: string, title: string) => {
+        const eventToDelete = events.find(e => e.id === id);
         if (!confirm(`Tem certeza que deseja excluir o evento "${title}"?`)) return;
 
         try {
@@ -155,6 +156,27 @@ export default function Events() {
             if (error) throw error;
 
             toast({ title: 'Evento excluído', description: 'O evento foi removido com sucesso.' });
+
+            // Verificar se há participantes para notificar
+            const participants = eventToDelete?.serviceScale?.filter(p => p.phone && p.phone.trim() !== '') || [];
+
+            if (participants.length > 0) {
+                // Pequeno delay para o toast do sistema respirar
+                setTimeout(() => {
+                    if (confirm(`Evento excluído! Deseja disparar mensagens de cancelamento para os ${participants.length} participantes da escala via WhatsApp?`)) {
+                        participants.forEach((person, index) => {
+                            setTimeout(() => {
+                                const firstName = person.name.split(' ')[0];
+                                const text = `Olá ${firstName}, Graça e Paz! Passando para informar que o evento *${title}* agendado para o dia ${formatDate(eventToDelete!.date)} foi *CANCELADO*. Favor desconsiderar a escala de serviço.`;
+                                const cleanPhone = person.phone!.replace(/\D/g, '');
+                                const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                                window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
+                            }, index * 1000); // 1 segundo de intervalo entre janelas
+                        });
+                    }
+                }, 500);
+            }
+
             loadEvents();
         } catch (error: any) {
             toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
