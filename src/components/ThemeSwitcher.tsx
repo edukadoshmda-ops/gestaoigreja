@@ -28,7 +28,7 @@ export function ThemeSwitcher({ collapsed }: { collapsed: boolean }) {
                 variant="ghost"
                 className={cn(
                     'w-full justify-start gap-3 px-4 py-3 hover:bg-primary/5 transition-all duration-300',
-                    collapsed && 'justify-center px-0'
+                    collapsed && 'justify-center px-0 h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 shadow-sm'
                 )}
                 onClick={() => setIsOpen(!isOpen)}
             >
