@@ -429,7 +429,9 @@ function EventCard({ event, getEventTypeColor, getStatusBadge, onViewDetails }: 
                                 className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
                                 onClick={() => {
                                     const text = `Olá ${event.responsible.split(' ')[0]}, Graça e Paz! Gostaria de falar sobre o evento *${event.title}* do dia ${new Date(event.date).toLocaleDateString('pt-BR')}.`;
-                                    window.open(`https://wa.me/55${(event as any).responsiblePhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                                    const cleanPhone = ((event as any).responsiblePhone || '').replace(/\D/g, '');
+                                    const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                                    window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
                                 }}
                             >
                                 <MessageSquare className="h-3 w-3" />

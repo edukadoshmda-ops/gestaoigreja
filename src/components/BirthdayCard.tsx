@@ -88,7 +88,9 @@ export function BirthdayCard() {
                 title="Enviar Parabéns personalizado"
                 onClick={() => {
                   const text = `Olá ${member.name.split(' ')[0]}, Graça e Paz! Passando para te desejar um feliz aniversário! 🎉 Que o Senhor te abençoe ricamente neste novo ano de vida, com muita saúde, paz e alegria no Espírito Santo. Parabéns!`;
-                  window.open(`https://wa.me/55${member.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                  const cleanPhone = (member.phone || '').replace(/\D/g, '');
+                  const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                  window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
                 }}
               >
                 <MessageSquare className="h-5 w-5" />
