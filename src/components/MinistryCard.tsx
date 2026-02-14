@@ -20,7 +20,7 @@ interface MinistryCardProps {
 export function MinistryCard({ ministry, onDelete, onAddMember }: MinistryCardProps) {
   const Icon = iconMap[ministry.icon] || Church;
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_ministerio';
+  const isAdmin = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_ministerio';
 
   return (
     <Card

@@ -38,7 +38,7 @@ export default function Ministries() {
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
-  const canCreate = user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_ministerio';
+  const canCreate = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_ministerio';
 
   useEffect(() => {
     loadMinistries();

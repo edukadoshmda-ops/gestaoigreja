@@ -57,8 +57,8 @@ export default function Cells() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const canReport = user?.role !== 'aluno' && user?.role !== 'membro' && user?.role !== 'congregado' && user?.role !== 'tesoureiro';
-  const isAdmin = user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_celula';
+  const canReport = user?.role === 'superadmin' || (user?.role !== 'aluno' && user?.role !== 'membro' && user?.role !== 'congregado' && user?.role !== 'tesoureiro');
+  const isAdmin = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_celula';
 
   useEffect(() => {
     loadData();
