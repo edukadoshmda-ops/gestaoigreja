@@ -339,7 +339,13 @@ export default function Events() {
 
                 {/* Calendário Tab */}
                 <TabsContent value="calendario" className="space-y-4">
-                    <CalendarView events={filteredEvents} getEventTypeColor={getEventTypeColor} />
+                    <CalendarView
+                        events={filteredEvents}
+                        getEventTypeColor={getEventTypeColor}
+                        onEdit={(event) => setEventToEdit(event)}
+                        onDelete={(id, title) => handleDeleteEvent(id, title)}
+                        isAdmin={user?.role && !['aluno', 'membro', 'congregado', 'tesoureiro'].includes(user.role)}
+                    />
                 </TabsContent>
 
                 {/* Eventos Tab */}
@@ -505,9 +511,12 @@ function EventCard({ event, getEventTypeColor, getStatusBadge, onViewDetails, on
     );
 }
 
-function CalendarView({ events, getEventTypeColor }: {
+function CalendarView({ events, getEventTypeColor, onEdit, onDelete, isAdmin }: {
     events: Event[];
-    getEventTypeColor: (type: Event['type']) => string;
+    getEventTypeColor: (type: string) => string;
+    onEdit: (event: Event) => void;
+    onDelete: (id: string, title: string) => void;
+    isAdmin: boolean;
 }) {
     const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -580,9 +589,37 @@ function CalendarView({ events, getEventTypeColor }: {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Badge className={`${getEventTypeColor(event.type)} text-white text-xs`}>
-                                                    {event.type}
-                                                </Badge>
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <Badge className={`${getEventTypeColor(event.type)} text-white text-[10px]`}>
+                                                        {event.type}
+                                                    </Badge>
+                                                    {isAdmin && (
+                                                        <div className="flex gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7 text-primary hover:bg-primary/10"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onEdit(event);
+                                                                }}
+                                                            >
+                                                                <Edit2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onDelete(event.id, event.title);
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))
