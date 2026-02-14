@@ -837,17 +837,37 @@ function CreateEventForm({ onClose, onSuccess, initialData }: { onClose: () => v
 
                 // Add selected guests to service scale as 'Convidado'
                 if (selectedGuests.length > 0) {
-                    await Promise.all(selectedGuests.map(memberId =>
+                    const scaleResults = await Promise.all(selectedGuests.map(memberId =>
                         eventsService.addToServiceScale(newEvent.id, memberId, 'Convidado')
                     ));
-                }
 
-                toast({
-                    title: 'Evento criado!',
-                    description: selectedGuests.length > 0
-                        ? `${selectedGuests.length} convidados foram adicionados.`
-                        : 'Evento criado com sucesso.'
-                });
+                    toast({
+                        title: 'Evento criado!',
+                        description: `${selectedGuests.length} convidados foram adicionados.`
+                    });
+
+                    // WHATSAPP MASS INVITATION LOGIC
+                    setTimeout(() => {
+                        if (confirm(`Evento criado com sucesso! Deseja disparar os convites via WhatsApp para os ${selectedGuests.length} membros selecionados agora?`)) {
+                            scaleResults.forEach((scaleEntry, index) => {
+                                const member = allMembers.find(m => m.id === scaleEntry.member_id);
+                                if (member && member.phone) {
+                                    setTimeout(() => {
+                                        const firstName = member.name.split(' ')[0];
+                                        const confirmationUrl = `${window.location.origin}/confirmar/${scaleEntry.id}`;
+                                        const text = `Olá ${firstName}, Graça e Paz! Gostaria de te convidar para o evento *${newEvent.title}* que teremos no dia ${formatDate(newEvent.date)} às ${newEvent.time}. Sua presença seria uma alegria para nós!\n\nConfirme sua presença clicando no link abaixo:\n${confirmationUrl}`;
+
+                                        const cleanPhone = member.phone.replace(/\D/g, '');
+                                        const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                                        window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
+                                    }, index * 1000); // 1s interval
+                                }
+                            });
+                        }
+                    }, 800);
+                } else {
+                    toast({ title: 'Evento criado!', description: 'Evento criado com sucesso.' });
+                }
             }
 
             onSuccess();

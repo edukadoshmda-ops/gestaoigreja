@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS service_scales (
     member_id UUID REFERENCES members(id) ON DELETE CASCADE,
     role TEXT NOT NULL,
     confirmed BOOLEAN DEFAULT false,
+    declined BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
