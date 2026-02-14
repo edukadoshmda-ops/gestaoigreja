@@ -32,6 +32,12 @@ export default function ConfirmScale() {
 
     const verse = id ? getVerse(id) : VERSES[0];
 
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '-';
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    };
+
     useEffect(() => {
         if (id) {
             loadDetails();
@@ -193,7 +199,7 @@ export default function ConfirmScale() {
                                     <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100/50">
                                         <MapPin className="h-4 w-4 text-primary" />
                                         <span className="text-sm font-bold text-slate-700">
-                                            {details?.event?.date ? new Date(details.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '-'}
+                                            {formatDate(details?.event?.date)}
                                         </span>
                                     </div>
                                 </div>

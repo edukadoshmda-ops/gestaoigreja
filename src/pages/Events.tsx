@@ -68,6 +68,15 @@ export default function Events() {
         loadEvents();
     }, []);
 
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        // Date strings from DB are YYYY-MM-DD. 
+        // new Date("YYYY-MM-DD") treats it as UTC, which causes shifts.
+        // We split and use new Date(y, m, d) to treat as local.
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
+    };
+
     async function loadEvents() {
         try {
             setLoading(true);
@@ -399,7 +408,7 @@ function EventCard({ event, getEventTypeColor, getStatusBadge, onViewDetails }: 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-primary" />
-                        <span>{new Date(event.date).toLocaleDateString('pt-BR')}</span>
+                        <span>{formatDate(event.date)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-primary" />
@@ -430,7 +439,7 @@ function EventCard({ event, getEventTypeColor, getStatusBadge, onViewDetails }: 
                                 size="icon"
                                 className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
                                 onClick={() => {
-                                    const text = `Olá ${event.responsible.split(' ')[0]}, Graça e Paz! Gostaria de falar sobre o evento *${event.title}* do dia ${new Date(event.date).toLocaleDateString('pt-BR')}.`;
+                                    const text = `Olá ${event.responsible.split(' ')[0]}, Graça e Paz! Gostaria de falar sobre o evento *${event.title}* do dia ${formatDate(event.date)}.`;
                                     const cleanPhone = ((event as any).responsiblePhone || '').replace(/\D/g, '');
                                     const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
                                     window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
@@ -517,7 +526,7 @@ function CalendarView({ events, getEventTypeColor }: {
                                                     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                                                         <div className="flex items-center gap-1">
                                                             <Calendar className="h-3 w-3" />
-                                                            {new Date(event.date).toLocaleDateString('pt-BR')}
+                                                            {formatDate(event.date)}
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             <Clock className="h-3 w-3" />
@@ -561,7 +570,7 @@ function ServiceScaleView({ events, onToggleConfirmation }: { events: Event[], o
                     <CardHeader>
                         <CardTitle className="flex items-center justify-between">
                             <span>{event.title}</span>
-                            <Badge>{new Date(event.date).toLocaleDateString('pt-BR')}</Badge>
+                            <Badge>{formatDate(event.date)}</Badge>
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -594,8 +603,8 @@ function ServiceScaleView({ events, onToggleConfirmation }: { events: Event[], o
                                                     const isGuest = person.role === 'Convidado';
                                                     const confirmationUrl = `${window.location.origin}/confirmar/${person.id}`;
                                                     const text = isGuest
-                                                        ? `Olá ${person.name}, Graça e Paz! Gostaria de te convidar para o evento *${event.title}* que teremos no dia ${new Date(event.date).toLocaleDateString('pt-BR')} às ${event.time}. Sua presença seria uma alegria para nós!\n\nConfirme sua presença clicando no link abaixo:\n${confirmationUrl}`
-                                                        : `Olá ${person.name}, Graça e Paz! Você foi escalado para a função de *${person.role}* no evento *${event.title}* no dia ${new Date(event.date).toLocaleDateString('pt-BR')}. Poderia confirmar sua presença?\n\nConfirme clicando aqui:\n${confirmationUrl}`;
+                                                        ? `Olá ${person.name}, Graça e Paz! Gostaria de te convidar para o evento *${event.title}* que teremos no dia ${formatDate(event.date)} às ${event.time}. Sua presença seria uma alegria para nós!\n\nConfirme sua presença clicando no link abaixo:\n${confirmationUrl}`
+                                                        : `Olá ${person.name}, Graça e Paz! Você foi escalado para a função de *${person.role}* no evento *${event.title}* no dia ${formatDate(event.date)}. Poderia confirmar sua presença?\n\nConfirme clicando aqui:\n${confirmationUrl}`;
 
                                                     const cleanPhone = phone.replace(/\D/g, '');
                                                     const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
@@ -639,7 +648,7 @@ function ChecklistView({ events, onToggleTask }: { events: Event[], onToggleTask
                     <CardHeader>
                         <CardTitle className="flex items-center justify-between">
                             <span>{event.title}</span>
-                            <Badge>{new Date(event.date).toLocaleDateString('pt-BR')}</Badge>
+                            <Badge>{formatDate(event.date)}</Badge>
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -976,7 +985,7 @@ function CreateChecklistForm({ onClose, events, onSuccess }: { onClose: () => vo
                     <SelectContent>
                         {events.map(event => (
                             <SelectItem key={event.id} value={event.id}>
-                                {event.title} ({new Date(event.date).toLocaleDateString('pt-BR')})
+                                {event.title} ({formatDate(event.date)})
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -1074,7 +1083,7 @@ function ManageScaleForm({ onClose, events, onSuccess }: { onClose: () => void; 
                     <SelectContent>
                         {events.map(event => (
                             <SelectItem key={event.id} value={event.id}>
-                                {event.title} ({new Date(event.date).toLocaleDateString('pt-BR')})
+                                {event.title} ({formatDate(event.date)})
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -1185,7 +1194,7 @@ function EventDetailsDialog({ event, onClose, getEventTypeColor, getStatusBadge 
                             <Calendar className="h-5 w-5 text-primary" />
                             <div>
                                 <p className="font-semibold">Data</p>
-                                <p className="text-muted-foreground">{new Date(event.date).toLocaleDateString('pt-BR')}</p>
+                                <p className="text-muted-foreground">{formatDate(event.date)}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3 text-sm">
