@@ -49,6 +49,37 @@ interface ServicePerson {
     declined?: boolean;
 }
 
+// Helper functions moved to top level for accessibility across all components
+const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
+    } catch (e) {
+        return dateStr || '';
+    }
+};
+
+const getEventTypeColor = (type: string) => {
+    const colors: Record<string, string> = {
+        culto: 'bg-primary',
+        evento: 'bg-blue-500',
+        reuniao: 'bg-purple-500',
+        especial: 'bg-amber-500',
+    };
+    return colors[type] || 'bg-gray-500';
+};
+
+const getStatusBadge = (status: string) => {
+    const variants: Record<string, string> = {
+        planejado: 'bg-blue-100 text-blue-800 border-blue-200',
+        confirmado: 'bg-green-100 text-green-800 border-green-200',
+        realizado: 'bg-gray-100 text-gray-800 border-gray-200',
+        cancelado: 'bg-red-100 text-red-800 border-red-200',
+    };
+    return variants[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+};
+
 export default function Events() {
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
@@ -68,15 +99,6 @@ export default function Events() {
     useEffect(() => {
         loadEvents();
     }, []);
-
-    const formatDate = (dateStr: string) => {
-        if (!dateStr) return '';
-        // Date strings from DB are YYYY-MM-DD. 
-        // new Date("YYYY-MM-DD") treats it as UTC, which causes shifts.
-        // We split and use new Date(y, m, d) to treat as local.
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
-    };
 
     async function loadEvents() {
         try {
@@ -161,31 +183,11 @@ export default function Events() {
     };
 
     const filteredEvents = events.filter(event => {
-        const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = (event.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (event.description || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesFilter = filterType === 'todos' || event.type === filterType;
         return matchesSearch && matchesFilter;
     });
-
-    const getEventTypeColor = (type: Event['type']) => {
-        const colors = {
-            culto: 'bg-primary',
-            evento: 'bg-blue-500',
-            reuniao: 'bg-purple-500',
-            especial: 'bg-amber-500',
-        };
-        return colors[type];
-    };
-
-    const getStatusBadge = (status: Event['status']) => {
-        const variants = {
-            planejado: 'bg-blue-100 text-blue-800 border-blue-200',
-            confirmado: 'bg-green-100 text-green-800 border-green-200',
-            realizado: 'bg-gray-100 text-gray-800 border-gray-200',
-            cancelado: 'bg-red-100 text-red-800 border-red-200',
-        };
-        return variants[status];
-    };
 
     return (
         <div className="space-y-6">
