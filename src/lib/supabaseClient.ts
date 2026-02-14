@@ -1,14 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-    console.warn('Supabase environment variables are missing. Please check your .env.local file.');
+const isConfigured = supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder') && supabaseAnonKey !== 'placeholder-key';
+if (!isConfigured) {
+    console.error(
+        '[Supabase] Configure o arquivo .env.local na raiz do projeto com:\n' +
+        '  VITE_SUPABASE_URL=https://seu-projeto.supabase.co\n' +
+        '  VITE_SUPABASE_ANON_KEY=sua_chave_anon\n' +
+        'Copie o .env.example para .env.local e preencha com os dados do painel Supabase (Settings > API).'
+    );
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+const effectiveUrl = supabaseUrl || 'https://placeholder.supabase.co';
+const effectiveKey = supabaseAnonKey || 'placeholder-key';
+
+export const supabase = createClient<Database>(effectiveUrl, effectiveKey, {
     auth: {
         autoRefreshToken: true,
         persistSession: true,

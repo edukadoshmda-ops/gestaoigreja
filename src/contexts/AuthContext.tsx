@@ -117,6 +117,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       console.error('Erro no login/provisionamento:', err);
 
+      // Falha de rede / Supabase não configurado
+      if (err?.message === 'Failed to fetch' || err?.message?.includes('fetch')) {
+        throw new Error(
+          'Não foi possível conectar ao servidor. Verifique se o arquivo .env.local existe na raiz do projeto com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (copie do .env.example e preencha no painel Supabase > Settings > API).'
+        );
+      }
+
       // Erro específico de email não confirmado
       if (err.message?.includes('Email not confirmed') || err.message?.includes('email_confirmed_at')) {
         throw new Error('Email não confirmado. Configure o Supabase para desabilitar confirmação de email ou confirme seu email.');
