@@ -419,7 +419,7 @@ export default function Events() {
             />
 
             <Dialog open={!!eventToEdit} onOpenChange={(open) => !open && setEventToEdit(null)}>
-                <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+                <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-2xl sm:h-auto sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-none sm:rounded-lg">
                     <DialogHeader>
                         <DialogTitle>Editar Evento</DialogTitle>
                     </DialogHeader>
@@ -1311,7 +1311,7 @@ function EventDetailsDialog({ event, onClose, getEventTypeColor, getStatusBadge 
 
     return (
         <Dialog open={!!event} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-2xl sm:h-auto sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-none sm:rounded-lg">
                 <DialogHeader>
                     <div className="flex items-center gap-2 mb-2">
                         <Badge variant="outline" className={getStatusBadge(event.status)}>

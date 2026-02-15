@@ -253,7 +253,7 @@ export default function Uploads() {
                             Adicionar YouTube
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-lg sm:h-auto overflow-y-auto p-4 sm:p-6 rounded-none sm:rounded-lg">
                           <DialogHeader>
                             <DialogTitle>Adicionar Vídeo do YouTube</DialogTitle>
                             <DialogDescription>

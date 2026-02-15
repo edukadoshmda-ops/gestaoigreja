@@ -205,7 +205,7 @@ export default function Cells() {
                 <span className="hidden sm:inline">Nova Célula</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-md sm:h-auto sm:max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-none sm:rounded-lg">
               <form onSubmit={handleCreateCell}>
                 <DialogHeader>
                   <DialogTitle>Cadastrar Nova Célula</DialogTitle>
@@ -342,7 +342,7 @@ export default function Cells() {
       {/* Relatório de Reunião Dialog */}
       {selectedCell && reportOpen && (
         <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-md sm:h-auto sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-none sm:rounded-lg">
             <form onSubmit={handleSubmitReport}>
               <DialogHeader>
                 <DialogTitle>Relatório de Reunião - {selectedCell.name}</DialogTitle>
@@ -494,7 +494,7 @@ function CellDetailsDialog({ open, onOpenChange, cell, onSuccess }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-2xl sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 rounded-none sm:rounded-lg">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2 rounded-lg">

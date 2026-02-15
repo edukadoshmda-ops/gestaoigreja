@@ -88,7 +88,6 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { user, logout, updateAvatar } = useAuth();
-  console.log('Sidebar: rendering for user role:', user?.role);
   const { toast } = useToast();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -156,7 +155,7 @@ export function Sidebar() {
             variant="ghost"
             size="icon"
             onClick={() => setCollapsed(!collapsed)}
-            className="hover:bg-primary/10"
+            className="hover:bg-primary/10 min-h-[44px] min-w-[44px]"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>

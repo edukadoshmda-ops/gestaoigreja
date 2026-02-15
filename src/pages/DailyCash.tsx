@@ -302,7 +302,7 @@ const DailyCash = () => {
                   <span>Novo Lançamento</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-lg sm:h-auto sm:max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-none sm:rounded-lg">
                 <DialogHeader>
                   <DialogTitle><span>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</span></DialogTitle>
                   <DialogDescription>
@@ -467,7 +467,7 @@ const DailyCash = () => {
           <CardTitle><span>Transações</span></CardTitle>
         </CardHeader>
         <CardContent className="print:p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-w-0">
           <Table>
             <TableHeader translate="no">
               <TableRow>

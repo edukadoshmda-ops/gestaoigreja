@@ -912,7 +912,7 @@ function BudgetSummary({ budgets, expenseCategories, onRefresh, currentMonth }: 
                   Configurar
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-md sm:h-auto overflow-y-auto p-4 sm:p-6 rounded-none sm:rounded-lg">
                 <DialogHeader>
                   <DialogTitle>Configurar Meta de Gasto</DialogTitle>
                 </DialogHeader>
@@ -1139,7 +1139,7 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
           <CardTitle>Relatório Mensal Detalhado</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-w-0">
             <table className="w-full">
               <thead>
                 <tr className="border-b">

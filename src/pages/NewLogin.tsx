@@ -73,8 +73,6 @@ export default function NewLogin() {
                 return;
             }
 
-            console.log('Iniciando login para:', formData.email, 'com PIN de', pinString.length, 'digitos');
-
             // A função login agora é assíncrona e realiza a autenticação real no Supabase
             const success = await login(formData.email, pinString, formData.role, formData.fullName);
 

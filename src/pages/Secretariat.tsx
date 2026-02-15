@@ -791,6 +791,7 @@ function MembersRoll({ members }: { members: Member[] }) {
                     </div>
                 </div>
 
+                <div className="overflow-x-auto min-w-0 print:overflow-visible">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -816,6 +817,7 @@ function MembersRoll({ members }: { members: Member[] }) {
                         ))}
                     </TableBody>
                 </Table>
+                </div>
             </div>
         </div>
     );
@@ -1158,6 +1160,7 @@ function SavedDocumentsList({ canEdit }: { canEdit: boolean }) {
                     <span>Nenhum documento salvo encontrado.</span>
                 </div>
             ) : (
+                <div className="overflow-x-auto min-w-0">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -1205,10 +1208,11 @@ function SavedDocumentsList({ canEdit }: { canEdit: boolean }) {
                         ))}
                     </TableBody>
                 </Table>
+                </div>
             )}
 
             <Dialog open={!!viewingDoc} onOpenChange={() => setViewingDoc(null)}>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-3xl sm:h-auto sm:max-h-[80vh] overflow-y-auto p-4 sm:p-6 rounded-none sm:rounded-lg">
                     <DialogHeader>
                         <DialogTitle>{viewingDoc?.title}</DialogTitle>
                         <DialogDescription>

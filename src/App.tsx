@@ -28,11 +28,9 @@ import { MainLayout } from "@/components/MainLayout";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuth();
-  console.log('App: ProtectedRoute check', { isAuthenticated, userRole: user?.role });
+  const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    console.log('App: Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
@@ -40,8 +38,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { isAuthenticated, user } = useAuth();
-  console.log('App: AppRoutes state', { isAuthenticated, userRole: user?.role, path: window.location.pathname });
+  const { isAuthenticated } = useAuth();
 
   return (
     <Routes>

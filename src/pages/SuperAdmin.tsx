@@ -230,6 +230,7 @@ export default function SuperAdmin() {
                             <p className="text-muted-foreground">Carregando tenants...</p>
                         </div>
                     ) : (
+                        <div className="overflow-x-auto min-w-0">
                         <Table>
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
@@ -298,12 +299,13 @@ export default function SuperAdmin() {
                                 )}
                             </TableBody>
                         </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-[425px] sm:h-auto overflow-y-auto p-4 sm:p-6 rounded-none sm:rounded-lg">
                     <form onSubmit={handleSubmit}>
                         <DialogHeader>
                             <DialogTitle>{editingChurch ? 'Editar Igreja' : 'Cadastrar Nova Igreja'}</DialogTitle>

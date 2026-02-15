@@ -153,7 +153,7 @@ export default function Ministries() {
                 <span className="hidden sm:inline">Novo Ministério</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-lg sm:h-auto sm:max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-none sm:rounded-lg">
               <DialogHeader>
                 <DialogTitle>Criar Ministério</DialogTitle>
                 <DialogDescription>
@@ -298,7 +298,7 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-2xl sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 rounded-none sm:rounded-lg">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-primary">
             {ministry.name}

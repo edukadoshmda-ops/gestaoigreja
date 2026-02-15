@@ -172,7 +172,7 @@ export function AddMemberDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md p-0 overflow-hidden gap-0">
+            <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-md sm:h-auto sm:max-h-[90vh] overflow-hidden gap-0 p-0 rounded-none sm:rounded-lg sm:p-0">
                 <DialogHeader className="p-6 pb-0">
                     <DialogTitle>Gerenciar Membros</DialogTitle>
                     <DialogDescription>

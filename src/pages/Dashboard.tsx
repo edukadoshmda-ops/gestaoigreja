@@ -10,7 +10,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { membersService } from '@/services/members.service';
 
 export default function Dashboard() {
-  console.log('%c DASHBOARD: COMPONENTE INVOCADO ', 'background: green; color: white; font-weight: bold; padding: 5px;');
   const { user } = useAuth();
   const [counts, setCounts] = useState({ ministries: 0, cells: 0, members: 0 });
   const [loading, setLoading] = useState(true);
