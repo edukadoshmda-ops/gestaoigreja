@@ -25,3 +25,7 @@ dist-ssr
 
 .vercel
 .env*.local
+netlify-env-import.txt
+
+# Local Netlify folder
+.netlify
