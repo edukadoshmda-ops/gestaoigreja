@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import {
     Select,
     SelectContent,
@@ -29,11 +30,14 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export default function Secretariat() {
+    useDocumentTitle('Secretaria');
     const [activeTab, setActiveTab] = useState('minutes');
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
     const { user } = useAuth();
 
@@ -51,6 +55,7 @@ export default function Secretariat() {
 
     async function loadMembers() {
         try {
+            setError(null);
             setLoading(true);
             const data = await membersService.getAll();
 
@@ -74,8 +79,17 @@ export default function Secretariat() {
                 }
             }).filter((m: any) => m !== null) as Member[];
             setMembers(mappedMembers);
+<<<<<<< Current (Your changes)
         } catch (error) {
             console.error('Secretariat Error:', error);
+=======
+        } catch (err: any) {
+            console.error('Secretariat Error:', err);
+            setMembers([]);
+            const msg = err?.message || '';
+            const isSessionOrPerm = /session|permission|RLS|401|403|PGRST/i.test(msg) || msg.includes('fetch');
+            setError(isSessionOrPerm ? 'Sessão expirada ou sem permissão.' : (msg || 'Não foi possível carregar.'));
+>>>>>>> Incoming (Background Agent changes)
             toast({
                 title: 'Erro ao carregar secretaria',
                 description: 'Verifique se você tem as permissões necessárias.',
@@ -86,6 +100,14 @@ export default function Secretariat() {
         }
     }
 
+    if (error && members.length === 0 && !loading) {
+        return (
+            <div className="max-w-6xl mx-auto flex flex-col items-center justify-center min-h-[400px]">
+                <p className="text-muted-foreground mb-4">{error}</p>
+                <Button onClick={() => loadMembers()}>Tentar novamente</Button>
+            </div>
+        );
+    }
     if (loading && members.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -113,33 +135,33 @@ export default function Secretariat() {
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto print:hidden" translate="no">
-                    <TabsTrigger value="minutes" className="gap-2">
-                        <FileText className="h-4 w-4" />
-                        <span className="hidden md:inline">Atas</span>
+                    <TabsTrigger value="minutes" className="gap-2 py-3 text-[1.75rem] md:text-sm">
+                        <FileText className="h-8 w-8 md:h-4 md:w-4" />
+                        <span>Atas</span>
                     </TabsTrigger>
-                    <TabsTrigger value="baptism" className="gap-2">
-                        <Award className="h-4 w-4" />
-                        <span className="hidden md:inline">Batismo</span>
+                    <TabsTrigger value="baptism" className="gap-2 py-3 text-[1.75rem] md:text-sm">
+                        <Award className="h-8 w-8 md:h-4 md:w-4" />
+                        <span>Batismo</span>
                     </TabsTrigger>
-                    <TabsTrigger value="transfer" className="gap-2">
-                        <Send className="h-4 w-4" />
-                        <span className="hidden md:inline">Transferência</span>
+                    <TabsTrigger value="transfer" className="gap-2 py-3 text-[1.75rem] md:text-sm">
+                        <Send className="h-8 w-8 md:h-4 md:w-4" />
+                        <span>Transferência</span>
                     </TabsTrigger>
-                    <TabsTrigger value="dedication" className="gap-2">
-                        <Baby className="h-4 w-4" />
-                        <span className="hidden md:inline">Apresentação</span>
+                    <TabsTrigger value="dedication" className="gap-2 py-3 text-[1.75rem] md:text-sm">
+                        <Baby className="h-8 w-8 md:h-4 md:w-4" />
+                        <span>Apresentação</span>
                     </TabsTrigger>
-                    <TabsTrigger value="roll" className="gap-2">
-                        <Users className="h-4 w-4" />
-                        <span className="hidden md:inline">Rol</span>
+                    <TabsTrigger value="roll" className="gap-2 py-3 text-[1.75rem] md:text-sm">
+                        <Users className="h-8 w-8 md:h-4 md:w-4" />
+                        <span>Rol</span>
                     </TabsTrigger>
-                    <TabsTrigger value="documents" className="gap-2">
-                        <FileText className="h-4 w-4" />
-                        <span className="hidden md:inline">Salvos</span>
+                    <TabsTrigger value="documents" className="gap-2 py-3 text-[1.75rem] md:text-sm">
+                        <FileText className="h-8 w-8 md:h-4 md:w-4" />
+                        <span>Salvos</span>
                     </TabsTrigger>
-                    <TabsTrigger value="idcard" className="gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        <span className="hidden md:inline">Carteirinha</span>
+                    <TabsTrigger value="idcard" className="gap-2 py-3 text-[1.75rem] md:text-sm">
+                        <CreditCard className="h-8 w-8 md:h-4 md:w-4" />
+                        <span>Carteirinha</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -205,15 +227,15 @@ function MinutesTemplate({ canEdit }: { canEdit: boolean }) {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [saving, setSaving] = useState(false);
+    const [clearConfirm, setClearConfirm] = useState(false);
     const { toast } = useToast();
 
-    const handleClear = () => {
-        if (confirm('Tem certeza que deseja limpar todo o formulário?')) {
-            setDate(format(new Date(), 'yyyy-MM-dd'));
-            setTitle('');
-            setContent('');
-            toast({ title: 'Formulário limpo' });
-        }
+    const handleClear = () => setClearConfirm(true);
+    const executeClear = () => {
+        setDate(format(new Date(), 'yyyy-MM-dd'));
+        setTitle('');
+        setContent('');
+        toast({ title: 'Formulário limpo' });
     };
 
     const handleSave = async () => {
@@ -256,6 +278,7 @@ function MinutesTemplate({ canEdit }: { canEdit: boolean }) {
                             <Button variant="destructive" size="icon" onClick={handleClear} title="Limpar Formulário">
                                 <Trash2 className="h-4 w-4" />
                             </Button>
+                            <ConfirmDialog open={clearConfirm} onOpenChange={setClearConfirm} title="Limpar formulário" description="Tem certeza que deseja limpar todo o formulário?" onConfirm={executeClear} confirmLabel="Limpar" variant="destructive" />
                         </>
                     )}
                 </div>
@@ -305,19 +328,23 @@ function MinutesTemplate({ canEdit }: { canEdit: boolean }) {
 function BaptismCertificate({ members, canEdit }: { members: Member[], canEdit: boolean }) {
     const [name, setName] = useState('');
     const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [pastor, setPastor] = useState('');
+    const [location, setLocation] = useState('');
+    const [pastorPresidente, setPastorPresidente] = useState('');
+    const [pastorCelebrante, setPastorCelebrante] = useState('');
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [saving, setSaving] = useState(false);
+    const [clearConfirm, setClearConfirm] = useState(false);
     const { toast } = useToast();
 
-    const handleClear = () => {
-        if (confirm('Tem certeza que deseja limpar o formulário?')) {
-            setName('');
-            setDate(format(new Date(), 'yyyy-MM-dd'));
-            setPastor('');
-            setSelectedMemberId('');
-            toast({ title: 'Formulário limpo' });
-        }
+    const handleClear = () => setClearConfirm(true);
+    const executeClear = () => {
+        setName('');
+        setDate(format(new Date(), 'yyyy-MM-dd'));
+        setLocation('');
+        setPastorPresidente('');
+        setPastorCelebrante('');
+        setSelectedMemberId('');
+        toast({ title: 'Formulário limpo' });
     };
 
     const handleSave = async () => {
@@ -327,7 +354,8 @@ function BaptismCertificate({ members, canEdit }: { members: Member[], canEdit: 
         }
         try {
             setSaving(true);
-            const content = `CERTIFICADO DE BATISMO\n\nCertificamos que ${name} foi batizado(a) em ${format(new Date(date), "dd/MM/yyyy")} pelo Pastor ${pastor || '________________'}.\n\n"Em nome do Pai, do Filho e do Espírito Santo."`;
+            const dateStr = date ? format(new Date(date), "dd/MM/yyyy") : '___/___/_____';
+            const content = `CERTIFICADO DE BATISMO NAS ÁGUAS\n\nCertificamos que ${name} foi batizado(a) nas águas em nome do Pai, do Filho e do Espírito Santo, conforme mandamento do Senhor Jesus Cristo, escrito no evangelho de Mateus 28:19.\n\nData: ${dateStr}\nLocal: ${location || '___________________________'}\n\nPastor Presidente: ${pastorPresidente || '_________________'}\nPastor Celebrante: ${pastorCelebrante || '_________________'}`;
 
             await documentsService.create({
                 title: `Certificado de Batismo - ${name}`,
@@ -345,11 +373,13 @@ function BaptismCertificate({ members, canEdit }: { members: Member[], canEdit: 
         }
     };
 
+    const dateFormatted = date ? format(new Date(date), "dd / MM / yyyy") : '____ / ____ / ______';
+
     return (
         <div className="space-y-6" translate="no">
             <div className="flex items-center justify-between border-b pb-6 mb-6">
                 <div className="flex-1 text-center">
-                    <h2 className="text-2xl font-bold"><span>Certificado de Batismo</span></h2>
+                    <h2 className="text-2xl font-bold"><span>Certificado de Batismo nas Águas</span></h2>
                 </div>
                 <div className="flex gap-2 print:hidden flex-shrink-0">
                     {canEdit && (
@@ -361,6 +391,7 @@ function BaptismCertificate({ members, canEdit }: { members: Member[], canEdit: 
                             <Button variant="destructive" size="icon" onClick={handleClear} title="Limpar Formulário">
                                 <Trash2 className="h-4 w-4" />
                             </Button>
+                            <ConfirmDialog open={clearConfirm} onOpenChange={setClearConfirm} title="Limpar formulário" description="Tem certeza que deseja limpar o formulário?" onConfirm={executeClear} confirmLabel="Limpar" variant="destructive" />
                         </>
                     )}
                 </div>
@@ -386,42 +417,62 @@ function BaptismCertificate({ members, canEdit }: { members: Member[], canEdit: 
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label><span>Nome no Certificado</span></Label>
+                        <Label><span>Nome do(a) Batizando(a)</span></Label>
                         <Input placeholder="Nome completo" value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} />
                     </div>
                     <div className="space-y-2">
-                        <Label><span>Pastor / Celebrante</span></Label>
-                        <Input placeholder="Nome do Pastor" value={pastor} onChange={(e) => setPastor(e.target.value)} disabled={!canEdit} />
+                        <Label><span>Data</span></Label>
+                        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={!canEdit} />
                     </div>
                     <div className="space-y-2">
-                        <Label><span>Data do Batismo</span></Label>
-                        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={!canEdit} />
+                        <Label><span>Local</span></Label>
+                        <Input placeholder="Local da cerimônia" value={location} onChange={(e) => setLocation(e.target.value)} disabled={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label><span>Pastor Presidente</span></Label>
+                        <Input placeholder="Nome do Pastor Presidente" value={pastorPresidente} onChange={(e) => setPastorPresidente(e.target.value)} disabled={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label><span>Pastor Celebrante</span></Label>
+                        <Input placeholder="Nome do Pastor Celebrante" value={pastorCelebrante} onChange={(e) => setPastorCelebrante(e.target.value)} disabled={!canEdit} />
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center min-h-[600px] border-8 border-double border-primary/20 p-12 text-center font-serif text-black bg-white shadow-xl rounded-lg max-w-4xl mx-auto print:shadow-none print:border-gray-300">
-                <div className="space-y-8">
-                    <h1 className="text-4xl font-bold uppercase tracking-widest text-gray-800">Certificado de Batismo</h1>
-                    <p className="text-xl italic">Certificamos que</p>
-                    <h2 className="text-3xl font-bold text-primary border-b-2 border-primary inline-block px-8 pb-2">
-                        {name || 'Nome do Membro'}
-                    </h2>
-                    <p className="text-xl leading-relaxed max-w-2xl mx-auto">
-                        Foi batizado(a) em nome do Pai, do Filho e do Espírito Santo,
-                        conforme a ordem de nosso Senhor Jesus Cristo,
-                        em testemunho de sua fé e arrependimento.
+            {/* Certificado A4 paisagem - borda #1F4E79 */}
+            <div
+                className="mx-auto max-w-[11.69in] min-h-[8.27in] p-8 md:p-12 bg-white text-black shadow-xl rounded print:shadow-none print:max-w-none"
+                style={{ border: '3pt solid #1F4E79' }}
+            >
+                <div className="flex flex-col items-center justify-center text-center space-y-4 min-h-[7in]">
+                    <h1 className="text-3xl md:text-4xl font-bold uppercase" style={{ color: '#1F4E79' }}>
+                        Certificado de Batismo nas Águas
+                    </h1>
+                    <p className="text-lg">Certificamos que</p>
+                    <div className="border-b-2 border-black w-full max-w-md pb-1">
+                        <p className="text-xl md:text-2xl font-bold">{name || '______________________________________________'}</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Nome do(a) Batizando(a)</p>
+                    <p className="text-base md:text-lg leading-relaxed max-w-2xl px-4">
+                        foi batizado(a) nas águas em nome do Pai, do Filho e do Espírito Santo,
+                        conforme mandamento do Senhor Jesus Cristo, escrito no evangelho de Mateus 28:19.
                     </p>
-                    <p className="text-lg mt-8">
-                        {date ? format(new Date(date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : '___/___/___'}
-                    </p>
-                    <div className="flex justify-between w-full mt-24 max-w-3xl gap-12">
-                        <div className="flex-1 border-t border-black pt-2">
-                            <p className="font-bold">{pastor || 'Pastor Presidente'}</p>
-                            <p className="text-sm">Celebrante</p>
+                    <div className="space-y-2 pt-4">
+                        <p className="text-base">Data: {dateFormatted}</p>
+                        <p className="text-base">Local: {location || '___________________________________________'}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-12 w-full max-w-xl pt-12">
+                        <div className="text-center">
+                            <div className="border-t-2 border-black pt-2 mt-16">
+                                <p className="font-bold text-sm">{pastorPresidente || '_________________________________________'}</p>
+                                <p className="text-sm">Pastor Presidente</p>
+                            </div>
                         </div>
-                        <div className="flex-1 border-t border-black pt-2">
-                            <p>Secretário(a)</p>
+                        <div className="text-center">
+                            <div className="border-t-2 border-black pt-2 mt-16">
+                                <p className="font-bold text-sm">{pastorCelebrante || '_________________________________________'}</p>
+                                <p className="text-sm">Pastor Celebrante</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -436,15 +487,15 @@ function TransferLetter({ members, canEdit }: { members: Member[], canEdit: bool
     const [origin, setOrigin] = useState('Igreja Comunidade Cristã');
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [saving, setSaving] = useState(false);
+    const [clearConfirm, setClearConfirm] = useState(false);
     const { toast } = useToast();
 
-    const handleClear = () => {
-        if (confirm('Tem certeza que deseja limpar o formulário?')) {
-            setName('');
-            setDestination('');
-            setSelectedMemberId('');
-            toast({ title: 'Formulário limpo' });
-        }
+    const handleClear = () => setClearConfirm(true);
+    const executeClear = () => {
+        setName('');
+        setDestination('');
+        setSelectedMemberId('');
+        toast({ title: 'Formulário limpo' });
     };
 
     const handleSave = async () => {
@@ -488,6 +539,7 @@ function TransferLetter({ members, canEdit }: { members: Member[], canEdit: bool
                             <Button variant="destructive" size="icon" onClick={handleClear} title="Limpar Formulário">
                                 <Trash2 className="h-4 w-4" />
                             </Button>
+                            <ConfirmDialog open={clearConfirm} onOpenChange={setClearConfirm} title="Limpar formulário" description="Tem certeza que deseja limpar o formulário?" onConfirm={executeClear} confirmLabel="Limpar" variant="destructive" />
                         </>
                     )}
                 </div>
@@ -565,17 +617,17 @@ function BabyDedicationCertificate({ members, canEdit }: { members: Member[], ca
     const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [saving, setSaving] = useState(false);
+    const [clearConfirm, setClearConfirm] = useState(false);
     const { toast } = useToast();
 
-    const handleClear = () => {
-        if (confirm('Tem certeza que deseja limpar o formulário?')) {
-            setChildName('');
-            setChildBirthDate('');
-            setParentsName('');
-            setSelectedMemberId('');
-            setDate(format(new Date(), 'yyyy-MM-dd'));
-            toast({ title: 'Formulário limpo' });
-        }
+    const handleClear = () => setClearConfirm(true);
+    const executeClear = () => {
+        setChildName('');
+        setChildBirthDate('');
+        setParentsName('');
+        setSelectedMemberId('');
+        setDate(format(new Date(), 'yyyy-MM-dd'));
+        toast({ title: 'Formulário limpo' });
     };
 
     const handleSave = async () => {
@@ -619,6 +671,7 @@ function BabyDedicationCertificate({ members, canEdit }: { members: Member[], ca
                             <Button variant="destructive" size="icon" onClick={handleClear} title="Limpar Formulário">
                                 <Trash2 className="h-4 w-4" />
                             </Button>
+                            <ConfirmDialog open={clearConfirm} onOpenChange={setClearConfirm} title="Limpar formulário" description="Tem certeza que deseja limpar o formulário?" onConfirm={executeClear} confirmLabel="Limpar" variant="destructive" />
                         </>
                     )}
                 </div>
@@ -1119,6 +1172,7 @@ function SavedDocumentsList({ canEdit }: { canEdit: boolean }) {
     const [docs, setDocs] = useState<ChurchDocument[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewingDoc, setViewingDoc] = useState<ChurchDocument | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<ChurchDocument | null>(null);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -1138,10 +1192,12 @@ function SavedDocumentsList({ canEdit }: { canEdit: boolean }) {
         }
     }
 
-    async function handleDelete(doc: ChurchDocument) {
-        if (!confirm(`Tem certeza que deseja excluir "${doc.title}"?`)) return;
+    const handleDelete = (doc: ChurchDocument) => setDeleteConfirm(doc);
+    async function executeDelete() {
+        if (!deleteConfirm) return;
         try {
-            await documentsService.delete(doc.id, doc.file_url);
+            await documentsService.delete(deleteConfirm.id, deleteConfirm.file_url);
+            setDeleteConfirm(null);
             toast({ title: 'Sucesso', description: 'Documento excluído.' });
             loadDocs();
         } catch (error) {
@@ -1154,6 +1210,15 @@ function SavedDocumentsList({ canEdit }: { canEdit: boolean }) {
 
     return (
         <div className="space-y-6" translate="no">
+            <ConfirmDialog
+                open={!!deleteConfirm}
+                onOpenChange={(o) => !o && setDeleteConfirm(null)}
+                title="Excluir documento"
+                description={deleteConfirm ? `Tem certeza que deseja excluir "${deleteConfirm.title}"?` : ''}
+                onConfirm={executeDelete}
+                confirmLabel="Excluir"
+                variant="destructive"
+            />
             <h2 className="text-2xl font-bold border-b pb-4"><span>Documentos Salvos</span></h2>
             {docs.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground bg-muted/10 rounded-lg border-2 border-dashed">
