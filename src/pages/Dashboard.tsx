@@ -1,47 +1,48 @@
-import { useState, useEffect } from 'react';
-import { Users, Church, Calendar, TrendingUp, Loader2, MessageSquare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sidebar } from '@/components/Sidebar';
+import type { ElementType } from 'react';
+import type { UserRole } from '@/types';
+import { useNavigate } from 'react-router-dom';
+import {
+  Church,
+  MapPin,
+  Heart,
+  FileText,
+  BarChart3,
+  Upload,
+  DollarSign,
+  Calendar,
+  HandHeart,
+  QrCode,
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { DailyVerse } from '@/components/DailyVerse';
 import { BirthdayCard } from '@/components/BirthdayCard';
-import { ministriesService } from '@/services/ministries.service';
-import { cellsService } from '@/services/cells.service';
 import { useAuth } from '@/contexts/AuthContext';
-import { membersService } from '@/services/members.service';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+
+interface QuickActionDef {
+  icon: ElementType;
+  label: string;
+  href: string;
+  roles: UserRole[];
+}
+
+const quickActionsList: QuickActionDef[] = [
+  { icon: Church, label: 'Ministérios', href: '/ministerios', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: MapPin, label: 'Células', href: '/celulas', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: Heart, label: 'Discipulado', href: '/discipulado', roles: ['admin', 'pastor', 'secretario', 'lider_celula', 'superadmin'] },
+  { icon: FileText, label: 'Secretaria', href: '/secretaria', roles: ['admin', 'pastor', 'secretario', 'superadmin'] },
+  { icon: BarChart3, label: 'Relatórios', href: '/relatorios', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'lider_celula', 'lider_ministerio', 'superadmin'] },
+  { icon: Upload, label: 'Uploads e Atas', href: '/uploads', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: DollarSign, label: 'Caixa Diário', href: '/caixa-diario', roles: ['admin', 'pastor', 'tesoureiro', 'superadmin'] },
+  { icon: Calendar, label: 'Eventos', href: '/eventos', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: HandHeart, label: 'Solicitações de Oração', href: '/solicitacoes-oracao', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+  { icon: QrCode, label: 'PIX e QR Code', href: '/pix-donacoes', roles: ['admin', 'pastor', 'secretario', 'tesoureiro', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+];
 
 export default function Dashboard() {
+  useDocumentTitle('Dashboard');
   const { user } = useAuth();
-  const [counts, setCounts] = useState({ ministries: 0, cells: 0, members: 0 });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        const [ministries, cells, members] = await Promise.all([
-          ministriesService.getActive(),
-          cellsService.getActive(),
-          membersService.getAll()
-        ]);
-        setCounts({
-          ministries: ministries?.length || 0,
-          cells: cells?.length || 0,
-          members: members?.length || 0
-        });
-      } catch (error) {
-        console.error('Erro ao carregar estatísticas:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadStats();
-  }, []);
-
-  const stats = [
-    { label: 'Total de Membros', value: loading ? '...' : counts.members.toString(), icon: Users, color: 'text-primary' },
-    { label: 'Ministérios Ativos', value: loading ? '...' : counts.ministries.toString(), icon: Church, color: 'text-primary' },
-    { label: 'Células', value: loading ? '...' : counts.cells.toString(), icon: Calendar, color: 'text-primary' },
-    { label: 'Crescimento', value: 'Sustentável', icon: TrendingUp, color: 'text-primary' },
-  ];
+  const visibleActions = quickActionsList.filter((a) => user && a.roles.includes(user.role));
 
   return (
     <div className="space-y-6">
@@ -52,79 +53,42 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="bg-white border-primary/10 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-semibold text-muted-foreground">
-                {stat.label}
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-white border border-primary/20 shadow-sm">
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading && stat.label !== 'Crescimento' ? (
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              ) : (
-                <p className="text-3xl font-black text-primary">{stat.value}</p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
       {/* Verse and Birthdays */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <DailyVerse />
         <BirthdayCard />
       </div>
 
-      {/* Quick Actions */}
-      {user?.role !== 'aluno' && user?.role !== 'membro' && user?.role !== 'congregado' && (
-        <Card className="bg-white border-primary/10 shadow-lg mt-4 sm:mt-6">
-          <CardHeader className="px-5 py-4 sm:px-6">
-            <CardTitle className="text-xl sm:text-2xl font-black text-primary">Ações Rápidas</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-8 sm:px-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-              {user?.role !== 'tesoureiro' && (
-                <QuickAction icon={Users} label="Novo Membro" href="/membros" />
-              )}
-              <QuickAction icon={Church} label="Ministérios" href="/ministerios" />
-              {user?.role !== 'tesoureiro' && (
-                <QuickAction icon={Calendar} label="Relatório Célula" href="/celulas" />
-              )}
-              <QuickAction icon={TrendingUp} label="Financeiro" href="/relatorios" />
-              <QuickAction
-                icon={MessageSquare}
-                label="WhatsApp"
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.open('https://web.whatsapp.com/', '_blank');
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="bg-white border-primary/10 shadow-lg mt-4 sm:mt-6">
+        <CardContent className="px-4 py-6 pb-8 sm:px-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 sm:gap-6">
+            {visibleActions.map((action) => (
+              <QuickAction key={action.href} icon={action.icon} label={action.label} href={action.href} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function QuickAction({ icon: Icon, label, href, onClick }: { icon: React.ElementType; label: string; href: string; onClick?: (e: React.MouseEvent) => void }) {
+function QuickAction({ icon: Icon, label, href }: { icon: ElementType; label: string; href: string }) {
+  const navigate = useNavigate();
+  
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate(href);
+  };
+
   return (
-    <a
-      href={href}
-      onClick={onClick}
-      className="flex flex-col items-center gap-4 p-8 sm:p-6 rounded-2xl bg-white hover:bg-primary/5 border-2 border-primary/10 hover:border-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-xl group shadow-md"
+    <button
+      onClick={handleClick}
+      className="flex flex-col items-center gap-4 p-8 sm:p-6 rounded-2xl bg-white hover:bg-primary/5 border-2 border-primary/10 hover:border-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-xl group shadow-md cursor-pointer"
     >
       <div className="p-4 rounded-xl bg-primary group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
         <Icon className="h-8 w-8 sm:h-6 sm:w-6 text-primary-foreground" />
       </div>
       <span className="text-base sm:text-sm font-black text-center text-foreground group-hover:text-primary transition-colors">{label}</span>
-    </a>
+    </button>
   );
 }

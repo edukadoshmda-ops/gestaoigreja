@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
-import heroImage from '@/assets/sky-landscape.png';
 
 export default function SimpleLogin() {
     const { login } = useAuth();
@@ -20,11 +19,6 @@ export default function SimpleLogin() {
         <div className="min-h-screen flex items-center justify-center relative px-4 py-12 bg-background">
             {/* Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <img
-                    src={heroImage}
-                    alt="Céu"
-                    className="w-full h-full object-cover opacity-10"
-                />
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
             </div>
 

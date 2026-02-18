@@ -1,15 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Shield, User, Users, Briefcase, ArrowRight, Cross, MapPin, Church } from 'lucide-react';
+import { Shield, User, Users, Briefcase, ArrowRight, MapPin, Church } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
-import heroImage from '@/assets/sky-landscape.png';
+import { authService } from '@/services/auth.service';
+import { z } from 'zod';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 type Step = 1 | 2;
+
+const step1Schema = z.object({
+    fullName: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(120, 'Nome muito longo'),
+    email: z.string().min(1, 'E-mail é obrigatório').email('Informe um e-mail válido'),
+});
+
+const forgotSchema = z.object({
+    email: z.string().min(1, 'Informe seu e-mail').email('E-mail inválido'),
+});
 
 interface FormData {
     fullName: string;
@@ -19,6 +38,27 @@ interface FormData {
 }
 
 export default function NewLogin() {
+    useDocumentTitle('Login');
+    
+    // Força o tema laranja nas páginas públicas
+    useEffect(() => {
+        // Aplica imediatamente o tema laranja
+        document.documentElement.setAttribute('data-theme', 'fe-radiante');
+        document.body.setAttribute('data-theme', 'fe-radiante');
+        
+        // Cleanup: restaura o tema do usuário apenas se estiver navegando para área autenticada
+        return () => {
+            // Só restaura se não estiver indo para outra página pública
+            const path = window.location.pathname;
+            const publicPages = ['/', '/login', '/checkout', '/hotmart-success'];
+            if (!publicPages.includes(path)) {
+                const savedTheme = localStorage.getItem('church_theme') || 'fe-radiante';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                document.body.setAttribute('data-theme', savedTheme);
+            }
+        };
+    }, []);
+    
     const [step, setStep] = useState<Step>(1);
     const [formData, setFormData] = useState<FormData>({
         fullName: '',
@@ -27,18 +67,22 @@ export default function NewLogin() {
         pin: ['', '', '', '', '', ''],
     });
     const [error, setError] = useState('');
+    const [forgotOpen, setForgotOpen] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
     const { login } = useAuth();
-    const navigate = useNavigate();
+    const { toast } = useToast();
     const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     const handleWelcomeSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!formData.fullName || !formData.email) {
-            setError('Por favor, preencha todos os campos');
+        const result = step1Schema.safeParse({ fullName: formData.fullName.trim(), email: formData.email.trim() });
+        if (!result.success) {
+            const msg = result.error.errors.map(e => e.message).join('. ');
+            setError(msg);
             return;
         }
-        // Removida validação de email para facilitar acesso
         setStep(2);
     };
 
@@ -87,38 +131,60 @@ export default function NewLogin() {
         }
     };
 
-    return (
-        <div className="min-h-screen flex items-center justify-center relative px-4 py-12 bg-background">
-            {/* Background Background */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <img
-                    src={heroImage}
-                    alt="Céu"
-                    className="w-full h-full object-cover opacity-10"
-                />
-                <div className="absolute inset-0 bg-background" />
-            </div>
+    const handleForgotSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const result = forgotSchema.safeParse({ email: forgotEmail.trim() });
+        if (!result.success) {
+            const msg = result.error.errors.map(e => e.message).join('. ');
+            toast({ title: msg, variant: 'destructive' });
+            return;
+        }
+        const email = result.data.email;
+        setForgotLoading(true);
+        try {
+            await authService.resetPassword(email);
+            toast({
+                title: 'E-mail enviado',
+                description: 'Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha. Verifique também a pasta de spam.',
+            });
+            setForgotOpen(false);
+            setForgotEmail('');
+        } catch (err: any) {
+            toast({
+                title: 'Erro ao enviar',
+                description: err?.message || 'Não foi possível enviar o e-mail. Tente novamente.',
+                variant: 'destructive',
+            });
+        } finally {
+            setForgotLoading(false);
+        }
+    };
 
-            <div className="w-full max-w-md relative z-10">
+    return (
+        <div
+            className="min-h-screen flex items-center justify-center relative px-4 py-4 sm:py-6"
+            style={{ minHeight: '100vh', backgroundColor: 'hsl(var(--background))' }}
+        >
+            <div className="w-full max-w-md relative z-10 my-auto">
                 {/* TELA 1: BOAS-VINDAS */}
                 {step === 1 && (
                     <Card className="shadow-2xl border-primary/10 overflow-hidden">
-                        <CardContent className="p-8">
-                            <div className="text-center mb-10">
-                                <div className="flex justify-center mb-6">
-                                    <Logo size="xl" showText={false} />
+                        <CardContent className="p-5 sm:p-6">
+                            <div className="text-center mb-5">
+                                <div className="flex justify-center mb-0" style={{ transform: 'scale(1.44)', transformOrigin: 'center' }}>
+                                    <Logo size="md" showText={false} />
                                 </div>
-                                <h1 className="text-3xl font-black tracking-tight mb-2">
+                                <h1 className="text-4xl font-black tracking-tight mb-1">
                                     Gestão Church
                                 </h1>
-                                <div className="h-1.5 w-20 bg-primary mx-auto rounded-full mb-8 shadow-sm"
+                                <div className="h-1 w-20 bg-primary mx-auto rounded-full mb-3"
                                     style={{ backgroundColor: 'hsl(var(--primary))' }}></div>
-                                <h2 className="text-xl font-bold text-foreground/80">Bem-vindo</h2>
+                                <h2 className="text-2xl font-bold text-foreground/80">Bem-vindo</h2>
                             </div>
 
-                            <form onSubmit={handleWelcomeSubmit} className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-foreground/70 uppercase tracking-widest">
+                            <form onSubmit={handleWelcomeSubmit} className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-foreground/70 uppercase tracking-widest">
                                         Nome Completo
                                     </label>
                                     <Input
@@ -126,12 +192,12 @@ export default function NewLogin() {
                                         placeholder="Digite seu nome"
                                         value={formData.fullName}
                                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                        className="h-12 bg-muted/30 border-primary/10 focus:border-primary/50"
+                                        className="h-11 bg-muted/30 border-primary/10 focus:border-primary/50"
                                         required
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-foreground/70 uppercase tracking-widest">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-foreground/70 uppercase tracking-widest">
                                         E-mail
                                     </label>
                                     <Input
@@ -139,7 +205,7 @@ export default function NewLogin() {
                                         placeholder="seu@email.com"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        className="h-12 bg-muted/30 border-primary/10 focus:border-primary/50"
+                                        className="h-11 bg-muted/30 border-primary/10 focus:border-primary/50"
                                         required
                                     />
                                 </div>
@@ -150,25 +216,60 @@ export default function NewLogin() {
                                     </p>
                                 )}
 
-                                <Button type="submit" className="w-full h-14 text-base font-bold" size="lg">
+                                <Button type="submit" className="w-full h-12 text-sm font-bold" size="lg">
                                     Continuar
-                                    <ArrowRight className="ml-2 h-5 w-5" />
+                                    <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setForgotEmail(formData.email); setForgotOpen(true); }}
+                                    className="text-sm text-muted-foreground hover:text-primary transition-colors w-full"
+                                >
+                                    Esqueci minha senha
+                                </button>
                             </form>
                         </CardContent>
                     </Card>
                 )}
 
+                <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Redefinir senha</DialogTitle>
+                            <DialogDescription>
+                                Digite o e-mail da sua conta. Enviaremos um link para você criar uma nova senha.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleForgotSubmit} className="space-y-4">
+                            <Input
+                                type="email"
+                                placeholder="seu@email.com"
+                                value={forgotEmail}
+                                onChange={(e) => setForgotEmail(e.target.value)}
+                                required
+                            />
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setForgotOpen(false)}>
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" disabled={forgotLoading}>
+                                    {forgotLoading ? 'Enviando...' : 'Enviar link'}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
                 {/* TELA 2: LOGIN/CADASTRO */}
                 {step === 2 && (
                     <Card className="shadow-2xl border-primary/10 overflow-hidden">
-                        <CardContent className="p-8">
-                            <div className="text-center mb-8">
-                                <h2 className="text-2xl font-black text-foreground mb-1">Acesso Seguro</h2>
+                        <CardContent className="p-5 sm:p-6">
+                            <div className="text-center mb-5">
+                                <h2 className="text-xl font-black text-foreground mb-1">Acesso Seguro</h2>
                                 <p className="text-sm text-muted-foreground">Escolha seu perfil e digite seu PIN</p>
                             </div>
 
-                            <form onSubmit={handleFinalSubmit} className="space-y-8">
+                            <form onSubmit={handleFinalSubmit} className="space-y-5">
                                 {/* PIN Container */}
                                 <div className="space-y-4">
                                     <label className="text-sm font-bold text-foreground/70 text-center block uppercase tracking-widest">
@@ -268,6 +369,13 @@ export default function NewLogin() {
                                         className="text-sm text-muted-foreground hover:text-primary transition-colors font-semibold"
                                     >
                                         Voltar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setForgotEmail(formData.email); setForgotOpen(true); }}
+                                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                                    >
+                                        Esqueci minha senha
                                     </button>
                                 </div>
                             </form>

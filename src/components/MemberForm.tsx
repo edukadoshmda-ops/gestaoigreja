@@ -13,6 +13,7 @@ import {
 import { UserPlus, Camera, Upload, Loader2, UserCircle, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
+import { maskPhone, unmask } from '@/lib/masks';
 
 interface MemberFormProps {
   onSubmit: (data: MemberFormData) => void;
@@ -48,7 +49,7 @@ export function MemberForm({ onSubmit, onCancel, initialData }: MemberFormProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit({ ...formData, phone: unmask(formData.phone) });
   };
 
 
@@ -173,7 +174,8 @@ export function MemberForm({ onSubmit, onCancel, initialData }: MemberFormProps)
               <Input
                 id="phone"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
+                placeholder="(11) 99999-9999"
                 placeholder="(00) 00000-0000"
                 required
               />

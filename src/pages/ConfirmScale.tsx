@@ -4,8 +4,10 @@ import { CheckCircle2, XCircle, Loader2, Calendar, Clock, MapPin, Church, Heart,
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { eventsService } from '@/services/events.service';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 export default function ConfirmScale() {
+    useDocumentTitle('Confirmar Escala');
     const { id } = useParams<{ id: string }>();
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);

@@ -1,11 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Bell, BellRing, X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { Bell, BellRing, X, CheckCircle2, AlertCircle, Info, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  isPushSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  registerPushSubscription,
+  showLocalNotification,
+  hasStoredSubscription,
+} from '@/services/pushNotifications.service';
+import { useToast } from '@/hooks/use-toast';
 
 interface Notification {
     id: string;
@@ -20,7 +29,21 @@ interface Notification {
 export function NotificationCenter() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [open, setOpen] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
+    const [pushLoading, setPushLoading] = useState(false);
+    const [pushSupported, setPushSupported] = useState(false);
     const { user } = useAuth();
+    const { toast } = useToast();
+
+    useEffect(() => {
+        isPushSupported().then(setPushSupported);
+    }, []);
+
+    useEffect(() => {
+        if (user) {
+            hasStoredSubscription(user.id).then(setPushEnabled);
+        }
+    }, [user]);
 
     useEffect(() => {
         if (user) {
@@ -35,7 +58,11 @@ export function NotificationCenter() {
                     table: 'notifications',
                     filter: `user_id=eq.${user.id}`
                 }, (payload) => {
-                    setNotifications(prev => [payload.new as Notification, ...prev]);
+                    const n = payload.new as Notification;
+                    setNotifications(prev => [n, ...prev]);
+                    if (Notification.permission === 'granted') {
+                        showLocalNotification(n.title, n.message);
+                    }
                 })
                 .subscribe();
 
@@ -94,18 +121,18 @@ export function NotificationCenter() {
             <Button
                 variant="ghost"
                 size="icon"
-                className="relative hover:bg-primary/10"
+                className="relative hover:bg-primary/10 h-12 w-12 min-h-[48px] min-w-[48px] md:h-10 md:w-10"
                 onClick={() => setOpen(!open)}
             >
                 {unreadCount > 0 ? (
                     <>
-                        <BellRing className="h-5 w-5 text-primary animate-pulse" />
+                        <BellRing className="h-6 w-6 md:h-5 md:w-5 text-primary animate-pulse" />
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                             {unreadCount}
                         </span>
                     </>
                 ) : (
-                    <Bell className="h-5 w-5 text-muted-foreground" />
+                    <Bell className="h-6 w-6 md:h-5 md:w-5 text-muted-foreground" />
                 )}
             </Button>
 
@@ -156,8 +183,55 @@ export function NotificationCenter() {
                         )}
                     </ScrollArea>
 
-                    <div className="p-3 border-t border-border bg-muted/5 text-center">
-                        <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => setOpen(false)}>
+                    <div className="p-3 border-t border-border bg-muted/5 space-y-2">
+                        {pushSupported && (
+                            <div className="flex flex-col gap-2">
+                                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                    <Smartphone className="h-3.5 w-3.5" />
+                                    Notificações push
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 text-xs h-8"
+                                        disabled={pushLoading || pushEnabled === true}
+                                        onClick={async () => {
+                                            if (!user) return;
+                                            setPushLoading(true);
+                                            const perm = await requestNotificationPermission();
+                                            if (perm !== 'granted') {
+                                                toast({ title: 'Permissão negada', description: 'Ative as notificações nas configurações do navegador.', variant: 'destructive' });
+                                                setPushLoading(false);
+                                                return;
+                                            }
+                                            const result = await registerPushSubscription(user.id);
+                                            setPushEnabled(result.ok);
+                                            toast({ title: result.ok ? 'Ativado' : 'Aviso', description: result.message, variant: result.ok ? 'default' : 'destructive' });
+                                            setPushLoading(false);
+                                        }}
+                                    >
+                                        {pushLoading ? '...' : pushEnabled ? 'Ativado' : 'Ativar push'}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-xs h-8"
+                                        onClick={() => {
+                                            if (Notification.permission !== 'granted') {
+                                                toast({ title: 'Ative primeiro', description: 'Clique em "Ativar push" e permita notificações.', variant: 'destructive' });
+                                                return;
+                                            }
+                                            showLocalNotification('Gestão Igreja', 'Esta é uma notificação de teste.');
+                                            toast({ title: 'Enviado', description: 'Verifique a notificação no sistema.' });
+                                        }}
+                                    >
+                                        Testar
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                        <Button variant="link" size="sm" className="text-xs h-auto p-0 w-full" onClick={() => setOpen(false)}>
                             Ver todas
                         </Button>
                     </div>

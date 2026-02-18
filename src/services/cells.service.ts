@@ -24,9 +24,10 @@ export const cellsService = {
     },
 
     /**
-     * Get active cells only
+     * Get active cells only (filtrado por igreja para multi-tenant)
      */
-    async getActive() {
+    async getActive(churchId?: string | null) {
+        if (!churchId) return [];
         const { data, error } = await supabase
             .from('cells')
             .select(`
@@ -34,11 +35,12 @@ export const cellsService = {
         leader:members!cells_leader_id_fkey(id, name, phone, email),
         host:members!cells_host_id_fkey(id, name, phone, email)
       `)
+            .eq('church_id', churchId)
             .eq('active', true)
             .order('name');
 
         if (error) throw error;
-        return data;
+        return data || [];
     },
 
     /**

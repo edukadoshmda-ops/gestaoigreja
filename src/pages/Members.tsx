@@ -5,27 +5,35 @@ import { Button } from '@/components/ui/button';
 import { Sidebar } from '@/components/Sidebar';
 import { MemberList } from '@/components/MemberList';
 import { MemberForm, MemberFormData } from '@/components/MemberForm';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Member } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { membersService } from '@/services/members.service';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 export default function Members() {
+  useDocumentTitle('Membros');
   const [members, setMembers] = useState<Member[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, churchId, viewingChurch } = useAuth();
+  // Prioriza o churchId do contexto (atualizado quando superadmin visualiza uma igreja)
+  // Se não houver, usa o churchId do usuário
+  const effectiveChurchId = churchId || user?.churchId;
 
   useEffect(() => {
     loadMembers();
-  }, []);
+  }, [effectiveChurchId, viewingChurch?.id]);
 
   async function loadMembers() {
     try {
+      setError(null);
       setLoading(true);
-      const data = await membersService.getAll();
+      const data = await membersService.getAll(effectiveChurchId);
       // Map DB snake_case to Frontend camelCase
       const mappedMembers: Member[] = (data || []).map((m: any) => ({
         id: m.id,
@@ -41,8 +49,12 @@ export default function Members() {
         createdAt: m.created_at,
       }));
       setMembers(mappedMembers);
-    } catch (error) {
-      console.error('Erro ao carregar membros:', error);
+    } catch (err: any) {
+      console.error('Erro ao carregar membros:', err);
+      setMembers([]);
+      const msg = err?.message || '';
+      const isSessionOrPerm = /session|permission|RLS|401|403|PGRST/i.test(msg) || msg.includes('fetch');
+      setError(isSessionOrPerm ? 'Sessão expirada ou sem permissão.' : (msg || 'Não foi possível carregar.'));
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar a lista de membros.',
@@ -73,7 +85,8 @@ export default function Members() {
           description: `${data.name} foi atualizado com sucesso.`,
         });
       } else {
-        if (!user?.churchId) throw new Error('Igreja não identificada. Tente fazer login novamente.');
+        const cid = effectiveChurchId;
+        if (!cid) throw new Error('Selecione uma igreja no Painel Root ou faça login em uma igreja.');
 
         await membersService.create({
           name: data.name,
@@ -84,7 +97,7 @@ export default function Members() {
           address: data.address || null,
           photo_url: data.photoUrl || null,
           status: data.category === 'congregado' ? 'visitante' : 'ativo',
-        }, user.churchId);
+        }, cid);
 
         toast({
           title: 'Membro cadastrado!',
@@ -150,6 +163,17 @@ export default function Members() {
           onCancel={() => { setShowForm(false); setEditingMember(null); }}
           initialData={editingMember || undefined}
         />
+      ) : error && members.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => loadMembers()}>Tentar novamente</Button>
+        </div>
+      ) : loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
+        </div>
       ) : (
         <Tabs defaultValue="todos" className="space-y-4">
           <TabsList className="bg-muted/50 p-1">

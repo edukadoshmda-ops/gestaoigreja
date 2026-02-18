@@ -14,10 +14,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useToast } from '@/hooks/use-toast';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { documentsService, ChurchDocument } from '@/services/documents.service';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { EmptyState } from '@/components/EmptyState';
 
 const typeLabels: Record<string, string> = {
   study: 'Estudos para Células',
@@ -36,6 +39,7 @@ const typeIcons: Record<string, React.ElementType> = {
 };
 
 export default function Uploads() {
+  useDocumentTitle('Uploads');
   const [files, setFiles] = useState<ChurchDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -47,6 +51,7 @@ export default function Uploads() {
   const canManage = user?.role !== 'aluno' && user?.role !== 'membro' && user?.role !== 'congregado';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeCategory, setActiveCategory] = useState('study');
+  const [deleteConfirm, setDeleteConfirm] = useState<ChurchDocument | null>(null);
 
   useEffect(() => {
     loadFiles();
@@ -166,22 +171,16 @@ export default function Uploads() {
     }
   };
 
-  const handleDelete = async (file: ChurchDocument) => {
-    if (!confirm('Tem certeza que deseja excluir este arquivo?')) return;
-
+  const handleDelete = (file: ChurchDocument) => setDeleteConfirm(file);
+  const executeDelete = async () => {
+    if (!deleteConfirm) return;
     try {
-      await documentsService.delete(file.id, file.file_url);
-      setFiles(files.filter(f => f.id !== file.id));
-      toast({
-        title: 'Arquivo removido',
-        description: 'O arquivo foi excluído com sucesso.',
-      });
+      await documentsService.delete(deleteConfirm.id, deleteConfirm.file_url);
+      setFiles(files.filter(f => f.id !== deleteConfirm.id));
+      setDeleteConfirm(null);
+      toast({ title: 'Arquivo removido', description: 'O arquivo foi excluído com sucesso.' });
     } catch (error: any) {
-      toast({
-        title: 'Erro ao excluir',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -210,6 +209,7 @@ export default function Uploads() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      <ConfirmDialog open={!!deleteConfirm} onOpenChange={(o) => !o && setDeleteConfirm(null)} title="Excluir arquivo" description="Tem certeza que deseja excluir este arquivo?" onConfirm={executeDelete} confirmLabel="Excluir" variant="destructive" />
       <input
         type="file"
         ref={fileInputRef}
@@ -227,11 +227,26 @@ export default function Uploads() {
 
       <Tabs defaultValue="study" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1 gap-1">
-          <TabsTrigger value="study">Estudos</TabsTrigger>
-          <TabsTrigger value="financial">Financeiro</TabsTrigger>
-          <TabsTrigger value="minutes">Atas</TabsTrigger>
-          <TabsTrigger value="media">Fotos</TabsTrigger>
-          <TabsTrigger value="videos">Vídeos</TabsTrigger>
+          <TabsTrigger value="study" className="py-3 gap-2 text-[2rem] md:text-sm">
+            <FileText className="h-8 w-8 md:h-4 md:w-4" />
+            Estudos
+          </TabsTrigger>
+          <TabsTrigger value="financial" className="py-3 gap-2 text-[2rem] md:text-sm">
+            <FileText className="h-8 w-8 md:h-4 md:w-4" />
+            Financeiro
+          </TabsTrigger>
+          <TabsTrigger value="minutes" className="py-3 gap-2 text-[2rem] md:text-sm">
+            <File className="h-8 w-8 md:h-4 md:w-4" />
+            Atas
+          </TabsTrigger>
+          <TabsTrigger value="media" className="py-3 gap-2 text-[2rem] md:text-sm">
+            <Image className="h-8 w-8 md:h-4 md:w-4" />
+            Fotos
+          </TabsTrigger>
+          <TabsTrigger value="videos" className="py-3 gap-2 text-[2rem] md:text-sm">
+            <Video className="h-8 w-8 md:h-4 md:w-4" />
+            Vídeos
+          </TabsTrigger>
         </TabsList>
 
         {(['study', 'financial', 'minutes', 'media', 'videos'] as const).map((type) => {
@@ -307,11 +322,11 @@ export default function Uploads() {
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : getFilesByType(type).length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                      <Icon className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                      <p>Nenhum arquivo encontrado nesta categoria</p>
-                      <p className="text-sm">Clique em "Enviar Arquivo" para começar</p>
-                    </div>
+                    <EmptyState
+                      icon={Icon}
+                      title="Nenhum arquivo nesta categoria"
+                      description='Clique em "Enviar Arquivo" para adicionar arquivos.'
+                    />
                   ) : (
                     <div className="space-y-2">
                       {getFilesByType(type).map((file) => (

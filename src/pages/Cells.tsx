@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Users, Calendar, FileText, Plus, Trash2, Loader2, UserPlus, Info, Home, ShieldCheck } from 'lucide-react';
+import { MapPin, Users, Calendar, FileText, Plus, Trash2, Loader2, Home, ShieldCheck, MapPinned, Navigation, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,11 +23,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { cellsService } from '@/services/cells.service';
 import { membersService } from '@/services/members.service';
 import { Member } from '@/types';
+import { geocodeAddress, openStreetMapUrl, googleMapsUrl } from '@/lib/geocoding';
+import { CellMapPicker, CellMapView, CellsMapAll } from '@/components/CellMap';
 
 interface Cell {
   id: string;
@@ -35,7 +42,10 @@ interface Cell {
   host: string;
   address: string;
   meetingDay: string;
+  meetingTime: string | null;
   memberCount: number;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export default function Cells() {
@@ -50,12 +60,19 @@ export default function Cells() {
     name: '',
     address: '',
     meetingDay: '',
+    meetingTime: '',
     leaderId: '',
-    hostId: ''
+    hostId: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
+  const [geocoding, setGeocoding] = useState(false);
+  const [deleteCellConfirm, setDeleteCellConfirm] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: '', name: '' });
+  const [error, setError] = useState<string | null>(null);
 
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
+  const effectiveChurchId = churchId ?? user?.churchId;
 
   const canReport = user?.role === 'superadmin' || (user?.role !== 'aluno' && user?.role !== 'membro' && user?.role !== 'congregado' && user?.role !== 'tesoureiro');
   const isAdmin = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_celula';
@@ -66,14 +83,17 @@ export default function Cells() {
 
   async function loadData() {
     try {
+      setError(null);
       setLoading(true);
       const [cellsData, membersData] = await Promise.all([
-        cellsService.getActive(),
-        membersService.getAll()
+        cellsService.getActive(effectiveChurchId),
+        membersService.getAll(effectiveChurchId)
       ]);
 
       const mappedCells = await Promise.all((cellsData || []).map(async (c: any) => {
         const count = await cellsService.getMemberCount(c.id);
+        const rawTime = c.meeting_time;
+        const meetingTime = rawTime ? String(rawTime).substring(0, 5) : null;
         return {
           id: c.id,
           name: c.name,
@@ -81,14 +101,22 @@ export default function Cells() {
           host: c.host?.name || 'Sem anfitrião',
           address: c.address || 'Sem endereço',
           meetingDay: c.meeting_day || 'A definir',
+          meetingTime,
           memberCount: count,
+          latitude: c.latitude ?? null,
+          longitude: c.longitude ?? null,
         };
       }));
 
       setCells(mappedCells);
       setMembers(membersData as any || []);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+    } catch (err: any) {
+      console.error('Erro ao carregar dados:', err);
+      setCells([]);
+      setMembers([]);
+      const msg = err?.message || '';
+      const isSessionOrPerm = /session|permission|RLS|401|403|PGRST/i.test(msg) || msg.includes('fetch');
+      setError(isSessionOrPerm ? 'Sessão expirada ou sem permissão.' : (msg || 'Não foi possível carregar.'));
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar as informações.',
@@ -108,12 +136,16 @@ export default function Cells() {
         name: newCell.name,
         address: newCell.address,
         meeting_day: newCell.meetingDay,
+        meeting_time: newCell.meetingTime || null,
         leader_id: newCell.leaderId || null,
         host_id: newCell.hostId || null,
         active: true,
+        // Inclua latitude e longitude após executar no Supabase: supabase/cells_geolocation.sql
+        // latitude: newCell.latitude ?? null,
+        // longitude: newCell.longitude ?? null,
       }, user.churchId);
       setCreateOpen(false);
-      setNewCell({ name: '', address: '', meetingDay: '', leaderId: '', hostId: '' });
+      setNewCell({ name: '', address: '', meetingDay: '', meetingTime: '', leaderId: '', hostId: '', latitude: null, longitude: null });
       loadData();
       toast({ title: 'Célula criada!', description: 'A nova célula foi cadastrada com sucesso.' });
     } catch (error: any) {
@@ -121,11 +153,16 @@ export default function Cells() {
     }
   };
 
-  const handleDeleteCell = async (id: string, name: string) => {
-    if (!confirm(`Deseja realmente excluir a célula ${name}?`)) return;
+  const handleDeleteCell = (id: string, name: string) => {
+    setDeleteCellConfirm({ open: true, id, name });
+  };
+
+  const executeDeleteCell = async () => {
+    const { id } = deleteCellConfirm;
     try {
       await cellsService.delete(id);
       loadData();
+      setDeleteCellConfirm(prev => ({ ...prev, open: false }));
       toast({ title: 'Célula excluída', description: 'O registro foi removido com sucesso.' });
     } catch (error) {
       toast({ title: 'Erro ao excluir', description: 'Não foi possível remover a célula.', variant: 'destructive' });
@@ -169,10 +206,26 @@ export default function Cells() {
     }
   }, [reportOpen, selectedCell]);
 
+  if (error && cells.length === 0 && !loading) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => loadData()}>Tentar novamente</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="max-w-7xl mx-auto space-y-8">
+        <Skeleton className="h-32 w-full rounded-3xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-48 rounded-2xl" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -188,6 +241,35 @@ export default function Cells() {
             Acompanhe o crescimento da igreja através dos pequenos grupos. Gerencie líderes, anfitriões e relatórios de frequência.
           </p>
         </div>
+      </div>
+
+      {/* Mapa com todas as células que têm localização */}
+      <div className="space-y-2 px-2">
+        <div className="flex items-center gap-2 text-lg font-semibold">
+          <MapPin className="h-5 w-5 text-primary" />
+          <span>Localização das Células</span>
+        </div>
+        <CellsMapAll
+          cells={cells
+            .filter((c): c is Cell & { latitude: number; longitude: number } =>
+              c.latitude != null && c.longitude != null
+            )
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              address: c.address,
+              latitude: c.latitude,
+              longitude: c.longitude,
+            }))}
+          height="380px"
+          onCellClick={(cell) => {
+            const full = cells.find((x) => x.id === cell.id);
+            if (full) {
+              setSelectedCell(full);
+              setDetailsOpen(true);
+            }
+          }}
+        />
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
@@ -218,11 +300,53 @@ export default function Cells() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cell-address">Endereço da Reunião</Label>
-                    <Input id="cell-address" value={newCell.address} onChange={(e) => setNewCell({ ...newCell, address: e.target.value })} required placeholder="Rua, Número, Bairro" />
+                    <div className="flex gap-2">
+                      <Input id="cell-address" value={newCell.address} onChange={(e) => setNewCell({ ...newCell, address: e.target.value })} required placeholder="Rua, Número, Bairro, Cidade" className="flex-1" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!newCell.address.trim() || geocoding}
+                        onClick={async () => {
+                          setGeocoding(true);
+                          try {
+                            const result = await geocodeAddress(newCell.address);
+                            if (result) {
+                              setNewCell(prev => ({ ...prev, latitude: result.lat, longitude: result.lng }));
+                              toast({ title: 'Localização encontrada', description: 'Ajuste o pin no mapa se necessário.' });
+                            } else {
+                              toast({ title: 'Endereço não encontrado', description: 'Tente outro endereço ou defina no mapa.', variant: 'destructive' });
+                            }
+                          } catch {
+                            toast({ title: 'Erro ao buscar', description: 'Tente novamente.', variant: 'destructive' });
+                          } finally {
+                            setGeocoding(false);
+                          }
+                        }}
+                      >
+                        {geocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPinned className="h-4 w-4" />}
+                        <span className="hidden sm:inline ml-1">Buscar no mapa</span>
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cell-day">Dia da Semana</Label>
-                    <Input id="cell-day" value={newCell.meetingDay} onChange={(e) => setNewCell({ ...newCell, meetingDay: e.target.value })} placeholder="Ex: Quinta-feira às 20:00" required />
+                    <Label>Localização (opcional)</Label>
+                    <CellMapPicker
+                      latitude={newCell.latitude}
+                      longitude={newCell.longitude}
+                      onSelect={(lat, lng) => setNewCell(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+                      height="220px"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="cell-day">Dia da Semana</Label>
+                      <Input id="cell-day" value={newCell.meetingDay} onChange={(e) => setNewCell({ ...newCell, meetingDay: e.target.value })} placeholder="Ex: Quinta-feira" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cell-time">Horário</Label>
+                      <Input id="cell-time" type="time" value={newCell.meetingTime} onChange={(e) => setNewCell({ ...newCell, meetingTime: e.target.value })} />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -287,9 +411,32 @@ export default function Cells() {
               <div>
                 <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors">{cell.name}</CardTitle>
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                  <MapPin className="h-3.5 w-3.5" />
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
                   {cell.address}
                 </p>
+                {cell.latitude != null && cell.longitude != null && (
+                  <div className="flex gap-2 mt-2">
+                    <a
+                      href={openStreetMapUrl(cell.latitude, cell.longitude)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs inline-flex items-center gap-1 text-primary hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Navigation className="h-3.5 w-3.5" />
+                      Ver no mapa
+                    </a>
+                    <a
+                      href={googleMapsUrl(cell.latitude, cell.longitude)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Google Maps
+                    </a>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-2 text-sm">
@@ -299,7 +446,7 @@ export default function Cells() {
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Calendar className="h-4 w-4 text-primary/60" />
-                  <span>{cell.meetingDay}</span>
+                  <span>{cell.meetingTime ? `${cell.meetingDay}, ${cell.meetingTime}` : cell.meetingDay}</span>
                 </div>
               </div>
 
@@ -415,6 +562,16 @@ export default function Cells() {
         </Dialog>
       )}
 
+      <ConfirmDialog
+        open={deleteCellConfirm.open}
+        onOpenChange={(o) => setDeleteCellConfirm(prev => ({ ...prev, open: o }))}
+        title="Excluir célula"
+        description={`Deseja realmente excluir a célula ${deleteCellConfirm.name}?`}
+        onConfirm={executeDeleteCell}
+        confirmLabel="Excluir"
+        variant="destructive"
+      />
+
       {/* Detalhes da Célula e Gestão de Membros */}
       {selectedCell && detailsOpen && (
         <CellDetailsDialog
@@ -442,7 +599,10 @@ function CellDetailsDialog({ open, onOpenChange, cell, onSuccess }: {
   const [loading, setLoading] = useState(false);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [addingMember, setAddingMember] = useState(false);
+  const [removeMemberConfirm, setRemoveMemberConfirm] = useState<{ open: boolean; memberId: string }>({ open: false, memberId: '' });
   const { toast } = useToast();
+  const { user, churchId } = useAuth();
+  const effectiveChurchId = churchId ?? user?.churchId;
 
   useEffect(() => {
     if (open) loadDetails();
@@ -453,7 +613,7 @@ function CellDetailsDialog({ open, onOpenChange, cell, onSuccess }: {
       setLoading(true);
       const [cellMembers, membersList, allReports] = await Promise.all([
         cellsService.getMembers(cell.id),
-        membersService.getAll(),
+        membersService.getAll(effectiveChurchId),
         cellsService.getAllReports()
       ]);
       setMembers(cellMembers || []);
@@ -480,10 +640,15 @@ function CellDetailsDialog({ open, onOpenChange, cell, onSuccess }: {
     }
   };
 
-  const handleRemovePerson = async (memberId: string) => {
-    if (!confirm('Deseja remover este membro da célula?')) return;
+  const handleRemovePerson = (memberId: string) => {
+    setRemoveMemberConfirm({ open: true, memberId });
+  };
+
+  const executeRemoveMember = async () => {
+    const { memberId } = removeMemberConfirm;
     try {
       await cellsService.removeMember(cell.id, memberId);
+      setRemoveMemberConfirm(prev => ({ ...prev, open: false }));
       toast({ title: 'Removido', description: 'Membro removido da célula.' });
       loadDetails();
       onSuccess();
@@ -493,6 +658,16 @@ function CellDetailsDialog({ open, onOpenChange, cell, onSuccess }: {
   };
 
   return (
+    <>
+    <ConfirmDialog
+      open={removeMemberConfirm.open}
+      onOpenChange={(o) => setRemoveMemberConfirm(prev => ({ ...prev, open: o }))}
+      title="Remover membro"
+      description="Deseja remover este membro da célula?"
+      onConfirm={executeRemoveMember}
+      confirmLabel="Remover"
+      variant="destructive"
+    />
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-2xl sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 rounded-none sm:rounded-lg">
         <DialogHeader>
@@ -505,11 +680,35 @@ function CellDetailsDialog({ open, onOpenChange, cell, onSuccess }: {
                 {cell.name}
               </DialogTitle>
               <DialogDescription>{cell.address}</DialogDescription>
+              <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {cell.meetingTime ? `${cell.meetingDay}, ${cell.meetingTime}` : cell.meetingDay}
+              </p>
+              {cell.latitude != null && cell.longitude != null && (
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  <a href={openStreetMapUrl(cell.latitude, cell.longitude)} target="_blank" rel="noopener noreferrer" className="text-sm inline-flex items-center gap-1 text-primary hover:underline">
+                    <Navigation className="h-4 w-4" />
+                    Abrir no OpenStreetMap
+                  </a>
+                  <a href={googleMapsUrl(cell.latitude, cell.longitude)} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary hover:underline">
+                    Google Maps
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-6 py-4">
+          {cell.latitude != null && cell.longitude != null && (
+            <div className="space-y-2">
+              <Label className="text-lg font-bold flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Localização
+              </Label>
+              <CellMapView latitude={cell.latitude} longitude={cell.longitude} name={cell.name} height="200px" />
+            </div>
+          )}
           <div className="space-y-4">
             <Label className="text-lg font-bold flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
@@ -597,5 +796,6 @@ function CellDetailsDialog({ open, onOpenChange, cell, onSuccess }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

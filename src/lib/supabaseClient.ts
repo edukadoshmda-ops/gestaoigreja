@@ -6,13 +6,12 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 const isConfigured = supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder') && supabaseAnonKey !== 'placeholder-key';
 if (!isConfigured) {
-    console.error(
-        '[Supabase] Configure o arquivo .env.local na raiz do projeto com:\n' +
-        '  VITE_SUPABASE_URL=https://seu-projeto.supabase.co\n' +
-        '  VITE_SUPABASE_ANON_KEY=sua_chave_anon\n' +
-        'Copie o .env.example para .env.local e preencha com os dados do painel Supabase (Settings > API).'
-    );
+    const hint = 'Configure o .env.local com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (Supabase → Settings → API).';
+    console.error('[Supabase]', hint);
 }
+
+/** Mensagem amigável quando a API do Supabase retorna "Invalid API key" (chave ausente ou errada). */
+export const SUPABASE_CONFIG_HINT = 'Chave do Supabase inválida ou não configurada. Crie o arquivo .env.local na raiz do projeto com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (painel Supabase → Settings → API) e reinicie o servidor (npm run dev).';
 
 const effectiveUrl = supabaseUrl || 'https://placeholder.supabase.co';
 const effectiveKey = supabaseAnonKey || 'placeholder-key';

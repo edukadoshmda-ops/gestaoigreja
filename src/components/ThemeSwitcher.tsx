@@ -28,11 +28,11 @@ export function ThemeSwitcher({ collapsed, direction = 'up' }: { collapsed: bool
                 variant="ghost"
                 className={cn(
                     'w-full justify-start gap-3 px-4 py-3 hover:bg-primary/5 transition-all duration-300',
-                    collapsed && 'justify-center px-0 h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 shadow-sm'
+                    collapsed && 'justify-center px-0 h-12 w-12 min-h-[48px] min-w-[48px] md:h-11 md:w-11 rounded-xl bg-primary/10 border border-primary/20 shadow-sm'
                 )}
                 onClick={() => setIsOpen(!isOpen)}
             >
-                <Palette className="h-5 w-5 text-primary flex-shrink-0" />
+                <Palette className="h-6 w-6 md:h-5 md:w-5 text-primary flex-shrink-0" />
                 {!collapsed && <span className="font-medium">Temas</span>}
             </Button>
 

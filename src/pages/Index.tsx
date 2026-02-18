@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/Logo';
 import { DailyVerse } from '@/components/DailyVerse';
-import heroImage from '@/assets/hero-church.jpg';
 
 const features = [
   {
@@ -35,13 +34,7 @@ export default function Index() {
 
       {/* Hero Section */}
       <section className="relative py-20 lg:py-32 overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src={heroImage}
-            alt="Igreja"
-            className="w-full h-full object-cover opacity-15"
-          />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">

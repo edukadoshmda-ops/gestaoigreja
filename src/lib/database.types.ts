@@ -16,6 +16,18 @@ export interface Database {
                     slug: string
                     logo_url: string | null
                     created_at: string
+                    facebook_url?: string | null
+                    instagram_url?: string | null
+                    youtube_url?: string | null
+                    twitter_url?: string | null
+                    whatsapp?: string | null
+                    tiktok_url?: string | null
+                    linkedin_url?: string | null
+                    website_url?: string | null
+                    pix_key?: string | null
+                    pix_key_type?: string | null
+                    pix_beneficiary_name?: string | null
+                    pix_city?: string | null
                 }
                 Insert: {
                     id?: string
@@ -23,6 +35,18 @@ export interface Database {
                     slug: string
                     logo_url?: string | null
                     created_at?: string
+                    facebook_url?: string | null
+                    instagram_url?: string | null
+                    youtube_url?: string | null
+                    twitter_url?: string | null
+                    whatsapp?: string | null
+                    tiktok_url?: string | null
+                    linkedin_url?: string | null
+                    website_url?: string | null
+                    pix_key?: string | null
+                    pix_key_type?: string | null
+                    pix_beneficiary_name?: string | null
+                    pix_city?: string | null
                 }
                 Update: {
                     id?: string
@@ -30,6 +54,18 @@ export interface Database {
                     slug?: string
                     logo_url?: string | null
                     created_at?: string
+                    facebook_url?: string | null
+                    instagram_url?: string | null
+                    youtube_url?: string | null
+                    twitter_url?: string | null
+                    whatsapp?: string | null
+                    tiktok_url?: string | null
+                    linkedin_url?: string | null
+                    website_url?: string | null
+                    pix_key?: string | null
+                    pix_key_type?: string | null
+                    pix_beneficiary_name?: string | null
+                    pix_city?: string | null
                 }
             },
             profiles: {
@@ -184,6 +220,7 @@ export interface Database {
                     status: 'planejado' | 'confirmado' | 'realizado' | 'cancelado'
                     estimated_attendees: number | null
                     actual_attendees: number | null
+                    registration_fee: number | null
                     created_at: string
                     updated_at: string
                 }
@@ -200,6 +237,7 @@ export interface Database {
                     status?: 'planejado' | 'confirmado' | 'realizado' | 'cancelado'
                     estimated_attendees?: number | null
                     actual_attendees?: number | null
+                    registration_fee?: number | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -216,6 +254,7 @@ export interface Database {
                     status?: 'planejado' | 'confirmado' | 'realizado' | 'cancelado'
                     estimated_attendees?: number | null
                     actual_attendees?: number | null
+                    registration_fee?: number | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -232,6 +271,8 @@ export interface Database {
                     meeting_time: string | null
                     address: string | null
                     city: string | null
+                    latitude: number | null
+                    longitude: number | null
                     active: boolean
                     created_at: string
                     updated_at: string
@@ -247,6 +288,8 @@ export interface Database {
                     meeting_time?: string | null
                     address?: string | null
                     city?: string | null
+                    latitude?: number | null
+                    longitude?: number | null
                     active?: boolean
                     created_at?: string
                     updated_at?: string
@@ -262,6 +305,8 @@ export interface Database {
                     meeting_time?: string | null
                     address?: string | null
                     city?: string | null
+                    latitude?: number | null
+                    longitude?: number | null
                     active?: boolean
                     created_at?: string
                     updated_at?: string
@@ -442,6 +487,139 @@ export interface Database {
                     type?: 'info' | 'warning' | 'success' | 'error' | null
                     read?: boolean
                     link?: string | null
+                    created_at?: string
+                }
+            },
+            reading_plans: {
+                Row: {
+                    id: string
+                    church_id: string | null
+                    name: string
+                    description: string | null
+                    total_days: number
+                    cover_image_url: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    church_id?: string | null
+                    name: string
+                    description?: string | null
+                    total_days: number
+                    cover_image_url?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    church_id?: string | null
+                    name?: string
+                    description?: string | null
+                    total_days?: number
+                    cover_image_url?: string | null
+                    created_at?: string
+                }
+            },
+            reading_plan_days: {
+                Row: {
+                    id: string
+                    plan_id: string
+                    day_number: number
+                    title: string | null
+                    reference: string
+                    content: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    plan_id: string
+                    day_number: number
+                    title?: string | null
+                    reference: string
+                    content?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    plan_id?: string
+                    day_number?: number
+                    title?: string | null
+                    reference?: string
+                    content?: string | null
+                    created_at?: string
+                }
+            },
+            reading_plan_completions: {
+                Row: {
+                    user_id: string
+                    plan_id: string
+                    day_number: number
+                    completed_at: string
+                }
+                Insert: {
+                    user_id: string
+                    plan_id: string
+                    day_number: number
+                    completed_at?: string
+                }
+                Update: {
+                    user_id?: string
+                    plan_id?: string
+                    day_number?: number
+                    completed_at?: string
+                }
+            },
+            reading_plan_progress: {
+                Row: {
+                    user_id: string
+                    plan_id: string
+                    current_day: number
+                    started_at: string
+                    last_read_at: string
+                }
+                Insert: {
+                    user_id: string
+                    plan_id: string
+                    current_day?: number
+                    started_at?: string
+                    last_read_at?: string
+                }
+                Update: {
+                    user_id?: string
+                    plan_id?: string
+                    current_day?: number
+                    started_at?: string
+                    last_read_at?: string
+                }
+            },
+            prayer_requests: {
+                Row: {
+                    id: string
+                    church_id: string
+                    content: string
+                    is_anonymous: boolean
+                    requester_id: string | null
+                    requester_name: string | null
+                    prayed_count: number
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    church_id: string
+                    content: string
+                    is_anonymous?: boolean
+                    requester_id?: string | null
+                    requester_name?: string | null
+                    prayed_count?: number
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    church_id?: string
+                    content?: string
+                    is_anonymous?: boolean
+                    requester_id?: string | null
+                    requester_name?: string | null
+                    prayed_count?: number
                     created_at?: string
                 }
             },

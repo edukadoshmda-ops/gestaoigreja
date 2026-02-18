@@ -19,16 +19,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Sidebar } from '@/components/Sidebar';
 import { MinistryCard } from '@/components/MinistryCard';
 import { AddMemberDialog } from '@/components/AddMemberDialog';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ministriesService } from '@/services/ministries.service';
 import { membersService } from '@/services/members.service';
 import { Ministry, Member } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 export default function Ministries() {
+  useDocumentTitle('Ministérios');
   const [ministries, setMinistries] = useState<Ministry[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,18 +41,20 @@ export default function Ministries() {
   const [members, setMembers] = useState<Member[]>([]);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, churchId } = useAuth();
+  const effectiveChurchId = churchId ?? user?.churchId;
   const canCreate = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_ministerio';
 
   useEffect(() => {
     loadMinistries();
     loadMembers();
-  }, []);
+  }, [effectiveChurchId]);
 
   async function loadMembers() {
     try {
-      const data = await membersService.getAll();
+      const data = await membersService.getAll(effectiveChurchId);
       setMembers(data as any || []);
     } catch (error) {
       console.error('Erro ao carregar membros:', error);
@@ -56,6 +63,7 @@ export default function Ministries() {
 
   async function loadMinistries() {
     try {
+      setError(null);
       setLoading(true);
       const data = await ministriesService.getActive();
 
@@ -73,8 +81,12 @@ export default function Ministries() {
       }));
 
       setMinistries(mappedMinistries);
-    } catch (error) {
-      console.error('Erro ao carregar ministérios:', error);
+    } catch (err: any) {
+      console.error('Erro ao carregar ministérios:', err);
+      setMinistries([]);
+      const msg = err?.message || '';
+      const isSessionOrPerm = /session|permission|RLS|401|403|PGRST/i.test(msg) || msg.includes('fetch');
+      setError(isSessionOrPerm ? 'Sessão expirada ou sem permissão.' : (msg || 'Não foi possível carregar.'));
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os ministérios.',
@@ -132,6 +144,28 @@ export default function Ministries() {
       });
     }
   };
+
+  if (error && ministries.length === 0 && !loading) {
+    return (
+      <div className="max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <Button onClick={() => loadMinistries()}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-6">
+        <Skeleton className="h-32 w-full rounded-3xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <Skeleton key={i} className="h-52 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -246,7 +280,10 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
   const [loading, setLoading] = useState(false);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [addingMember, setAddingMember] = useState(false);
+  const [removeMemberConfirm, setRemoveMemberConfirm] = useState<{ open: boolean; memberId: string }>({ open: false, memberId: '' });
   const { toast } = useToast();
+  const { churchId, user } = useAuth();
+  const effectiveChurchId = churchId ?? user?.churchId;
 
   useEffect(() => {
     if (open) {
@@ -259,7 +296,7 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
       setLoading(true);
       const [minMembers, membersList] = await Promise.all([
         ministriesService.getMembers(ministry.id),
-        membersService.getAll()
+        membersService.getAll(effectiveChurchId)
       ]);
       setMembers(minMembers || []);
       setAllMembers(membersList as any || []);
@@ -284,10 +321,12 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
     }
   };
 
-  const handleRemovePerson = async (memberId: string) => {
-    if (!confirm('Deseja remover este membro do ministério?')) return;
+  const handleRemovePerson = (memberId: string) => setRemoveMemberConfirm({ open: true, memberId });
+  const executeRemoveMember = async () => {
+    const { memberId } = removeMemberConfirm;
     try {
       await ministriesService.removeMember(ministry.id, memberId);
+      setRemoveMemberConfirm(prev => ({ ...prev, open: false }));
       toast({ title: 'Removido', description: 'Membro removido do ministério.' });
       loadDetails();
       onSuccess();
@@ -297,6 +336,8 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
   };
 
   return (
+    <>
+    <ConfirmDialog open={removeMemberConfirm.open} onOpenChange={(o) => setRemoveMemberConfirm(prev => ({ ...prev, open: o }))} title="Remover membro" description="Deseja remover este membro do ministério?" onConfirm={executeRemoveMember} confirmLabel="Remover" variant="destructive" />
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-2xl sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 rounded-none sm:rounded-lg">
         <DialogHeader>
@@ -367,7 +408,6 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
-
-import { Separator } from '@/components/ui/separator';

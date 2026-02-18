@@ -13,9 +13,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { MonthCalendar } from '@/components/MonthCalendar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { eventsService } from '@/services/events.service';
 import { membersService } from '@/services/members.service';
 import { useToast } from '@/hooks/use-toast';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/EmptyState';
 import { supabase } from '@/lib/supabaseClient';
 
 interface Event {
@@ -30,6 +34,7 @@ interface Event {
     responsiblePhone?: string;
     status: 'planejado' | 'confirmado' | 'realizado' | 'cancelado';
     attendees?: number;
+    registration_fee?: number | null;
     checklist?: ChecklistItem[];
     serviceScale?: ServicePerson[];
 }
@@ -81,6 +86,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function Events() {
+    useDocumentTitle('Eventos');
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedTab, setSelectedTab] = useState('calendario');
@@ -92,6 +98,9 @@ export default function Events() {
     const [isCreateScaleOpen, setIsCreateScaleOpen] = useState(false);
     const [selectedEventDetails, setSelectedEventDetails] = useState<Event | null>(null);
     const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string; event: Event } | null>(null);
+    const [whatsappAfterDelete, setWhatsappAfterDelete] = useState<{ participants: ServicePerson[]; title: string; date: string } | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -102,6 +111,7 @@ export default function Events() {
 
     async function loadEvents() {
         try {
+            setError(null);
             setLoading(true);
             const { data, error } = await supabase
                 .from('events')
@@ -127,6 +137,7 @@ export default function Events() {
                 responsiblePhone: e.responsible?.phone,
                 status: e.status,
                 attendees: e.estimated_attendees,
+                registration_fee: e.registration_fee ?? null,
                 checklist: e.checklist,
                 serviceScale: (e.serviceScale || []).map((s: any) => ({
                     id: s.id,
@@ -139,50 +150,61 @@ export default function Events() {
             }));
 
             setEvents(mappedEvents);
-        } catch (error: any) {
-            toast({ title: 'Erro ao carregar eventos', description: error.message, variant: 'destructive' });
+        } catch (err: any) {
+            setEvents([]);
+            const msg = err?.message || '';
+            const isSessionOrPerm = /session|permission|RLS|401|403|PGRST/i.test(msg) || msg.includes('fetch');
+            setError(isSessionOrPerm ? 'Sessão expirada ou sem permissão.' : (msg || 'Não foi possível carregar.'));
+            toast({
+                title: 'Erro ao carregar eventos',
+                description: isSessionOrPerm
+                    ? 'Sessão expirada ou sem permissão. Faça logout e login novamente.'
+                    : msg,
+                variant: 'destructive'
+            });
         } finally {
             setLoading(false);
         }
     }
 
-    const handleDeleteEvent = async (id: string, title: string) => {
+    const handleDeleteEvent = (id: string, title: string) => {
         const eventToDelete = events.find(e => e.id === id);
-        if (!confirm(`Tem certeza que deseja excluir o evento "${title}"?`)) return;
+        if (eventToDelete) setDeleteConfirm({ id, title, event: eventToDelete });
+    };
 
+    const executeDeleteEvent = async () => {
+        if (!deleteConfirm) return;
+        const { id, title, event } = deleteConfirm;
         try {
             setLoading(true);
             const { error } = await supabase.from('events').delete().eq('id', id);
             if (error) throw error;
-
+            setDeleteConfirm(null);
             toast({ title: 'Evento excluído', description: 'O evento foi removido com sucesso.' });
-
-            // Verificar se há participantes para notificar
-            const participants = eventToDelete?.serviceScale?.filter(p => p.phone && p.phone.trim() !== '') || [];
-
+            const participants = event?.serviceScale?.filter(p => p.phone && p.phone.trim() !== '') || [];
             if (participants.length > 0) {
-                // Pequeno delay para o toast do sistema respirar
-                setTimeout(() => {
-                    if (confirm(`Evento excluído! Deseja disparar mensagens de cancelamento para os ${participants.length} participantes da escala via WhatsApp?`)) {
-                        participants.forEach((person, index) => {
-                            setTimeout(() => {
-                                const firstName = person.name.split(' ')[0];
-                                const text = `Olá ${firstName}, Graça e Paz! Passando para informar que o evento *${title}* agendado para o dia ${formatDate(eventToDelete!.date)} foi *CANCELADO*. Favor desconsiderar a escala de serviço.`;
-                                const cleanPhone = person.phone!.replace(/\D/g, '');
-                                const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-                                window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
-                            }, index * 1000); // 1 segundo de intervalo entre janelas
-                        });
-                    }
-                }, 500);
+                setWhatsappAfterDelete({ participants, title, date: event.date });
             }
-
             loadEvents();
         } catch (error: any) {
             toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
         } finally {
             setLoading(false);
         }
+    };
+
+    const executeWhatsappAfterDelete = () => {
+        if (!whatsappAfterDelete) return;
+        whatsappAfterDelete.participants.forEach((person, index) => {
+            setTimeout(() => {
+                const firstName = person.name!.split(' ')[0];
+                const text = `Olá ${firstName}, Graça e Paz! Passando para informar que o evento *${whatsappAfterDelete.title}* agendado para o dia ${formatDate(whatsappAfterDelete.date)} foi *CANCELADO*. Favor desconsiderar a escala de serviço.`;
+                const cleanPhone = person.phone!.replace(/\D/g, '');
+                const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
+            }, index * 1000);
+        });
+        setWhatsappAfterDelete(null);
     };
 
     const handleToggleTask = async (taskId: string, currentStatus: boolean, eventId: string) => {
@@ -211,8 +233,31 @@ export default function Events() {
         return matchesSearch && matchesFilter;
     });
 
+    if (error && events.length === 0 && !loading) {
+        return (
+            <div className="space-y-6 flex flex-col items-center justify-center min-h-[300px]">
+                <p className="text-muted-foreground mb-4">{error}</p>
+                <Button onClick={() => loadEvents()}>Tentar novamente</Button>
+            </div>
+        );
+    }
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <Skeleton className="h-12 w-64" />
+                <Skeleton className="h-14 w-full rounded-xl" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Skeleton className="h-64 rounded-xl" />
+                    <Skeleton className="h-64 rounded-xl" />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            <ConfirmDialog open={!!deleteConfirm} onOpenChange={(o) => !o && setDeleteConfirm(null)} title="Excluir evento" description={deleteConfirm ? `Tem certeza que deseja excluir o evento "${deleteConfirm.title}"?` : ''} onConfirm={executeDeleteEvent} confirmLabel="Excluir" variant="destructive" />
+            <ConfirmDialog open={!!whatsappAfterDelete} onOpenChange={(o) => !o && setWhatsappAfterDelete(null)} title="Mensagens WhatsApp" description={whatsappAfterDelete ? `Deseja disparar mensagens de cancelamento para os ${whatsappAfterDelete.participants.length} participantes da escala via WhatsApp?` : ''} onConfirm={executeWhatsappAfterDelete} confirmLabel="Sim, disparar" variant="default" />
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -342,20 +387,20 @@ export default function Events() {
             <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
                 <div className="overflow-x-auto pb-3 -mx-4 px-4 scrollbar-hide">
                     <TabsList className="flex w-max lg:w-auto lg:inline-flex min-w-full lg:min-w-0 bg-primary/5 p-1 rounded-2xl">
-                        <TabsTrigger value="calendario" className="gap-3 px-6 py-4 sm:py-2 text-base sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all">
-                            <Calendar className="h-5 w-5" />
+                        <TabsTrigger value="calendario" className="gap-3 px-6 py-4 sm:py-2 text-xl sm:text-lg data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all">
+                            <Calendar className="h-8 w-8" />
                             <span>Calendário</span>
                         </TabsTrigger>
-                        <TabsTrigger value="eventos" className="gap-3 px-6 py-4 sm:py-2 text-base sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all">
-                            <Tag className="h-5 w-5" />
+                        <TabsTrigger value="eventos" className="gap-3 px-6 py-4 sm:py-2 text-xl sm:text-lg data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all">
+                            <Tag className="h-8 w-8" />
                             <span>Eventos</span>
                         </TabsTrigger>
-                        <TabsTrigger value="escalas" className="gap-3 px-6 py-4 sm:py-2 text-base sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all">
-                            <Users className="h-5 w-5" />
+                        <TabsTrigger value="escalas" className="gap-3 px-6 py-4 sm:py-2 text-xl sm:text-lg data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all">
+                            <Users className="h-8 w-8" />
                             <span>Escalas</span>
                         </TabsTrigger>
-                        <TabsTrigger value="checklists" className="gap-3 px-6 py-4 sm:py-2 text-base sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all">
-                            <ListChecks className="h-5 w-5" />
+                        <TabsTrigger value="checklists" className="gap-3 px-6 py-4 sm:py-2 text-xl sm:text-lg data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all">
+                            <ListChecks className="h-8 w-8" />
                             <span>Checklists</span>
                         </TabsTrigger>
                     </TabsList>
@@ -376,10 +421,8 @@ export default function Events() {
                 <TabsContent value="eventos" className="space-y-4">
                     {filteredEvents.length === 0 ? (
                         <Card className="border-primary/10 shadow-lg">
-                            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                                <Calendar className="h-16 w-16 text-primary/30 mb-4" />
-                                <h3 className="text-xl font-bold text-foreground mb-2">Nenhum evento cadastrado</h3>
-                                <p className="text-muted-foreground max-w-md">Crie seu primeiro evento clicando no botão "Criar Evento" acima.</p>
+                            <CardContent className="p-0">
+                                <EmptyState icon={Calendar} title="Nenhum evento cadastrado" description="Crie seu primeiro evento clicando no botão 'Criar Evento' acima." />
                             </CardContent>
                         </Card>
                     ) : (
@@ -573,7 +616,7 @@ function CalendarView({ events, getEventTypeColor, onEdit, onDelete, isAdmin }: 
                             year={currentMonth.getFullYear()}
                             month={currentMonth.getMonth()}
                             events={events}
-                            onDayClick={(date) => console.log('Clicked date:', date)}
+                            onDayClick={() => {}}
                         />
                     </div>
                 </CardContent>
@@ -788,20 +831,22 @@ function ChecklistView({ events, onToggleTask }: { events: Event[], onToggleTask
 // Form Components
 
 function CreateEventForm({ onClose, onSuccess, initialData }: { onClose: () => void; onSuccess: () => void; initialData?: Event }) {
-    const { user } = useAuth();
+    const { user, churchId } = useAuth();
+    const effectiveChurchId = churchId ?? user?.churchId;
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [allMembers, setAllMembers] = useState<any[]>([]);
     const [selectedGuests, setSelectedGuests] = useState<string[]>([]);
     const [memberSearch, setMemberSearch] = useState('');
+    const [whatsappInviteConfirm, setWhatsappInviteConfirm] = useState<{ scaleResults: any[]; newEvent: any } | null>(null);
 
     useEffect(() => {
         loadMembers();
-    }, []);
+    }, [effectiveChurchId]);
 
     async function loadMembers() {
         try {
-            const data = await membersService.getActive();
+            const data = await membersService.getActive(effectiveChurchId);
             setAllMembers(data || []);
         } catch (error) {
             console.error(error);
@@ -828,11 +873,18 @@ function CreateEventForm({ onClose, onSuccess, initialData }: { onClose: () => v
                 location: formData.get('location') as string,
                 description: formData.get('description') as string,
                 estimated_attendees: Number(formData.get('attendees')) || 0,
+                registration_fee: (() => {
+                    const v = formData.get('registration_fee') as string;
+                    if (!v || v.trim() === '') return null;
+                    const n = parseFloat(v.replace(',', '.'));
+                    return isNaN(n) || n <= 0 ? null : n;
+                })(),
             };
 
             if (initialData) {
                 await eventsService.update(initialData.id, eventPayload);
                 toast({ title: 'Evento atualizado!', description: 'As alterações foram salvas.' });
+                onClose();
             } else {
                 eventPayload.status = 'planejado';
                 const newEvent = await eventsService.create(eventPayload, user.churchId);
@@ -847,33 +899,13 @@ function CreateEventForm({ onClose, onSuccess, initialData }: { onClose: () => v
                         title: 'Evento criado!',
                         description: `${selectedGuests.length} convidados foram adicionados.`
                     });
-
-                    // WHATSAPP MASS INVITATION LOGIC
-                    setTimeout(() => {
-                        if (confirm(`Evento criado com sucesso! Deseja disparar os convites via WhatsApp para os ${selectedGuests.length} membros selecionados agora?`)) {
-                            scaleResults.forEach((scaleEntry, index) => {
-                                const member = allMembers.find(m => m.id === scaleEntry.member_id);
-                                if (member && member.phone) {
-                                    setTimeout(() => {
-                                        const firstName = member.name.split(' ')[0];
-                                        const confirmationUrl = `${window.location.origin}/confirmar/${scaleEntry.id}`;
-                                        const text = `Olá ${firstName}, Graça e Paz! Gostaria de te convidar para o evento *${newEvent.title}* que teremos no dia ${formatDate(newEvent.date)} às ${newEvent.time}. Sua presença seria uma alegria para nós!\n\nConfirme sua presença clicando no link abaixo:\n${confirmationUrl}`;
-
-                                        const cleanPhone = member.phone.replace(/\D/g, '');
-                                        const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-                                        window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
-                                    }, index * 1000); // 1s interval
-                                }
-                            });
-                        }
-                    }, 800);
+                    setWhatsappInviteConfirm({ scaleResults, newEvent });
                 } else {
                     toast({ title: 'Evento criado!', description: 'Evento criado com sucesso.' });
+                    onClose();
                 }
             }
-
             onSuccess();
-            onClose();
         } catch (error: any) {
             toast({ title: `Erro ao ${initialData ? 'atualizar' : 'criar'} evento`, description: error.message, variant: 'destructive' });
         } finally {
@@ -881,7 +913,29 @@ function CreateEventForm({ onClose, onSuccess, initialData }: { onClose: () => v
         }
     };
 
+    const executeWhatsappInvite = () => {
+        if (!whatsappInviteConfirm) return;
+        const { scaleResults, newEvent } = whatsappInviteConfirm;
+        scaleResults.forEach((scaleEntry, index) => {
+            const member = allMembers.find(m => m.id === scaleEntry.member_id);
+            if (member && member.phone) {
+                setTimeout(() => {
+                    const firstName = member.name.split(' ')[0];
+                    const confirmationUrl = `${window.location.origin}/confirmar/${scaleEntry.id}`;
+                    const text = `Olá ${firstName}, Graça e Paz! Gostaria de te convidar para o evento *${newEvent.title}* que teremos no dia ${formatDate(newEvent.date)} às ${newEvent.time}. Sua presença seria uma alegria para nós!\n\nConfirme sua presença clicando no link abaixo:\n${confirmationUrl}`;
+                    const cleanPhone = member.phone.replace(/\D/g, '');
+                    const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                    window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
+                }, index * 1000);
+            }
+        });
+        setWhatsappInviteConfirm(null);
+        onClose();
+    };
+
     return (
+        <>
+        <ConfirmDialog open={!!whatsappInviteConfirm} onOpenChange={(o) => { if (!o) { setWhatsappInviteConfirm(null); onClose(); } }} title="Convites via WhatsApp" description={whatsappInviteConfirm ? `Deseja disparar os convites via WhatsApp para os ${whatsappInviteConfirm.scaleResults.length} membros selecionados agora?` : ''} onConfirm={executeWhatsappInvite} confirmLabel="Sim, disparar" variant="default" />
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2">
@@ -905,6 +959,10 @@ function CreateEventForm({ onClose, onSuccess, initialData }: { onClose: () => v
                 <div className="space-y-2">
                     <Label htmlFor="attendees">Expectativa de Público</Label>
                     <Input id="attendees" name="attendees" type="number" defaultValue={initialData?.attendees} placeholder="Ex: 100" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="registration_fee">Taxa de inscrição (R$) - PIX</Label>
+                    <Input id="registration_fee" name="registration_fee" type="text" defaultValue={initialData?.registration_fee != null ? String(initialData.registration_fee) : ''} placeholder="Ex: 25,00 ou vazio" />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="date">Data</Label>
@@ -982,11 +1040,12 @@ function CreateEventForm({ onClose, onSuccess, initialData }: { onClose: () => v
                 </Button>
             </div>
         </form>
+        </>
     );
 }
 
 function PlanWorshipForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-    const { user } = useAuth();
+    const { user, churchId } = useAuth();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
 
@@ -1151,6 +1210,8 @@ function CreateChecklistForm({ onClose, events, onSuccess }: { onClose: () => vo
 }
 
 function ManageScaleForm({ onClose, events, onSuccess }: { onClose: () => void; events: Event[]; onSuccess: () => void }) {
+    const { user, churchId } = useAuth();
+    const effectiveChurchId = churchId ?? user?.churchId;
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [members, setMembers] = useState<any[]>([]);
@@ -1159,11 +1220,11 @@ function ManageScaleForm({ onClose, events, onSuccess }: { onClose: () => void; 
 
     useEffect(() => {
         loadMembers();
-    }, []);
+    }, [effectiveChurchId]);
 
     async function loadMembers() {
         try {
-            const data = await membersService.getAll();
+            const data = await membersService.getAll(effectiveChurchId);
             setMembers(data || []);
         } catch (error) {
             console.error('Error loading members:', error);

@@ -1,0 +1,9 @@
+Para criar o arquivo .env.local (necessário para o Supabase):
+
+  Opção 1 - Dê dois cliques em: criar-env-local.bat
+
+  Opção 2 - Copie .env.example para .env.local manualmente.
+
+Depois, abra .env.local e substitua "your_supabase_anon_key_here"
+pela chave anon do Supabase (painel: Settings > API).
+Reinicie o servidor (npm run dev ou start-dev.bat).

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FileText, Award, Send, Baby, Users, Loader2, Download, Trash2, CreditCard, Search } from 'lucide-react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { FileText, Send, Users, Loader2, Download, Trash2, CreditCard, Search, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,10 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from '@/components/EmptyState';
+import { cn } from '@/lib/utils';
+import { DEFAULT_CHURCH_NAME, DEFAULT_CNPJ } from '@/lib/constants';
+import { maskCNPJ } from '@/lib/masks';
 
 export default function Secretariat() {
     useDocumentTitle('Secretaria');
@@ -39,7 +43,8 @@ export default function Secretariat() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
-    const { user } = useAuth();
+    const { user, churchId } = useAuth();
+    const effectiveChurchId = churchId ?? user?.churchId;
 
     // Permissão: Admin, Pastor, Secretário e SuperAdmin podem editar
     const canEdit = user?.role === 'admin' || user?.role === 'pastor' || user?.role === 'secretario' || user?.role === 'superadmin';
@@ -51,13 +56,13 @@ export default function Secretariat() {
     // Carrega membros ao montar o componente
     useEffect(() => {
         loadMembers();
-    }, []);
+    }, [effectiveChurchId]);
 
     async function loadMembers() {
         try {
             setError(null);
             setLoading(true);
-            const data = await membersService.getAll();
+            const data = await membersService.getAll(effectiveChurchId);
 
             const mappedMembers: Member[] = (data || []).map((m: any) => {
                 try {
@@ -79,20 +84,22 @@ export default function Secretariat() {
                 }
             }).filter((m: any) => m !== null) as Member[];
             setMembers(mappedMembers);
-<<<<<<< Current (Your changes)
-        } catch (error) {
-            console.error('Secretariat Error:', error);
-=======
         } catch (err: any) {
             console.error('Secretariat Error:', err);
             setMembers([]);
             const msg = err?.message || '';
+            const isApiKey = /invalid api key|invalid.*key|api key/i.test(msg);
             const isSessionOrPerm = /session|permission|RLS|401|403|PGRST/i.test(msg) || msg.includes('fetch');
-            setError(isSessionOrPerm ? 'Sessão expirada ou sem permissão.' : (msg || 'Não foi possível carregar.'));
->>>>>>> Incoming (Background Agent changes)
+            let displayMsg = msg || 'Não foi possível carregar.';
+            if (isApiKey) {
+                displayMsg = 'Chave do Supabase inválida ou não configurada. Crie o arquivo .env.local na raiz do projeto com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (painel Supabase → Settings → API) e reinicie o servidor.';
+            } else if (isSessionOrPerm) {
+                displayMsg = 'Sessão expirada ou sem permissão.';
+            }
+            setError(displayMsg);
             toast({
                 title: 'Erro ao carregar secretaria',
-                description: 'Verifique se você tem as permissões necessárias.',
+                description: isApiKey ? 'Configure o Supabase no .env.local' : 'Verifique se você tem as permissões necessárias.',
                 variant: 'destructive'
             });
         } finally {
@@ -135,32 +142,20 @@ export default function Secretariat() {
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto print:hidden" translate="no">
-                    <TabsTrigger value="minutes" className="gap-2 py-3 text-[1.75rem] md:text-sm">
-                        <FileText className="h-8 w-8 md:h-4 md:w-4" />
+                    <TabsTrigger value="minutes" className="gap-2 py-3 text-[2.1875rem] md:text-lg">
+                        <FileText className="h-10 w-10 md:h-5 md:w-5" />
                         <span>Atas</span>
                     </TabsTrigger>
-                    <TabsTrigger value="baptism" className="gap-2 py-3 text-[1.75rem] md:text-sm">
-                        <Award className="h-8 w-8 md:h-4 md:w-4" />
-                        <span>Batismo</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="transfer" className="gap-2 py-3 text-[1.75rem] md:text-sm">
-                        <Send className="h-8 w-8 md:h-4 md:w-4" />
+                    <TabsTrigger value="transfer" className="gap-2 py-3 text-[2.1875rem] md:text-lg">
+                        <Send className="h-10 w-10 md:h-5 md:w-5" />
                         <span>Transferência</span>
                     </TabsTrigger>
-                    <TabsTrigger value="dedication" className="gap-2 py-3 text-[1.75rem] md:text-sm">
-                        <Baby className="h-8 w-8 md:h-4 md:w-4" />
-                        <span>Apresentação</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="roll" className="gap-2 py-3 text-[1.75rem] md:text-sm">
-                        <Users className="h-8 w-8 md:h-4 md:w-4" />
+                    <TabsTrigger value="roll" className="gap-2 py-3 text-[2.1875rem] md:text-lg">
+                        <Users className="h-10 w-10 md:h-5 md:w-5" />
                         <span>Rol</span>
                     </TabsTrigger>
-                    <TabsTrigger value="documents" className="gap-2 py-3 text-[1.75rem] md:text-sm">
-                        <FileText className="h-8 w-8 md:h-4 md:w-4" />
-                        <span>Salvos</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="idcard" className="gap-2 py-3 text-[1.75rem] md:text-sm">
-                        <CreditCard className="h-8 w-8 md:h-4 md:w-4" />
+                    <TabsTrigger value="idcard" className="gap-2 py-3 text-[2.1875rem] md:text-lg">
+                        <CreditCard className="h-10 w-10 md:h-5 md:w-5" />
                         <span>Carteirinha</span>
                     </TabsTrigger>
                 </TabsList>
@@ -187,16 +182,8 @@ export default function Secretariat() {
                         <MinutesTemplate canEdit={canEdit} />
                     </TabsContent>
 
-                    <TabsContent value="baptism" className="mt-0 space-y-6">
-                        <BaptismCertificate members={members} canEdit={canEdit} />
-                    </TabsContent>
-
                     <TabsContent value="transfer" className="mt-0 space-y-6">
                         <TransferLetter members={members} canEdit={canEdit} />
-                    </TabsContent>
-
-                    <TabsContent value="dedication" className="mt-0 space-y-6">
-                        <BabyDedicationCertificate members={members} canEdit={canEdit} />
                     </TabsContent>
 
                     <TabsContent value="roll" className="mt-0 space-y-6">
@@ -207,10 +194,6 @@ export default function Secretariat() {
                         ) : (
                             <MembersRoll members={members} />
                         )}
-                    </TabsContent>
-
-                    <TabsContent value="documents" className="mt-0 space-y-6">
-                        <SavedDocumentsList canEdit={canEdit} />
                     </TabsContent>
 
                     <TabsContent value="idcard" className="mt-0 space-y-6">
@@ -308,6 +291,9 @@ function MinutesTemplate({ canEdit }: { canEdit: boolean }) {
             </div>
 
             <div className="hidden print:block space-y-6 font-serif text-black">
+                <div className="flex justify-center mb-4">
+                    <img src="/logo-app.png?v=2" alt="Logo" className="w-16 h-16 object-contain" />
+                </div>
                 <div className="text-center mb-8">
                     <h3 className="text-xl font-bold">{title || 'Título da Ata'}</h3>
                     <p className="text-sm text-gray-600">
@@ -319,162 +305,6 @@ function MinutesTemplate({ canEdit }: { canEdit: boolean }) {
                 </div>
                 <div className="mt-20 pt-8 border-t border-black w-64 mx-auto text-center">
                     <p>Secretário(a)</p>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function BaptismCertificate({ members, canEdit }: { members: Member[], canEdit: boolean }) {
-    const [name, setName] = useState('');
-    const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [location, setLocation] = useState('');
-    const [pastorPresidente, setPastorPresidente] = useState('');
-    const [pastorCelebrante, setPastorCelebrante] = useState('');
-    const [selectedMemberId, setSelectedMemberId] = useState('');
-    const [saving, setSaving] = useState(false);
-    const [clearConfirm, setClearConfirm] = useState(false);
-    const { toast } = useToast();
-
-    const handleClear = () => setClearConfirm(true);
-    const executeClear = () => {
-        setName('');
-        setDate(format(new Date(), 'yyyy-MM-dd'));
-        setLocation('');
-        setPastorPresidente('');
-        setPastorCelebrante('');
-        setSelectedMemberId('');
-        toast({ title: 'Formulário limpo' });
-    };
-
-    const handleSave = async () => {
-        if (!name) {
-            toast({ title: 'Atenção', description: 'Preencha o nome do batizando.', variant: 'destructive' });
-            return;
-        }
-        try {
-            setSaving(true);
-            const dateStr = date ? format(new Date(date), "dd/MM/yyyy") : '___/___/_____';
-            const content = `CERTIFICADO DE BATISMO NAS ÁGUAS\n\nCertificamos que ${name} foi batizado(a) nas águas em nome do Pai, do Filho e do Espírito Santo, conforme mandamento do Senhor Jesus Cristo, escrito no evangelho de Mateus 28:19.\n\nData: ${dateStr}\nLocal: ${location || '___________________________'}\n\nPastor Presidente: ${pastorPresidente || '_________________'}\nPastor Celebrante: ${pastorCelebrante || '_________________'}`;
-
-            await documentsService.create({
-                title: `Certificado de Batismo - ${name}`,
-                description: content,
-                category: 'baptism',
-                file_url: 'text://' + name,
-                file_type: 'text/plain'
-            });
-            toast({ title: 'Sucesso', description: 'Certificado salvo!' });
-        } catch (error) {
-            console.error(error);
-            toast({ title: 'Erro ao salvar', variant: 'destructive' });
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const dateFormatted = date ? format(new Date(date), "dd / MM / yyyy") : '____ / ____ / ______';
-
-    return (
-        <div className="space-y-6" translate="no">
-            <div className="flex items-center justify-between border-b pb-6 mb-6">
-                <div className="flex-1 text-center">
-                    <h2 className="text-2xl font-bold"><span>Certificado de Batismo nas Águas</span></h2>
-                </div>
-                <div className="flex gap-2 print:hidden flex-shrink-0">
-                    {canEdit && (
-                        <>
-                            <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-2">
-                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                Salvar
-                            </Button>
-                            <Button variant="destructive" size="icon" onClick={handleClear} title="Limpar Formulário">
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                            <ConfirmDialog open={clearConfirm} onOpenChange={setClearConfirm} title="Limpar formulário" description="Tem certeza que deseja limpar o formulário?" onConfirm={executeClear} confirmLabel="Limpar" variant="destructive" />
-                        </>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid gap-4 print:hidden max-w-2xl mx-auto bg-muted/20 p-6 rounded-xl border border-primary/10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label><span>Selecionar Membro</span></Label>
-                        <Select value={selectedMemberId} disabled={!canEdit} onValueChange={(val) => {
-                            setSelectedMemberId(val);
-                            const m = members.find(x => x.id === val);
-                            if (m) setName(m.name);
-                        }}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Busque um membro..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {members.map(m => (
-                                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label><span>Nome do(a) Batizando(a)</span></Label>
-                        <Input placeholder="Nome completo" value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label><span>Data</span></Label>
-                        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label><span>Local</span></Label>
-                        <Input placeholder="Local da cerimônia" value={location} onChange={(e) => setLocation(e.target.value)} disabled={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label><span>Pastor Presidente</span></Label>
-                        <Input placeholder="Nome do Pastor Presidente" value={pastorPresidente} onChange={(e) => setPastorPresidente(e.target.value)} disabled={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label><span>Pastor Celebrante</span></Label>
-                        <Input placeholder="Nome do Pastor Celebrante" value={pastorCelebrante} onChange={(e) => setPastorCelebrante(e.target.value)} disabled={!canEdit} />
-                    </div>
-                </div>
-            </div>
-
-            {/* Certificado A4 paisagem - borda #1F4E79 */}
-            <div
-                className="mx-auto max-w-[11.69in] min-h-[8.27in] p-8 md:p-12 bg-white text-black shadow-xl rounded print:shadow-none print:max-w-none"
-                style={{ border: '3pt solid #1F4E79' }}
-            >
-                <div className="flex flex-col items-center justify-center text-center space-y-4 min-h-[7in]">
-                    <h1 className="text-3xl md:text-4xl font-bold uppercase" style={{ color: '#1F4E79' }}>
-                        Certificado de Batismo nas Águas
-                    </h1>
-                    <p className="text-lg">Certificamos que</p>
-                    <div className="border-b-2 border-black w-full max-w-md pb-1">
-                        <p className="text-xl md:text-2xl font-bold">{name || '______________________________________________'}</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Nome do(a) Batizando(a)</p>
-                    <p className="text-base md:text-lg leading-relaxed max-w-2xl px-4">
-                        foi batizado(a) nas águas em nome do Pai, do Filho e do Espírito Santo,
-                        conforme mandamento do Senhor Jesus Cristo, escrito no evangelho de Mateus 28:19.
-                    </p>
-                    <div className="space-y-2 pt-4">
-                        <p className="text-base">Data: {dateFormatted}</p>
-                        <p className="text-base">Local: {location || '___________________________________________'}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-12 w-full max-w-xl pt-12">
-                        <div className="text-center">
-                            <div className="border-t-2 border-black pt-2 mt-16">
-                                <p className="font-bold text-sm">{pastorPresidente || '_________________________________________'}</p>
-                                <p className="text-sm">Pastor Presidente</p>
-                            </div>
-                        </div>
-                        <div className="text-center">
-                            <div className="border-t-2 border-black pt-2 mt-16">
-                                <p className="font-bold text-sm">{pastorCelebrante || '_________________________________________'}</p>
-                                <p className="text-sm">Pastor Celebrante</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -580,6 +410,9 @@ function TransferLetter({ members, canEdit }: { members: Member[], canEdit: bool
             </div>
 
             <div className="flex flex-col max-w-2xl mx-auto font-serif leading-relaxed text-justify space-y-6 mt-12 text-black bg-white p-12 shadow-xl rounded-lg print:shadow-none print:p-0">
+                <div className="flex justify-center mb-6">
+                    <img src="/logo-app.png?v=2" alt="Logo" className="w-60 h-60 object-contain brightness-0" style={{ filter: 'brightness(0)' }} />
+                </div>
                 <h1 className="text-2xl font-bold text-center uppercase mb-12">Carta de Transferência</h1>
 
                 <p>A quem possa interessar,</p>
@@ -610,156 +443,9 @@ function TransferLetter({ members, canEdit }: { members: Member[], canEdit: bool
     );
 }
 
-function BabyDedicationCertificate({ members, canEdit }: { members: Member[], canEdit: boolean }) {
-    const [childName, setChildName] = useState('');
-    const [childBirthDate, setChildBirthDate] = useState('');
-    const [parentsName, setParentsName] = useState('');
-    const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [selectedMemberId, setSelectedMemberId] = useState('');
-    const [saving, setSaving] = useState(false);
-    const [clearConfirm, setClearConfirm] = useState(false);
-    const { toast } = useToast();
-
-    const handleClear = () => setClearConfirm(true);
-    const executeClear = () => {
-        setChildName('');
-        setChildBirthDate('');
-        setParentsName('');
-        setSelectedMemberId('');
-        setDate(format(new Date(), 'yyyy-MM-dd'));
-        toast({ title: 'Formulário limpo' });
-    };
-
-    const handleSave = async () => {
-        if (!childName || !parentsName) {
-            toast({ title: 'Atenção', description: 'Preencha o nome da criança e dos pais.', variant: 'destructive' });
-            return;
-        }
-        try {
-            setSaving(true);
-            const content = `CERTIFICADO DE APRESENTAÇÃO\n\nCertificamos que a criança ${childName}, nascida em ${childBirthDate ? format(new Date(childBirthDate), 'dd/MM/yyyy') : '___/___/___'}, filho(a) de ${parentsName}, foi apresentada ao Senhor em ${format(new Date(date), 'dd/MM/yyyy')}.`;
-
-            await documentsService.create({
-                title: `Apresentação - ${childName}`,
-                description: content,
-                category: 'dedication',
-                file_url: 'text://' + childName,
-                file_type: 'text/plain'
-            });
-            toast({ title: 'Sucesso', description: 'Certificado salvo!' });
-        } catch (error) {
-            console.error(error);
-            toast({ title: 'Erro ao salvar', variant: 'destructive' });
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    return (
-        <div className="space-y-6" translate="no">
-            <div className="flex items-center justify-between border-b pb-6 mb-6">
-                <div className="flex-1 text-center">
-                    <h2 className="text-2xl font-bold"><span>Certificado de Apresentação de Crianças</span></h2>
-                </div>
-                <div className="flex gap-2 print:hidden flex-shrink-0">
-                    {canEdit && (
-                        <>
-                            <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-2">
-                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                Salvar
-                            </Button>
-                            <Button variant="destructive" size="icon" onClick={handleClear} title="Limpar Formulário">
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                            <ConfirmDialog open={clearConfirm} onOpenChange={setClearConfirm} title="Limpar formulário" description="Tem certeza que deseja limpar o formulário?" onConfirm={executeClear} confirmLabel="Limpar" variant="destructive" />
-                        </>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid gap-4 print:hidden max-w-2xl mx-auto bg-muted/20 p-6 rounded-xl border border-primary/10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label><span>Selecionar Pais (Membros)</span></Label>
-                        <Select value={selectedMemberId} disabled={!canEdit} onValueChange={(val) => {
-                            setSelectedMemberId(val);
-                            const m = members.find(x => x.id === val);
-                            if (m) setParentsName(m.name);
-                        }}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Busque um responsável..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {members.map(m => (
-                                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Nome da Criança</Label>
-                        <Input placeholder="Nome completo" value={childName} onChange={(e) => setChildName(e.target.value)} disabled={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Data de Nasc. da Criança</Label>
-                        <Input type="date" value={childBirthDate} onChange={(e) => setChildBirthDate(e.target.value)} disabled={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Nome dos Pais</Label>
-                        <Input placeholder="Nome dos pais" value={parentsName} onChange={(e) => setParentsName(e.target.value)} disabled={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Data da Apresentação</Label>
-                        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={!canEdit} />
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col items-center justify-center min-h-[600px] border-4 border-dotted border-blue-200 p-12 text-center font-serif bg-blue-50/10 text-black shadow-xl rounded-lg max-w-4xl mx-auto mt-6 print:shadow-none print:mt-0 print:bg-transparent">
-                <div className="space-y-8">
-                    <Baby className="h-16 w-16 mx-auto text-blue-300" />
-                    <h1 className="text-3xl font-bold uppercase tracking-widest text-gray-800"><span>Certificado de Apresentação</span></h1>
-                    <p className="text-xl italic">Certificamos que a criança</p>
-
-                    <h2 className="text-4xl font-bold text-blue-600 font-script px-8">
-                        {childName || 'Nome da Criança'}
-                    </h2>
-
-                    <p className="text-lg">
-                        Nascida em {childBirthDate ? format(new Date(childBirthDate), 'dd/MM/yyyy') : '___/___/___'}
-                    </p>
-
-                    <p className="text-lg">Filho(a) de</p>
-                    <h3 className="text-2xl font-semibold border-b border-gray-300 pb-1 px-4 inline-block">
-                        {parentsName || 'Nome dos Pais'}
-                    </h3>
-
-                    <p className="text-xl leading-relaxed max-w-2xl mx-auto mt-6">
-                        Foi apresentada ao Senhor nesta igreja, conforme o exemplo bíblico,
-                        sendo consagrada a Deus para uma vida abençoada.
-                    </p>
-
-                    <p className="text-lg mt-8 text-gray-600">
-                        "Educa a criança no caminho em que deve andar; e até quando envelhecer não se desviará dele." (Provérbios 22:6)
-                    </p>
-
-                    <p className="text-md mt-4">
-                        Em {date ? format(new Date(date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : '___/___/___'}
-                    </p>
-
-                    <div className="flex justify-center w-full mt-20">
-                        <div className="border-t border-black pt-2 px-12">
-                            <p>Pastor Celebrante</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 function MembersRoll({ members }: { members: Member[] }) {
     const [filter, setFilter] = useState('');
+    const { toast } = useToast();
 
     const filtered = members.filter(m =>
         m.name.toLowerCase().includes(filter.toLowerCase()) ||
@@ -835,6 +521,9 @@ function MembersRoll({ members }: { members: Member[] }) {
 
             <div className="print:block">
                 <div className="hidden print:block text-center mb-8">
+                    <div className="flex justify-center mb-4">
+                        <img src="/logo-app.png?v=2" alt="Logo" className="w-16 h-16 object-contain" />
+                    </div>
                     <h1 className="text-2xl font-bold uppercase text-black">Rol Geral de Membros e Congregados</h1>
                     <p className="text-sm text-gray-500">Gerado em {format(new Date(), "dd/MM/yyyy", { locale: ptBR })}</p>
                     <div className="flex justify-center gap-8 mt-4 text-sm text-black">
@@ -883,12 +572,28 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
         birthDate: '',
         baptismDate: '',
         role: 'Membro',
-        cnpj: '00.000.000/0001-00',
+        cnpj: DEFAULT_CNPJ,
         churchAddress: 'Av. Principal, 1000 - Centro',
-        churchName: 'Igreja Comunidade Cristã'
+        churchName: DEFAULT_CHURCH_NAME
     });
     const [saving, setSaving] = useState(false);
+    const [nameFontSize, setNameFontSize] = useState(14);
+    const [photoDataUrl, setPhotoDataUrl] = useState<string>('');
+    const nameContainerRef = useRef<HTMLDivElement>(null);
+    const nameTextRef = useRef<HTMLParagraphElement>(null);
     const { toast } = useToast();
+
+    useLayoutEffect(() => {
+        if (!nameContainerRef.current || !nameTextRef.current || !formData.name) return;
+        const containerWidth = nameContainerRef.current.clientWidth;
+        let size = 20;
+        nameTextRef.current.style.fontSize = `${size}px`;
+        while (nameTextRef.current.scrollWidth > containerWidth && size > 8) {
+            size -= 1;
+            nameTextRef.current.style.fontSize = `${size}px`;
+        }
+        setNameFontSize(size);
+    }, [formData.name]);
 
     const roles = [
         'Pastor',
@@ -919,6 +624,34 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
         }
     }, [selectedMemberId]);
 
+    useEffect(() => {
+        const url = selectedMember?.photoUrl;
+        if (!url) {
+            setPhotoDataUrl('');
+            return;
+        }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                    setPhotoDataUrl(canvas.toDataURL('image/jpeg', 0.9));
+                } else {
+                    setPhotoDataUrl(url);
+                }
+            } catch {
+                setPhotoDataUrl(url);
+            }
+        };
+        img.onerror = () => setPhotoDataUrl(url);
+        img.src = url;
+    }, [selectedMember?.photoUrl, selectedMember?.id]);
+
     const handleClear = () => {
         setSelectedMemberId('');
         setFormData({
@@ -926,9 +659,9 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
             birthDate: '',
             baptismDate: '',
             role: 'Membro',
-            cnpj: '00.000.000/0001-00',
+            cnpj: DEFAULT_CNPJ,
             churchAddress: 'Av. Principal, 1000 - Centro',
-            churchName: 'Igreja Comunidade Cristã'
+            churchName: DEFAULT_CHURCH_NAME
         });
     };
 
@@ -1061,10 +794,39 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
                         />
                     </div>
                     <div className="space-y-2">
+                        <Label>Tamanho do nome na carteirinha</Label>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() => setNameFontSize(s => Math.max(8, s - 1))}
+                                disabled={!formData.name}
+                                title="Diminuir fonte"
+                            >
+                                <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm tabular-nums min-w-[2rem]">{nameFontSize}px</span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() => setNameFontSize(s => Math.min(24, s + 1))}
+                                disabled={!formData.name}
+                                title="Aumentar fonte"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
                         <Label>CNPJ da Igreja</Label>
                         <Input
+                            placeholder="00.000.000/0001-00"
                             value={formData.cnpj}
-                            onChange={e => setFormData({ ...formData, cnpj: e.target.value })}
+                            onChange={e => setFormData({ ...formData, cnpj: maskCNPJ(e.target.value) })}
                         />
                     </div>
                     <div className="space-y-2">
@@ -1093,9 +855,10 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
                 {/* Frente */}
                 <div className="w-[400px] h-[250px] bg-white border-2 border-primary/20 rounded-xl overflow-hidden shadow-xl print:shadow-none flex relative text-black text-left id-card-print-piece">
                     <div className="w-1/3 bg-primary/5 border-r p-4 flex flex-col items-center justify-center gap-3">
+                        <img src="/logo-app.png?v=2" alt="Logo" className="w-[120px] h-[120px] object-contain flex-shrink-0 text-primary" style={{ filter: 'brightness(0) opacity(0.9)' }} />
                         <div className="w-24 h-24 rounded-lg bg-muted flex items-center justify-center border-2 border-primary/10 overflow-hidden">
-                            {selectedMember?.photoUrl ? (
-                                <img src={selectedMember.photoUrl} className="w-full h-full object-cover" />
+                            {(photoDataUrl || selectedMember?.photoUrl) ? (
+                                <img src={photoDataUrl || selectedMember?.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
                             ) : (
                                 <Users className="h-12 w-12 text-muted-foreground/30" />
                             )}
@@ -1106,9 +869,9 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
                     </div>
                     <div className="w-2/3 p-4 flex flex-col justify-between">
                         <div className="flex justify-between items-start">
-                            <div className="space-y-0.5">
+                            <div ref={nameContainerRef} className="space-y-0.5 min-w-0 flex-1 overflow-hidden">
                                 <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider"><span>Nome do Membro</span></h4>
-                                <p className="text-sm font-black uppercase text-primary leading-tight line-clamp-2"><span>{formData.name || 'NOME EXEMPLO'}</span></p>
+                                <p ref={nameTextRef} style={{ fontSize: nameFontSize }} className="font-black uppercase text-primary leading-tight whitespace-nowrap overflow-hidden text-ellipsis"><span>{formData.name || ''}</span></p>
                             </div>
                         </div>
 
@@ -1123,9 +886,9 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
                             </div>
                         </div>
 
-                        <div className="mt-2 p-2 bg-primary/10 rounded border border-primary/20 text-left">
-                            <h4 className="text-[8px] font-bold text-primary uppercase">Função Eclesiástica</h4>
-                            <p className="text-xs font-black uppercase tracking-wide">{formData.role}</p>
+                        <div className="mt-1.5 py-1.5 px-2 bg-primary/10 rounded border border-primary/20 text-left">
+                            <p className="text-[8px] font-bold text-primary uppercase leading-none">Função Eclesiástica</p>
+                            <p className="text-[10px] font-black uppercase tracking-wide leading-tight mt-0.5">{formData.role}</p>
                         </div>
 
                         <div className="mt-4 flex flex-col items-center">
@@ -1136,30 +899,25 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
                 </div>
 
                 {/* Verso */}
-                <div className="w-[400px] h-[250px] bg-white border-2 border-primary/20 rounded-xl overflow-hidden shadow-xl print:shadow-none flex flex-col items-center p-4 relative text-black text-center id-card-print-piece">
-                    <div className="w-full flex justify-center mb-2">
-                        <div className="h-10 w-auto">
-                            <div className="text-xs font-black uppercase tracking-tighter text-primary">{formData.churchName}</div>
-                        </div>
+                <div className="w-[400px] h-[250px] bg-white border-2 border-primary/20 rounded-xl overflow-hidden shadow-xl print:shadow-none flex flex-col items-center p-2 relative text-black text-center id-card-print-piece">
+                    <div className="w-full flex flex-col items-center mb-0.5">
+                        <img src="/logo-app.png?v=2" alt="Logo" className="w-[84px] h-[84px] object-contain mb-0.5 text-primary" style={{ filter: 'brightness(0) opacity(0.9)' }} />
+                        <div className="text-[10px] font-black uppercase tracking-tighter text-primary leading-tight">{formData.churchName}</div>
                     </div>
 
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-bold uppercase">CNPJ: {formData.cnpj}</p>
-                        <p className="text-[9px] text-muted-foreground leading-tight">{formData.churchAddress}</p>
+                    <div className="space-y-0.5">
+                        <p className="text-[9px] font-bold uppercase leading-tight">CNPJ: {formData.cnpj}</p>
+                        <p className="text-[8px] text-muted-foreground leading-tight">{formData.churchAddress}</p>
                     </div>
 
-                    <div className="flex-1 w-full flex flex-col justify-center gap-6 mt-4">
-                        <div className="flex flex-col items-center">
-                            <div className="w-48 border-t border-black/40"></div>
-                            <p className="text-[9px] font-bold uppercase mt-1">Pastor Presidente</p>
-                        </div>
+                    <div className="flex-1 w-full flex flex-col justify-center gap-2 mt-1 min-h-0">
                         <div className="flex flex-col items-center">
                             <div className="w-40 border-t border-black/40"></div>
-                            <p className="text-[9px] font-bold uppercase mt-1">Secretaria Geral</p>
+                            <p className="text-[8px] font-bold uppercase mt-0.5 leading-none">Pastor Presidente</p>
                         </div>
                     </div>
 
-                    <div className="w-full mt-4 text-[8px] text-muted-foreground uppercase font-medium">
+                    <div className="w-full mt-1 text-[7px] text-muted-foreground uppercase font-medium leading-tight">
                         Esta credencial é de uso pessoal e intransferível.
                     </div>
                 </div>
@@ -1221,9 +979,11 @@ function SavedDocumentsList({ canEdit }: { canEdit: boolean }) {
             />
             <h2 className="text-2xl font-bold border-b pb-4"><span>Documentos Salvos</span></h2>
             {docs.length === 0 ? (
-                <div className="text-center py-20 text-muted-foreground bg-muted/10 rounded-lg border-2 border-dashed">
-                    <span>Nenhum documento salvo encontrado.</span>
-                </div>
+                <EmptyState
+                    icon={FileText}
+                    title="Nenhum documento salvo"
+                    description="Os documentos que você salvar aparecerão aqui."
+                />
             ) : (
                 <div className="overflow-x-auto min-w-0">
                 <Table>

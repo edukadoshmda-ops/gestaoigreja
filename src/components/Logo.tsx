@@ -1,36 +1,34 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import logoImage from '@/assets/logo.png';
 import { useTheme } from '@/contexts/ThemeContext';
+
+// Logo em public/logo-app.png (evita cache vazio)
+const LOGO_SRC = '/logo-app.png?v=2';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showText?: boolean;
 }
 
+// Tamanhos da logo (reduzidos 20% + 10% + 10%)
+const sizeStyles: Record<string, { width: string; height: string }> = {
+  sm: { width: '7.01rem', height: '7.01rem' },
+  md: { width: '12.27rem', height: '12.27rem' },
+  lg: { width: '21.02rem', height: '21.02rem' },
+  xl: { width: '33.29rem', height: '33.29rem' },
+};
+
 export function Logo({ size = 'md', showText = true }: LogoProps) {
-  let currentTheme;
-  try {
-    const themeContext = useTheme();
-    currentTheme = themeContext?.currentTheme;
-  } catch (e) {
-    console.error('Logo: Error getting theme!', e);
-  }
-
-  const safeTheme = currentTheme || { id: 'default', hueShift: '0deg' };
-  console.log('Logo: rendering', { size, theme: safeTheme.id });
-
-  const sizeClasses = {
-    sm: 'h-14 w-14',
-    md: 'h-28 w-28',
-    lg: 'h-48 w-48',
-    xl: 'h-76 w-76',
-  };
+  const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const { currentTheme } = useTheme();
+  const logoColor = currentTheme?.primaryHex || '#F97316';
 
   const textSizeClasses = {
-    sm: 'text-xl',
-    md: 'text-2xl',
-    lg: 'text-4xl',
-    xl: 'text-6xl',
+    sm: 'text-[1.38rem] md:text-[1.24rem]',
+    md: 'text-[1.65rem]',
+    lg: 'text-[2.48rem]',
+    xl: 'text-[4.13rem]',
   };
 
   return (
@@ -38,29 +36,48 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
       "flex items-center",
       size === 'lg' ? "flex-col text-center gap-4" : "flex-row gap-3"
     )}>
-      {/* Logo Image - Nítida e 20% maior */}
-      <div className="relative group flex items-center justify-center">
-        <img
-          src={logoImage}
-          alt="Church App Logo"
-          className={cn(
-            sizeClasses[size],
-            "object-contain transition-all duration-500 z-10"
-          )}
+      <div
+        className="flex items-center justify-center rounded-xl transition-all duration-500 z-10 overflow-hidden"
+        style={{ ...sizeStyles[size] }}
+      >
+        <div
+          className="w-full h-full relative"
           style={{
-            filter: safeTheme.id === 'soberania-preto'
-              ? 'grayscale(1) brightness(0)'
-              : `hue-rotate(${safeTheme.hueShift || '0deg'}) brightness(1)`
+            backgroundColor: logoColor,
+            WebkitMaskImage: `url(${LOGO_SRC})`,
+            maskImage: `url(${LOGO_SRC})`,
+            WebkitMaskSize: 'contain',
+            maskSize: 'contain',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+            transition: 'background-color 0.5s ease',
+            minHeight: '100%',
+            minWidth: '100%',
           }}
-        />
+          title="Gestão Igreja"
+        >
+          <img
+            src={LOGO_SRC}
+            alt="Gestão Igreja"
+            className="w-full h-full object-contain opacity-0 pointer-events-none"
+            style={{ maxWidth: '100%', maxHeight: '100%' }}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
+          />
+        </div>
       </div>
 
       {showText && (
         <div className="flex flex-col gap-0.5">
-          <div className={cn(
-            "font-black tracking-tight leading-none flex items-center gap-1.5 text-primary",
-            textSizeClasses[size]
-          )}>
+          <div 
+            className={cn(
+              "font-black tracking-tight leading-none flex items-center gap-1.5",
+              textSizeClasses[size]
+            )}
+            style={{ color: logoColor, transition: 'color 0.5s ease' }}
+          >
             <span>Gestão</span>
             <span>Igreja</span>
           </div>
@@ -73,5 +90,4 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
       )}
     </div>
   );
-
 }

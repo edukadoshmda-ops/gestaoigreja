@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import {
   Users, Heart, User, Zap, Star, Baby, HandHelping,
   Music, Palette, Video, Globe, Church, Trash2, UserPlus
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Ministry } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,9 +20,19 @@ interface MinistryCardProps {
 }
 
 export function MinistryCard({ ministry, onDelete, onAddMember }: MinistryCardProps) {
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const Icon = iconMap[ministry.icon] || Church;
   const { user } = useAuth();
   const isAdmin = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' || user?.role === 'lider_ministerio';
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    onDelete?.(ministry.id);
+  };
 
   return (
     <Card
@@ -35,20 +47,26 @@ export function MinistryCard({ ministry, onDelete, onAddMember }: MinistryCardPr
           </div>
           <div className="flex gap-1">
             {isAdmin && onDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-all rounded-full"
-                title="Excluir Ministério"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm(`Deseja realmente excluir o ministério ${ministry.name}?`)) {
-                    onDelete(ministry.id);
-                  }
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-all rounded-full"
+                  title="Excluir Ministério"
+                  onClick={handleDeleteClick}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <ConfirmDialog
+                  open={deleteConfirm}
+                  onOpenChange={setDeleteConfirm}
+                  title="Excluir ministério"
+                  description={`Deseja realmente excluir o ministério ${ministry.name}?`}
+                  onConfirm={handleConfirmDelete}
+                  confirmLabel="Excluir"
+                  variant="destructive"
+                />
+              </>
             )}
           </div>
         </div>

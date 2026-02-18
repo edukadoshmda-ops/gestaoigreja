@@ -28,38 +28,49 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { discipleshipService } from '@/services/discipleship.service';
 import { membersService } from '@/services/members.service';
 import { Member } from '@/types';
+import { EmptyState } from '@/components/EmptyState';
 
 export default function Discipleship() {
+    useDocumentTitle('Discipulado');
     const [discipleships, setDiscipleships] = useState<any[]>([]);
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
     const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
     const [stats, setStats] = useState({ active: 0, completed: 0, total: 0 });
+    const [error, setError] = useState<string | null>(null);
 
-    const { user } = useAuth();
+    const { user, churchId } = useAuth();
+    const effectiveChurchId = churchId ?? user?.churchId;
     const { toast } = useToast();
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [effectiveChurchId]);
 
     async function loadData() {
         try {
+            setError(null);
             setLoading(true);
             const [dsData, membersData, statsData] = await Promise.all([
                 discipleshipService.getAll(),
-                membersService.getAll(),
+                membersService.getAll(effectiveChurchId),
                 discipleshipService.getStatistics().catch(() => ({ active: 0, completed: 0, total: 0 }))
             ]);
 
             setDiscipleships(dsData || []);
             setMembers(membersData as any || []);
             setStats(statsData as any);
-        } catch (error) {
-            console.error('Error loading data:', error);
+        } catch (err: any) {
+            console.error('Error loading data:', err);
+            setDiscipleships([]);
+            setMembers([]);
+            const msg = err?.message || '';
+            const isSessionOrPerm = /session|permission|RLS|401|403|PGRST/i.test(msg) || msg.includes('fetch');
+            setError(isSessionOrPerm ? 'Sessão expirada ou sem permissão.' : (msg || 'Não foi possível carregar.'));
             toast({
                 title: 'Erro',
                 description: 'Não foi possível carregar os dados de discipulado.',
@@ -106,8 +117,8 @@ export default function Discipleship() {
         }
     };
 
-    const GROWTH_STAGES = [
-        { id: 'batismo', label: 'Batismo', icon: Heart },
+    const GROWTH_STAGES: { id: string; label: string; icon?: React.ComponentType<{ className?: string }> }[] = [
+        { id: 'batismo', label: 'Batismo' },
         { id: 'curso', label: 'Curso de Membro', icon: Info },
         { id: 'encontro', label: 'Encontro', icon: Users },
         { id: 'escola', label: 'Escola de Líderes', icon: ChevronRight },
@@ -144,6 +155,14 @@ export default function Discipleship() {
         }
     };
 
+    if (error && discipleships.length === 0 && !loading) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12">
+                <p className="text-muted-foreground mb-4">{error}</p>
+                <Button onClick={() => loadData()}>Tentar novamente</Button>
+            </div>
+        );
+    }
     if (loading) {
         return (
             <div className="flex items-center justify-center p-12">
@@ -257,10 +276,14 @@ export default function Discipleship() {
             {/* Grid de Discipulados */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-2">
                 {discipleships.length === 0 ? (
-                    <div className="col-span-full py-16 text-center border-2 border-dashed rounded-3xl border-primary/10">
-                        <Heart className="h-16 w-16 text-primary/20 mx-auto mb-4" />
-                        <h3 className="text-xl font-bold">Nenhum discipulado ativo</h3>
-                        <p className="text-muted-foreground">Inicie hoje mesmo o acompanhamento de novos membros!</p>
+                    <div className="col-span-full">
+                        <EmptyState
+                            icon={Heart}
+                            title="Nenhum discipulado ativo"
+                            description="Inicie hoje mesmo o acompanhamento de novos membros!"
+                            actionLabel="Iniciar discipulado"
+                            onAction={() => setIsNewDialogOpen(true)}
+                        />
                     </div>
                 ) : (
                     discipleships.map((ds) => (
@@ -321,7 +344,7 @@ export default function Discipleship() {
                                                             : 'bg-muted/50 text-muted-foreground border-transparent hover:border-primary/20 hover:bg-muted'
                                                         }`}
                                                 >
-                                                    <stage.icon className={`h-3 w-3 ${isCompleted ? 'text-white' : 'text-muted-foreground/50'}`} />
+                                                    {stage.icon && <stage.icon className={`h-3 w-3 ${isCompleted ? 'text-white' : 'text-muted-foreground/50'}`} />}
                                                     {stage.label}
                                                 </button>
                                             );

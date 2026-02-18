@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { DEFAULT_CHURCH_NAME, DEFAULT_CNPJ } from '@/lib/constants';
+import { churchesService } from '@/services/churches.service';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { financialService, CreateFinancialTransactionDTO } from '@/services/financial.service';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/EmptyState';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 // Categorias para Entradas
 const INCOME_CATEGORIES = [
@@ -88,16 +93,16 @@ const EXPENSE_CATEGORIES = [
 ];
 
 const DailyCash = () => {
-  console.log('%c CAIXA DIARIO: COMPONENTE INVOCADO ', 'background: blue; color: white; font-weight: bold; padding: 5px;');
-
+  useDocumentTitle('Caixa Diário');
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, viewingChurch } = useAuth();
   const { toast } = useToast();
 
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [amountStr, setAmountStr] = useState('');
   const [newTransaction, setNewTransaction] = useState<Partial<CreateFinancialTransactionDTO>>({
     type: 'entrada',
@@ -134,7 +139,6 @@ const DailyCash = () => {
   const { data: transactions = [], isLoading, error } = useQuery({
     queryKey: ['daily-cash', selectedDate],
     queryFn: async () => {
-      console.log('DailyCash: Carregando dados para', selectedDate);
       if (!selectedDate) return [];
       const date = new Date(selectedDate + 'T12:00:00');
       if (isNaN(date.getTime())) return [];
@@ -184,6 +188,214 @@ const DailyCash = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      // Buscar informações da igreja
+      let churchName = viewingChurch?.name || DEFAULT_CHURCH_NAME;
+      let churchCNPJ = DEFAULT_CNPJ;
+      
+      if (user?.churchId) {
+        try {
+          const church = await churchesService.getById(user.churchId);
+          if (church?.name) churchName = church.name;
+          // Se houver CNPJ no banco, usar; senão usar o padrão
+          if ((church as any)?.cnpj) churchCNPJ = (church as any).cnpj;
+        } catch (e) {
+          console.warn('Erro ao buscar dados da igreja:', e);
+        }
+      }
+
+      const formattedDate = format(new Date(selectedDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+      const exportDate = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+
+      // Criar HTML formatado para Excel
+      let htmlContent = `
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<!--[if gte mso 9]>
+<xml>
+  <x:ExcelWorkbook>
+    <x:ExcelWorksheets>
+      <x:ExcelWorksheet>
+        <x:Name>Caixa Diário</x:Name>
+        <x:WorksheetOptions>
+          <x:Print>
+            <x:ValidPrinterInfo/>
+          </x:Print>
+        </x:WorksheetOptions>
+      </x:ExcelWorksheet>
+    </x:ExcelWorksheets>
+  </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+<style>
+  .header {
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    background-color: #4A5568;
+    color: white;
+  }
+  .church-info {
+    font-size: 14px;
+    text-align: center;
+    padding: 5px;
+    background-color: #E2E8F0;
+  }
+  .summary-row {
+    font-weight: bold;
+    background-color: #F7FAFC;
+  }
+  .entrada {
+    background-color: #C6F6D5;
+    color: #22543D;
+    font-weight: bold;
+  }
+  .saida {
+    background-color: #FED7D7;
+    color: #742A2A;
+    font-weight: bold;
+  }
+  .saldo-positivo {
+    background-color: #BEE3F8;
+    color: #2C5282;
+    font-weight: bold;
+  }
+  .saldo-negativo {
+    background-color: #FED7D7;
+    color: #742A2A;
+    font-weight: bold;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: Arial, sans-serif;
+  }
+  th {
+    background-color: #4A5568;
+    color: white;
+    font-weight: bold;
+    padding: 10px;
+    border: 1px solid #2D3748;
+    text-align: left;
+  }
+  td {
+    padding: 8px;
+    border: 1px solid #CBD5E0;
+  }
+  .valor-entrada {
+    color: #22543D;
+    font-weight: bold;
+  }
+  .valor-saida {
+    color: #742A2A;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+  <table>
+    <tr>
+      <td colspan="6" class="header">RELATÓRIO DE CAIXA DIÁRIO</td>
+    </tr>
+    <tr>
+      <td colspan="6" class="church-info">
+        <strong>Logo da Igreja:</strong> ${churchName}<br>
+        <strong>Igreja:</strong> ${churchName}<br>
+        <strong>CNPJ:</strong> ${churchCNPJ}<br>
+        <strong>Data do Relatório:</strong> ${formattedDate}<br>
+        <strong>Gerado em:</strong> ${exportDate}
+      </td>
+    </tr>
+    <tr>
+      <td colspan="6" style="height: 10px;"></td>
+    </tr>
+    <tr>
+      <th>Horário</th>
+      <th>Descrição</th>
+      <th>Categoria</th>
+      <th>Tipo</th>
+      <th style="text-align: right;">Valor</th>
+      <th style="text-align: right;">Saldo Acumulado</th>
+    </tr>`;
+
+      let runningBalance = 0;
+      transactions.forEach((transaction) => {
+        const isEntrada = transaction.type === 'entrada';
+        runningBalance += isEntrada ? transaction.amount : -transaction.amount;
+        
+        const timeStr = transaction.created_at 
+          ? format(new Date(transaction.created_at), 'HH:mm')
+          : '--:--';
+        
+        const rowClass = isEntrada ? 'entrada' : 'saida';
+        const valorClass = isEntrada ? 'valor-entrada' : 'valor-saida';
+        const valorPrefix = isEntrada ? '+' : '-';
+        const saldoClass = runningBalance >= 0 ? 'saldo-positivo' : 'saldo-negativo';
+
+        const valorFormatado = formatCurrency(transaction.amount);
+        const saldoFormatado = formatCurrency(runningBalance);
+        
+        htmlContent += `
+    <tr class="${rowClass}">
+      <td>${timeStr}</td>
+      <td>${(transaction.description || 'Sem descrição').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+      <td>${transaction.category.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+      <td>${isEntrada ? 'Entrada' : 'Saída'}</td>
+      <td style="text-align: right;" class="${valorClass}">${valorPrefix}${valorFormatado}</td>
+      <td style="text-align: right;" class="${saldoClass}">${saldoFormatado}</td>
+    </tr>`;
+      });
+
+      // Linha de totais
+      const totalEntradasFormatado = formatCurrency(totals.income);
+      const totalSaidasFormatado = formatCurrency(totals.expense);
+      const saldoFormatado = formatCurrency(balance);
+      const saldoColor = balance >= 0 ? '#2C5282' : '#742A2A';
+      
+      htmlContent += `
+    <tr class="summary-row">
+      <td colspan="4" style="text-align: right; font-weight: bold;">TOTAIS:</td>
+      <td colspan="2" style="text-align: right;">
+        <span style="color: #22543D; font-weight: bold;">Entradas: ${totalEntradasFormatado}</span><br>
+        <span style="color: #742A2A; font-weight: bold;">Saídas: ${totalSaidasFormatado}</span><br>
+        <span style="color: ${saldoColor}; font-weight: bold;">Saldo do Dia: ${saldoFormatado}</span>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      // Criar blob e fazer download
+      const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileName = `caixa_diario_${selectedDate.replace(/-/g, '_')}.xls`;
+      link.href = url;
+      link.download = fileName;
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Relatório Exportado",
+        description: `O arquivo ${fileName} foi baixado com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao exportar relatório.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -247,9 +459,11 @@ const DailyCash = () => {
     setIsAddModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este lançamento?')) {
-      deleteMutation.mutate(id);
+  const handleDelete = (id: string) => setDeleteConfirm(id);
+  const executeDelete = () => {
+    if (deleteConfirm) {
+      deleteMutation.mutate(deleteConfirm);
+      setDeleteConfirm(null);
     }
   };
 
@@ -275,6 +489,7 @@ const DailyCash = () => {
 
   return (
     <div key="daily-cash-content" className="container mx-auto p-4 space-y-6 print:p-0 print:max-w-none" translate="no" >
+      <ConfirmDialog open={!!deleteConfirm} onOpenChange={(o) => !o && setDeleteConfirm(null)} title="Excluir lançamento" description="Tem certeza que deseja excluir este lançamento?" onConfirm={executeDelete} confirmLabel="Excluir" variant="destructive" />
       {/* Header & Controls - Hidden on Print */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
         <div translate="no">
@@ -399,7 +614,7 @@ const DailyCash = () => {
             <Button variant="outline" size="icon" onClick={handlePrint} title="Imprimir">
               <Printer className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={handlePrint} title="Salvar como PDF">
+            <Button variant="outline" size="icon" onClick={handleExportExcel} title="Exportar Excel com Cores">
               <FileDown className="h-4 w-4" />
             </Button>
           </div>
@@ -467,6 +682,15 @@ const DailyCash = () => {
           <CardTitle><span>Transações</span></CardTitle>
         </CardHeader>
         <CardContent className="print:p-0">
+          {transactions.length === 0 ? (
+            <div className="print:hidden">
+              <EmptyState
+                icon={DollarSign}
+                title="Nenhuma transação nesta data"
+                description="Adicione uma entrada ou saída usando o botão acima."
+              />
+            </div>
+          ) : (
           <div className="overflow-x-auto min-w-0">
           <Table>
             <TableHeader translate="no">
@@ -480,13 +704,7 @@ const DailyCash = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    <span>Nenhuma transação encontrada para esta data.</span>
-                  </TableCell>
-                </TableRow>
-              ) : (
+              {
                 transactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>
@@ -537,10 +755,11 @@ const DailyCash = () => {
                     </TableCell>
                   </TableRow>
                 ))
-              )}
+              }
             </TableBody>
           </Table>
           </div>
+          )}
         </CardContent>
       </Card>
 

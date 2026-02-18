@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { membersService } from '@/services/members.service';
 import { cellsService } from '@/services/cells.service';
 import { ministriesService } from '@/services/ministries.service';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,8 +43,10 @@ export function AddMemberDialog({
     const [currentMembers, setCurrentMembers] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [processing, setProcessing] = useState<string | null>(null);
+    const [removeConfirm, setRemoveConfirm] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: '', memberName: '' });
     const { toast } = useToast();
-    const { user } = useAuth();
+    const { user, churchId } = useAuth();
+    const effectiveChurchId = churchId ?? user?.churchId;
 
     // Permissions check
     const canManage = (user?.role === 'admin' || user?.role === 'secretario' || user?.role === 'pastor' ||
@@ -60,7 +63,7 @@ export function AddMemberDialog({
     async function loadMembers() {
         try {
             setLoading(true);
-            const data = await membersService.getAll();
+            const data = await membersService.getAll(effectiveChurchId);
             setMembers(data || []);
         } catch (error) {
             console.error('Erro ao carregar pessoas:', error);
@@ -137,8 +140,11 @@ export function AddMemberDialog({
             return;
         }
 
-        if (!confirm(`Deseja remover ${memberName} de ${targetName}?`)) return;
+        setRemoveConfirm({ open: true, memberId, memberName });
+    };
 
+    const executeRemove = async () => {
+        const { memberId, memberName } = removeConfirm;
         try {
             setProcessing(memberId);
             if (type === 'cell') {
@@ -162,6 +168,7 @@ export function AddMemberDialog({
             });
         } finally {
             setProcessing(null);
+            setRemoveConfirm(prev => ({ ...prev, open: false }));
         }
     };
 
@@ -171,6 +178,16 @@ export function AddMemberDialog({
     );
 
     return (
+        <>
+        <ConfirmDialog
+            open={removeConfirm.open}
+            onOpenChange={(o) => setRemoveConfirm(prev => ({ ...prev, open: o }))}
+            title="Remover membro"
+            description={`Deseja remover ${removeConfirm.memberName} de ${targetName}?`}
+            onConfirm={executeRemove}
+            confirmLabel="Remover"
+            variant="destructive"
+        />
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="w-screen h-screen sm:w-[95vw] sm:max-w-md sm:h-auto sm:max-h-[90vh] overflow-hidden gap-0 p-0 rounded-none sm:rounded-lg sm:p-0">
                 <DialogHeader className="p-6 pb-0">
@@ -282,5 +299,6 @@ export function AddMemberDialog({
                 </div>
             </DialogContent>
         </Dialog>
+        </>
     );
 }

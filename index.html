@@ -4,11 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Igreja" />
   <meta name="theme-color" content="#f97316" />
+  <meta name="msapplication-TileColor" content="#f97316" />
+  <meta name="msapplication-tap-highlight" content="no" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -16,11 +19,28 @@
   <link rel="apple-touch-icon" href="/placeholder.svg" />
   <meta name="google" content="notranslate" />
   <title>Gestão Igreja</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { margin: 0; min-height: 100vh; background: #f8fafc; font-family: system-ui, sans-serif; }
+    #root { min-height: 100vh; }
+    #root:empty::after { content: "Carregando..."; display: flex; align-items: center; justify-content: center; min-height: 100vh; color: #64748b; font-size: 1.125rem; }
+  </style>
 </head>
 
 <body translate="no" class="notranslate">
   <div id="root" translate="no" class="notranslate"></div>
   <script type="module" src="/src/main.tsx"></script>
+  <script>
+    // Se o app não montar em 8s, mostra mensagem de ajuda (erro de import/rede/etc.)
+    setTimeout(function () {
+      var root = document.getElementById('root');
+      if (root && root.children.length === 0) {
+        root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px;background:#f8fafc;font-family:system-ui,sans-serif;color:#334155;"><p style="font-size:1.125rem;margin-bottom:16px;">O app demorou para carregar.</p><p style="color:#64748b;margin-bottom:24px;text-align:center;max-width:360px;">Abra o Console (F12) para ver possíveis erros de rede ou configuração.</p><button onclick="location.reload()" style="background:#f97316;color:white;border:none;padding:12px 24px;border-radius:8px;font-weight:600;cursor:pointer;">Tentar novamente</button></div>';
+      }
+    }, 8000);
+  </script>
 </body>
 
 </html>

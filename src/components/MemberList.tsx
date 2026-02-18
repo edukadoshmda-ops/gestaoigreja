@@ -17,6 +17,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Member } from '@/types';
+import { EmptyState } from '@/components/EmptyState';
+import { Users } from 'lucide-react';
 
 interface MemberListProps {
   members: Member[];
@@ -49,7 +51,13 @@ export function MemberList({ members, onDelete, onEdit }: MemberListProps) {
       </div>
 
       <div className="grid gap-4">
-        {filteredMembers.map((member) => (
+        {filteredMembers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="Nenhum membro encontrado"
+            description={members.length === 0 ? "Cadastre o primeiro membro da igreja." : "Nenhum resultado para sua busca."}
+          />
+        ) : filteredMembers.map((member) => (
           <Card key={member.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">

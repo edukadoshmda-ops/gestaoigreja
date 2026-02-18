@@ -7,30 +7,36 @@ type MemberUpdate = Database['public']['Tables']['members']['Update'];
 
 export const membersService = {
     /**
-     * Get all members
+     * Get all members (filtrado por igreja para multi-tenant)
      */
-    async getAll() {
+    async getAll(churchId?: string | null) {
+        if (!churchId) return [];
         const { data, error } = await supabase
             .from('members')
             .select('*')
+            .eq('church_id', churchId)
+            .not('church_id', 'is', null)
             .order('name');
 
         if (error) throw error;
-        return data;
+        return data || [];
     },
 
     /**
-     * Get active members only
+     * Get active members only (filtrado por igreja)
      */
-    async getActive() {
+    async getActive(churchId?: string | null) {
+        if (!churchId) return [];
         const { data, error } = await supabase
             .from('members')
             .select('*')
+            .eq('church_id', churchId)
+            .not('church_id', 'is', null)
             .eq('status', 'ativo')
             .order('name');
 
         if (error) throw error;
-        return data;
+        return data || [];
     },
 
     /**
@@ -51,6 +57,9 @@ export const membersService = {
      * Create a new member
      */
     async create(member: MemberInsert, churchId: string): Promise<Member> {
+        if (!churchId) {
+            throw new Error('churchId é obrigatório para criar um membro');
+        }
         const { data, error } = await supabase
             .from('members')
             .insert({
@@ -92,35 +101,42 @@ export const membersService = {
     },
 
     /**
-     * Search members by name or email
+     * Search members by name or email (filtrado por igreja)
      */
-    async search(query: string) {
-        const { data, error } = await supabase
+    async search(query: string, churchId?: string | null) {
+        if (!churchId) return [];
+        const q = supabase
             .from('members')
             .select('*')
+            .eq('church_id', churchId)
+            .not('church_id', 'is', null)
             .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
             .order('name');
-
+        const { data, error } = await q;
         if (error) throw error;
-        return data;
+        return data || [];
     },
 
     /**
-     * Get members with birthdays in current month
+     * Get members with birthdays in current month (filtrado por igreja)
      */
-    async getBirthdaysThisMonth() {
+    async getBirthdaysThisMonth(churchId?: string | null) {
+        if (!churchId) return [];
         const currentMonth = new Date().getMonth() + 1;
 
         const { data, error } = await supabase
             .from('members')
             .select('*')
+            .eq('church_id', churchId)
+            .not('church_id', 'is', null)
             .not('birth_date', 'is', null)
             .eq('status', 'ativo');
 
         if (error) throw error;
+        const list = data || [];
 
         // Filter by month in JavaScript since Supabase doesn't support EXTRACT in filters
-        return data.filter(member => {
+        return list.filter(member => {
             if (!member.birth_date) return false;
             const birthMonth = new Date(member.birth_date).getMonth() + 1;
             return birthMonth === currentMonth;

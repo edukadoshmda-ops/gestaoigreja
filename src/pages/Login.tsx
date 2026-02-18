@@ -4,10 +4,8 @@ import { Shield, User, Users, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Logo } from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
-import heroImage from '@/assets/sky-landscape.png';
 
 export default function Login() {
   const [role, setRole] = useState<UserRole>('admin');
@@ -38,25 +36,13 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center relative px-4">
       {/* Background Image */}
-      <div className="absolute inset-0">
-        <img
-          src={heroImage}
-          alt="Céu"
-          className="w-full h-full object-cover opacity-25"
-        />
-        <div className="absolute inset-0 bg-background/70" />
-      </div>
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
 
       <div className="w-full max-w-md relative z-10">
 
         {/* Card */}
         <Card className="shadow-sm">
           <CardContent className="p-6">
-
-            {/* Logo */}
-            <div className="flex justify-center mb-2">
-              <Logo showText={false} size="md" />
-            </div>
 
             {/* Título organizado */}
             <h1 className="text-2xl font-bold text-center mb-1">

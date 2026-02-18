@@ -2,9 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import { MemberForm, MemberFormData } from '@/components/MemberForm';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { membersService } from '@/services/members.service';
 
 export default function Registration() {
+    useDocumentTitle('Cadastro');
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();

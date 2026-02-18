@@ -1,0 +1,13 @@
+Para a logo aparecer na tela de login e no menu:
+
+1. Na pasta do projeto, dê dois cliques em:  copiar-logo.bat
+
+   Isso copia a imagem do Cursor para public/logo-app.png.
+
+2. Se a pasta do Cursor não tiver a imagem, copie manualmente o arquivo
+   da logo (smartphone + nuvem + cruz + Bíblia) para:
+
+      public/logo-app.png
+
+3. Reinicie o servidor (start-dev.bat) e recarregue a página (F5).
+   Se ainda não aparecer, use Ctrl+F5 para limpar o cache.
