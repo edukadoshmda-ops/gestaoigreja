@@ -29,13 +29,22 @@ export function InstallPWA() {
     if (sessionStorage.getItem("pwa-dismissed")) return;
     if (isStandalone()) return;
 
+    // 1. Verifica se o evento já foi capturado globalmente antes do React montar
+    const globalPrompt = (window as any).deferredPrompt as BeforeInstallPromptEvent | undefined;
+    if (globalPrompt) {
+      setDeferredPrompt(globalPrompt);
+    }
+
+    // 2. Escuta novos eventos (caso o React já esteja montado quando o evento disparar)
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      (window as any).deferredPrompt = e; // sincroniza globalmente
     };
 
     window.addEventListener("beforeinstallprompt", handler);
 
+    // 3. Sempre mostra o banner após 1.5s (independente do evento nativo)
     const timer = setTimeout(() => setShowBanner(true), 1500);
 
     return () => {
@@ -45,9 +54,11 @@ export function InstallPWA() {
   }, []);
 
   const handleInstall = async () => {
-    if (deferredPrompt) {
-      await deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+    // Tenta o deferredPrompt do state, ou do global como último recurso
+    const prompt = deferredPrompt || ((window as any).deferredPrompt as BeforeInstallPromptEvent | undefined);
+    if (prompt) {
+      await prompt.prompt();
+      const { outcome } = await prompt.userChoice;
       if (outcome === "accepted") setShowBanner(false);
     } else {
       setShowHelpDialog(true);
