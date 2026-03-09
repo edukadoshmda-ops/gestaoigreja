@@ -589,6 +589,54 @@
   }
 
   /* ═══════════════════════════════════════════════
+     🌊 TEMA 12: OCEANO PROFUNDO - Azul Oceano
+     ═══════════════════════════════════════════════ */
+  [data-theme="oceano-profundo"] {
+    --background: 0 0% 100%;
+    --foreground: 221 39% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 221 39% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 221 70% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 221 39% 11%;
+    --muted: 221 15% 94%;
+    --muted-foreground: 221 10% 45%;
+    --border: 221 20% 90%;
+    --input: 221 20% 90%;
+    --ring: 221 83% 53%;
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 221 39% 11%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 221 80% 95%;
+    --sidebar-accent-foreground: 221 83% 40%;
+    --sidebar-border: 221 20% 90%;
+    --sidebar-ring: 221 83% 53%;
+    --chart-1: 221 83% 53%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 185 91% 45%;
+    --chart-4: 240 60% 60%;
+    --chart-5: 221 60% 45%;
+    --sidebar: 0 0% 99%;
+    --shadow-hsl: 221 83% 53%;
+  }
+
+  .dark[data-theme="oceano-profundo"] {
+    --background: 221 40% 6%;
+    --foreground: 221 40% 98%;
+    --card: 221 35% 10%;
+    --card-foreground: 221 40% 98%;
+    --primary: 221 83% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 221 70% 50%;
+    --border: 221 30% 18%;
+    --ring: 221 83% 60%;
+  }
+
+  /* ═══════════════════════════════════════════════
      🌊 TEMA 11: AZUL PISCINA - Azul Piscina
      ═══════════════════════════════════════════════ */
   [data-theme="azul-piscina"] {
@@ -684,6 +732,7 @@
   @page {
     margin: 2cm;
   }
+
   /* Remove cabeçalhos e rodapés padrão do navegador que mostram URLs */
   body::after,
   body::before,
@@ -695,6 +744,7 @@
     display: none !important;
     visibility: hidden !important;
   }
+
   /* Remove URLs de links impressos */
   a[href*="localhost"]::after,
   a[href*="caixa-diario"]::after {
