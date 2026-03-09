@@ -37,17 +37,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         return saved;
     });
 
-    // Lista de páginas públicas que sempre devem usar o tema laranja
+    // Lista de páginas públicas que sempre devem usar o tema azul oceano
     const publicPages = ['/', '/login', '/checkout', '/hotmart-success'];
     const isPublicPage = publicPages.includes(location.pathname);
-    const effectiveThemeId = isPublicPage ? 'fe-radiante' : themeId;
+    const effectiveThemeId = isPublicPage ? 'oceano-profundo' : themeId;
     const currentTheme = themes.find(t => t.id === effectiveThemeId) || themes[0];
 
     useEffect(() => {
         if (isPublicPage) {
-            // Em páginas públicas, sempre força o tema laranja
-            document.documentElement.setAttribute('data-theme', 'fe-radiante');
-            document.body.setAttribute('data-theme', 'fe-radiante');
+            // Em páginas públicas, sempre força o tema azul oceano
+            document.documentElement.setAttribute('data-theme', 'oceano-profundo');
+            document.body.setAttribute('data-theme', 'oceano-profundo');
         } else {
             // Em páginas autenticadas, aplica o tema escolhido pelo usuário
             document.documentElement.setAttribute('data-theme', themeId);

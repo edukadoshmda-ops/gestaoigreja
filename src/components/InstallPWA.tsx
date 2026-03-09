@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,9 @@ export function InstallPWA() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const { currentTheme } = useTheme();
+
+  const logoColor = currentTheme?.primaryHex || "#3B82F6";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -75,10 +79,20 @@ export function InstallPWA() {
   return (
     <>
       <div className="fixed bottom-4 left-4 right-4 sm:left-4 sm:right-auto sm:max-w-md md:bottom-6 md:left-6 md:max-w-[420px] z-50 flex items-center gap-3 sm:gap-4 p-3 sm:p-4 md:p-5 rounded-2xl shadow-xl border bg-white dark:bg-zinc-900 dark:border-zinc-800 animate-in slide-in-from-bottom-4">
-        <img
-          src="/logo-app-v3.png"
-          alt="Gestão Igreja"
-          className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-xl object-contain shrink-0"
+        <div
+          className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 shrink-0 transition-colors duration-500"
+          style={{
+            backgroundColor: logoColor,
+            WebkitMaskImage: `url(/logo-app.png)`,
+            maskImage: `url(/logo-app.png)`,
+            WebkitMaskSize: 'contain',
+            maskSize: 'contain',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+          }}
+          title="Gestão Igreja"
         />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-black dark:text-white text-sm sm:text-base md:text-lg">Instalar App</p>

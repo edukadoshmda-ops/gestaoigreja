@@ -589,6 +589,75 @@
   }
 
   /* ═══════════════════════════════════════════════
+     🌊 TEMA 11: AZUL PISCINA - Azul Piscina
+     ═══════════════════════════════════════════════ */
+  [data-theme="azul-piscina"] {
+    --background: 0 0% 100%;
+    --foreground: 185 20% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 185 20% 12%;
+    --primary: 185 91% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 195 91% 36%;
+    --secondary-foreground: 0 0% 100%;
+    --accent: 175 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 185 15% 88%;
+    --muted-foreground: 185 10% 45%;
+    --border: 185 25% 88%;
+    --input: 185 25% 88%;
+    --ring: 185 91% 45%;
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 185 20% 12%;
+    --sidebar-primary: 185 91% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 185 60% 93%;
+    --sidebar-accent-foreground: 185 91% 40%;
+    --sidebar-border: 185 20% 90%;
+    --sidebar-ring: 185 91% 45%;
+    --chart-1: 185 91% 45%;
+    --chart-2: 195 91% 36%;
+    --chart-3: 175 89% 48%;
+    --chart-4: 240 60% 60%;
+    --chart-5: 180 60% 45%;
+    --sidebar: 0 0% 99%;
+    --shadow-hsl: 185 91% 45%;
+  }
+
+  .dark[data-theme="azul-piscina"] {
+    --background: 185 35% 10%;
+    --foreground: 185 40% 98%;
+    --card: 185 30% 14%;
+    --card-foreground: 185 40% 98%;
+    --primary: 185 91% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 195 91% 42%;
+    --secondary-foreground: 185 35% 10%;
+    --accent: 175 89% 55%;
+    --accent-foreground: 185 35% 10%;
+    --muted: 185 15% 22%;
+    --muted-foreground: 185 15% 65%;
+    --border: 185 15% 24%;
+    --input: 185 15% 24%;
+    --ring: 185 91% 55%;
+    --sidebar-background: 185 35% 8%;
+    --sidebar-foreground: 185 40% 98%;
+    --sidebar-primary: 185 91% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 185 25% 18%;
+    --sidebar-accent-foreground: 185 91% 75%;
+    --sidebar-border: 185 20% 18%;
+    --sidebar-ring: 185 91% 55%;
+    --chart-1: 185 91% 55%;
+    --chart-2: 195 91% 42%;
+    --chart-3: 175 89% 55%;
+    --chart-4: 240 60% 65%;
+    --chart-5: 180 60% 50%;
+    --sidebar: 185 35% 8%;
+    --shadow-hsl: 185 91% 45%;
+  }
+
+  /* ═══════════════════════════════════════════════
      Estilos Base
      ═══════════════════════════════════════════════ */
   * {

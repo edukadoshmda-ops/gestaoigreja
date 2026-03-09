@@ -42,11 +42,11 @@ interface FormData {
 export default function NewLogin() {
     useDocumentTitle('Login');
 
-    // Força o tema laranja nas páginas públicas
+    // Força o tema oceano nas páginas públicas
     useEffect(() => {
-        // Aplica imediatamente o tema laranja
-        document.documentElement.setAttribute('data-theme', 'fe-radiante');
-        document.body.setAttribute('data-theme', 'fe-radiante');
+        // Aplica imediatamente o tema
+        document.documentElement.setAttribute('data-theme', 'oceano-profundo');
+        document.body.setAttribute('data-theme', 'oceano-profundo');
 
         // Cleanup: restaura o tema do usuário apenas se estiver navegando para área autenticada
         return () => {

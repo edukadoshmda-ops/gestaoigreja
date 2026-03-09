@@ -61,6 +61,35 @@ const profiles = [
   { role: 'Membro / Congreg.', access: 'Página pessoal, avisos, confirmação de escala, doação Pix.' },
 ];
 
+const PurchaseCard = ({ timeLeft }: { timeLeft: number }) => (
+  <div className="max-w-xl mx-auto p-1 rounded-2xl bg-gradient-to-r from-primary via-cyan-400 to-primary p-[2px] animate-shimmer shadow-2xl backdrop-blur-sm">
+    <div className="bg-background/95 rounded-xl p-6 md:p-8">
+      <div className="flex flex-col items-center gap-4 mb-6">
+        <div className="text-4xl font-mono font-black tabular-nums text-cyan-600 drop-shadow-md">
+          {formatTime(timeLeft)}
+        </div>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-widest text-center">
+          Tempo estipulado para compra com desconto. Agarre a oportunidade!
+        </p>
+        <p className="text-2xl font-bold text-foreground">
+          Por apenas <span className="text-primary">R$ 75,00</span>/mês
+          <span className="text-sm font-normal text-muted-foreground ml-2 line-through">R$ 150,00</span>
+        </p>
+      </div>
+
+      <a href={HOTMART_CHECKOUT_URL} target="_blank" rel="noopener noreferrer" className="w-full block">
+        <Button
+          size="lg"
+          className="w-full text-sm sm:text-base md:text-lg min-h-[52px] sm:min-h-[56px] md:h-16 rounded-xl font-bold gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 group transition-all duration-300 hover:scale-[1.02] flex items-center justify-center flex-wrap overflow-hidden bg-blue-900 hover:bg-blue-800 text-white border-0"
+        >
+          <span className="text-center leading-tight break-words max-w-full">Assinar com 50% OFF por R$ 75,00/mês</span>
+          <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 ml-0.5 group-hover:translate-x-1 transition-transform" />
+        </Button>
+      </a>
+    </div>
+  </div>
+);
+
 export default function Landing() {
   useDocumentTitle(`${APP_NAME} — Gestão de Excelência`);
   const { isAuthenticated } = useAuth();
@@ -79,8 +108,8 @@ export default function Landing() {
   const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'fe-radiante');
-    document.body.setAttribute('data-theme', 'fe-radiante');
+    document.documentElement.setAttribute('data-theme', 'oceano-profundo');
+    document.body.setAttribute('data-theme', 'oceano-profundo');
 
     const timer = setInterval(() => setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0)), 1000);
 
@@ -162,14 +191,14 @@ export default function Landing() {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-4 sm:py-2 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 font-bold mb-6 sm:mb-8 border border-red-500/20 text-[10px] sm:text-sm text-center justify-center mx-auto whitespace-nowrap sm:whitespace-normal"
+            className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-4 sm:py-2 rounded-full bg-blue-900 border border-blue-800 text-white font-bold mb-6 sm:mb-8 text-[10px] sm:text-sm text-center justify-center mx-auto whitespace-nowrap sm:whitespace-normal"
           >
             <Gift className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse shrink-0" />
             7 dias grátis para testar · 50 primeiras assinaturas: 50% de Desconto!
           </motion.div>
 
           <h1 className="text-[2rem] sm:text-[2.5rem] md:text-[3rem] font-black mb-4 sm:mb-6 max-w-4xl mx-auto leading-[1.15] tracking-tighter">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-orange-500 to-amber-500 drop-shadow-sm">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-cyan-400 to-blue-500 drop-shadow-sm">
               Gestão de Excelência
             </span>
           </h1>
@@ -177,32 +206,7 @@ export default function Landing() {
             O hub definitivo para simplificar a administração e engajar a sua congregação. Tudo o que você precisa em um único App.
           </p>
 
-          <div className="max-w-xl mx-auto p-1 rounded-2xl bg-gradient-to-r from-primary via-orange-400 to-primary p-[2px] animate-shimmer shadow-2xl backdrop-blur-sm">
-            <div className="bg-background/95 rounded-xl p-6 md:p-8">
-              <div className="flex flex-col items-center gap-4 mb-6">
-                <div className="text-4xl font-mono font-black tabular-nums text-red-500 drop-shadow-md">
-                  {formatTime(timeLeft)}
-                </div>
-                <p className="text-sm font-semibold text-muted-foreground uppercase tracking-widest text-center">
-                  Tempo estipulado para compra com desconto. Agarre a oportunidade!
-                </p>
-                <p className="text-2xl font-bold text-foreground">
-                  Por apenas <span className="text-primary">R$ 75,00</span>/mês
-                  <span className="text-sm font-normal text-muted-foreground ml-2 line-through">R$ 150,00</span>
-                </p>
-              </div>
-
-              <a href={HOTMART_CHECKOUT_URL} target="_blank" rel="noopener noreferrer" className="w-full block">
-                <Button
-                  size="lg"
-                  className="w-full text-sm sm:text-base md:text-lg min-h-[52px] sm:min-h-[56px] md:h-16 rounded-xl font-bold gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 group transition-all duration-300 hover:scale-[1.02] flex items-center justify-center flex-wrap overflow-hidden"
-                >
-                  <span className="text-center leading-tight break-words max-w-full">Assinar com 50% OFF por R$ 75,00/mês</span>
-                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 ml-0.5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </a>
-            </div>
-          </div>
+          <PurchaseCard timeLeft={timeLeft} />
         </div>
 
         {/* Background decorative elements */}
@@ -247,13 +251,13 @@ export default function Landing() {
 
             {/* Coluna da Esquerda (Chamada principal) */}
             <div className="lg:col-span-5 text-center lg:text-left relative z-10">
-              <div className="inline-flex items-center justify-center p-4 bg-background border border-border shadow-sm rounded-2xl mb-8 group-hover:border-primary/50 transition-colors">
-                <Fingerprint className="w-8 h-8 text-primary" />
+              <div className="inline-flex items-center justify-center p-3 bg-background border border-border shadow-sm rounded-xl mb-6 group-hover:border-primary/50 transition-colors">
+                <Fingerprint className="w-6 h-6 text-primary" />
               </div>
-              <h2 className="text-4xl lg:text-5xl font-black mb-6 tracking-tight leading-[1.1]">
-                Simplicidade em cada <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">acesso.</span>
+              <h2 className="text-3xl lg:text-4xl font-black mb-4 tracking-tight leading-[1.1]">
+                Simplicidade em cada <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyan-400">acesso.</span>
               </h2>
-              <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed mb-8">
+              <p className="text-base lg:text-lg text-muted-foreground leading-relaxed mb-6">
                 Desenvolvido para ser extremamente fluido. Acesse relatórios, dízimos e cadastros de membros em quatro passos simples, de qualquer dispositivo, a qualquer momento.
               </p>
             </div>
@@ -272,7 +276,7 @@ export default function Landing() {
                 ].map((step, idx) => (
                   <div key={idx} className="relative flex flex-col sm:flex-row gap-4 sm:gap-6 lg:gap-8 items-start group cursor-default">
                     <div className="relative z-10 flex flex-col items-center shrink-0">
-                      <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-full bg-background border-[3px] border-primary/20 flex items-center justify-center shadow-sm group-hover:border-primary group-hover:shadow-[0_0_20px_rgba(249,115,22,0.3)] transition-all duration-300">
+                      <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-full bg-background border-[3px] border-primary/20 flex items-center justify-center shadow-sm group-hover:border-primary group-hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300">
                         <span className="text-sm lg:text-base font-black text-primary group-hover:scale-110 transition-transform">{step.num}</span>
                       </div>
                     </div>
@@ -287,32 +291,32 @@ export default function Landing() {
 
           </div>
 
-          <div className="mt-24 relative overflow-hidden bg-white text-slate-900 p-10 md:p-16 rounded-[3rem] border border-primary/20 flex flex-col items-center text-center shadow-xl transition-transform hover:scale-[1.01] duration-700 group">
+          <div className="mt-12 relative overflow-hidden bg-white text-slate-900 p-5 md:p-8 rounded-[1.5rem] border border-primary/20 flex flex-col items-center text-center shadow-xl transition-transform hover:scale-[1.01] duration-700 group mx-auto md:max-w-3xl">
             {/* Blurs laranjas minimalistas no fundo branco */}
-            <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 blur-[100px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-colors duration-700"></div>
-            <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-orange-400/10 blur-[100px] rounded-full pointer-events-none group-hover:bg-orange-400/20 transition-colors duration-700"></div>
+            <div className="absolute -top-40 -right-40 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-colors duration-700"></div>
+            <div className="absolute -bottom-40 -left-40 w-64 h-64 bg-cyan-400/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-cyan-400/20 transition-colors duration-700"></div>
 
-            <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto">
-              <div className="p-5 bg-primary/10 backdrop-blur-xl rounded-full mb-8 shadow-sm border border-primary/30 group-hover:rotate-12 transition-transform duration-500">
-                <Menu className="w-12 h-12 text-primary" />
+            <div className="relative z-10 flex flex-col items-center max-w-2xl mx-auto">
+              <div className="p-3 bg-primary/10 backdrop-blur-xl rounded-full mb-4 shadow-sm border border-primary/30 group-hover:rotate-12 transition-transform duration-500">
+                <Menu className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-4xl md:text-5xl lg:text-6xl font-black mb-8 tracking-tighter text-primary drop-shadow-sm">
+              <h3 className="text-2xl md:text-3xl font-black mb-4 tracking-tighter text-primary drop-shadow-sm">
                 Menu Inteligente e Personalizado
               </h3>
-              <p className="text-xl md:text-2xl text-slate-700 leading-relaxed font-medium mb-10 max-w-3xl">
-                Após o login, você tem acesso <strong className="text-primary underline underline-offset-4 decoration-orange-500 decoration-4">exclusivo e direcionado</strong>.
+              <p className="text-base md:text-lg text-slate-700 leading-relaxed font-medium mb-6 max-w-xl">
+                Após o login, você tem acesso <strong className="text-primary underline underline-offset-4 decoration-cyan-500 decoration-2">exclusivo e direcionado</strong>.
               </p>
 
-              <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-10">
+              <div className="flex flex-wrap justify-center gap-2 md:gap-3 mb-6">
                 {['Administrador', 'Pastor', 'Secretário', 'Tesoureiro', 'Líder', 'Membro'].map(role => (
-                  <span key={role} className="bg-primary/5 hover:bg-primary/10 backdrop-blur-md px-5 py-2.5 rounded-full text-primary text-sm md:text-base font-bold transition-colors border border-primary/20 shadow-sm cursor-default">
+                  <span key={role} className="bg-primary/5 hover:bg-primary/10 backdrop-blur-md px-3 py-1.5 rounded-full text-primary text-xs md:text-sm font-bold transition-colors border border-primary/20 shadow-sm cursor-default">
                     {role}
                   </span>
                 ))}
               </div>
 
-              <div className="p-8 bg-slate-50 rounded-3xl backdrop-blur-sm border border-slate-200 shadow-inner max-w-2xl">
-                <p className="text-lg md:text-2xl text-slate-800 italic font-medium leading-relaxed">
+              <div className="p-4 bg-slate-50 rounded-2xl backdrop-blur-sm border border-slate-200 shadow-inner max-w-lg">
+                <p className="text-base md:text-lg text-slate-800 italic font-medium leading-relaxed">
                   "Tudo o que você não precisa some da sua tela, deixando a sua visão totalmente limpa e focada apenas no que é útil!"
                 </p>
               </div>
@@ -345,54 +349,58 @@ export default function Landing() {
             </motion.div>
           ))}
         </div>
+
+        <div className="mt-16 sm:mt-20">
+          <PurchaseCard timeLeft={timeLeft} />
+        </div>
       </section>
 
       {/* Perfis e Permissoes */}
-      <section className="relative py-32 bg-white text-slate-900 overflow-hidden">
+      <section className="relative py-16 bg-white text-slate-900 overflow-hidden">
         {/* Fundo decorativo sutil */}
-        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[800px] h-[800px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-orange-500/5 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-cyan-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="container mx-auto px-4 max-w-6xl relative z-10">
-          <div className="text-center mb-16 md:mb-24">
-            <div className="inline-flex items-center justify-center p-4 bg-primary/10 rounded-2xl mb-8 border border-primary/20 backdrop-blur-sm">
-              <Shield className="w-10 h-10 text-primary" />
+        <div className="container mx-auto px-4 max-w-5xl relative z-10">
+          <div className="text-center mb-10 md:mb-12">
+            <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-xl mb-4 border border-primary/20 backdrop-blur-sm">
+              <Shield className="w-6 h-6 text-primary" />
             </div>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 tracking-tighter text-slate-900">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-black mb-4 tracking-tighter text-slate-900">
               Perfis e Permissões
             </h2>
-            <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto font-medium">
+            <p className="text-base text-slate-600 max-w-xl mx-auto font-medium">
               Sistema de acesso ciber-seguro e adaptável. Cada membro desfruta de uma experiência exclusiva, enxergando apenas a sua área de atuação.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {profiles.map((p, idx) => (
               <motion.div
                 key={p.role}
-                initial={{ y: 30, opacity: 0 }}
+                initial={{ y: 20, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: idx * 0.1, duration: 0.5 }}
-                className={`group relative bg-white p-8 rounded-[2rem] border overflow-hidden hover:-translate-y-2 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-primary/20 ${idx === 0
-                  ? 'md:col-span-2 lg:col-span-3 border-primary/30 bg-gradient-to-br from-orange-50 to-white'
+                transition={{ delay: idx * 0.05, duration: 0.4 }}
+                className={`group relative bg-white p-5 rounded-xl border overflow-hidden hover:-translate-y-1 transition-all duration-300 shadow-md hover:shadow-xl hover:shadow-primary/20 ${idx === 0
+                  ? 'md:col-span-2 lg:col-span-3 border-primary/30 bg-gradient-to-br from-cyan-50 to-white'
                   : 'border-slate-200 hover:border-primary/50'
                   }`}
               >
                 {/* Glow decorativo de fundo no hover */}
-                <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-[40px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="absolute -bottom-16 -right-16 w-32 h-32 bg-primary/10 rounded-full blur-[30px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
                 {/* Linha de destaque lateral */}
-                <div className="absolute top-8 left-0 w-1.5 h-12 bg-primary rounded-r-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute top-5 left-0 w-1 h-8 bg-primary rounded-r-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                 <div className="flex flex-col h-full pl-2 relative z-10">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="h-3 w-3 rounded-full bg-primary shadow-[0_0_15px_rgba(234,88,12,0.4)]" />
-                    <h3 className={`font-bold tracking-tight text-primary ${idx === 0 ? 'text-3xl md:text-4xl' : 'text-2xl'} transition-colors duration-300`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(6,182,212,0.4)]" />
+                    <h3 className={`font-bold tracking-tight text-primary ${idx === 0 ? 'text-xl md:text-2xl' : 'text-lg'} transition-colors duration-300`}>
                       {p.role}
                     </h3>
                   </div>
-                  <p className={`text-slate-600 leading-relaxed font-medium ${idx === 0 ? 'text-xl' : 'text-lg'}`}>
+                  <p className={`text-slate-600 leading-relaxed font-medium ${idx === 0 ? 'text-base' : 'text-sm'}`}>
                     {p.access}
                   </p>
                 </div>
@@ -499,6 +507,10 @@ export default function Landing() {
               </details>
             ))}
           </div>
+        </div>
+
+        <div className="mt-20 pt-10 border-t border-border/50">
+          <PurchaseCard timeLeft={timeLeft} />
         </div>
       </section>
 
