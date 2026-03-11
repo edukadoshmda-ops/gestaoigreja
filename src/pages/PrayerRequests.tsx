@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { HandHeart, Send, Loader2, Heart, Trash2 } from 'lucide-react';
+import { HandHeart, Send, Loader2, Heart, Trash2, Church } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,9 +7,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   prayerRequestsService,
   PrayerRequest,
 } from '@/services/prayerRequests.service';
+import { churchesService } from '@/services/churches.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
@@ -21,10 +29,11 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function PrayerRequests() {
   useDocumentTitle('Solicitações de Oração');
-  const { user, churchId, viewingChurch } = useAuth();
+  const { user, churchId, viewingChurch, switchChurch } = useAuth();
   const { toast } = useToast();
   const effectiveChurchId = viewingChurch?.id ?? churchId ?? user?.churchId;
   const canEdit = canWriteInRestrictedModules(user?.role);
+  const isSuperAdmin = user?.role === 'superadmin';
 
   const [requests, setRequests] = useState<PrayerRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +42,7 @@ export default function PrayerRequests() {
   const [sending, setSending] = useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<PrayerRequest | null>(null);
+  const [churches, setChurches] = useState<{ id: string; name: string }[]>([]);
 
   const loadRequests = useCallback(async () => {
     if (!effectiveChurchId) return;
@@ -56,6 +66,14 @@ export default function PrayerRequests() {
   useEffect(() => {
     loadRequests();
   }, [loadRequests]);
+
+  useEffect(() => {
+    if (isSuperAdmin && !effectiveChurchId) {
+      churchesService.getAll().then((list: any[]) => {
+        setChurches(list.map((c) => ({ id: c.id, name: c.name || c.slug || 'Igreja' })));
+      }).catch(() => setChurches([]));
+    }
+  }, [isSuperAdmin, effectiveChurchId]);
 
   useEffect(() => {
     if (!effectiveChurchId) return;
@@ -120,22 +138,66 @@ export default function PrayerRequests() {
   }
 
   if (!effectiveChurchId) {
+    if (isSuperAdmin && churches.length > 0) {
+      return (
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Solicitações de Oração</h1>
+            <p className="text-muted-foreground mt-1">Selecione uma igreja para ver e gerenciar os pedidos de oração.</p>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Church className="h-5 w-5" />
+                Selecionar igreja
+              </CardTitle>
+              <CardDescription>Escolha a igreja para acessar as solicitações de oração.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select onValueChange={(val) => {
+                const ch = churches.find((c) => c.id === val);
+                if (ch) switchChurch(val, ch.name);
+              }}>
+                <SelectTrigger className="max-w-md">
+                  <SelectValue placeholder="Escolha uma igreja..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {churches.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
     return (
       <div className="max-w-2xl mx-auto py-12 text-center">
         <HandHeart className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
         <h2 className="text-xl font-semibold mb-2">Selecione uma igreja</h2>
-        <p className="text-muted-foreground">É necessário ter uma igreja vinculada.</p>
+        <p className="text-muted-foreground">É necessário ter uma igreja vinculada para acessar as solicitações de oração.</p>
+        {isSuperAdmin && churches.length === 0 && (
+          <p className="text-sm text-muted-foreground mt-2">Nenhuma igreja cadastrada no momento.</p>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Solicitações de Oração</h1>
-        <p className="text-muted-foreground mt-1">
-          Envie sua solicitação e ore pelas necessidades da igreja. Atualização em tempo real.
-        </p>
+    <div className="max-w-2xl mx-auto space-y-6 pb-12">
+      <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-background to-primary/5 border border-primary/10 p-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-xl bg-primary/10">
+            <HandHeart className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Solicitações de Oração</h1>
+            <p className="text-muted-foreground mt-1">
+              Envie pedidos e ore pelas necessidades da igreja. Atualização em tempo real.
+            </p>
+          </div>
+        </div>
       </div>
 
       {setupRequired ? (
@@ -154,11 +216,10 @@ export default function PrayerRequests() {
         </Card>
       ) : (
         <>
-          {canEdit && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <HandHeart className="h-5 w-5" />
+                <HandHeart className="h-5 w-5 text-primary" />
                 Nova solicitação
               </CardTitle>
               <CardDescription>
@@ -196,7 +257,6 @@ export default function PrayerRequests() {
               </form>
             </CardContent>
           </Card>
-          )}
 
           <Card>
             <CardHeader>
@@ -231,7 +291,6 @@ export default function PrayerRequests() {
                             {formatDistanceToNow(new Date(req.created_at), { addSuffix: true, locale: ptBR })}
                           </span>
                           <div className="flex items-center gap-1">
-                            {canEdit && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -241,19 +300,18 @@ export default function PrayerRequests() {
                               <Heart className="h-4 w-4" />
                               <span>{req.prayed_count > 0 ? req.prayed_count : 'Orei'}</span>
                             </Button>
-                            )}
                             {canEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
-                              onClick={() => setDeleteConfirm(req)}
-                              title="Excluir pedido"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                                onClick={() => setDeleteConfirm(req)}
+                                title="Excluir pedido"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             )}
-                            {!canEdit && req.prayed_count > 0 && (
+                            {req.prayed_count > 0 && (
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <Heart className="h-4 w-4" />
                                 {req.prayed_count} oração(ões)

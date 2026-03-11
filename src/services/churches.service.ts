@@ -27,7 +27,7 @@ export const churchesService = {
             .from('churches')
             .select('*')
             .eq('id', id)
-            .single();
+            .maybeSingle();
 
         if (error) throw error;
         return data;
@@ -250,7 +250,9 @@ export const churchesService = {
     async getMyChurchSubscriptionStatus(): Promise<{ status: string; blocked: boolean }> {
         try {
             const { data, error } = await (supabase as any).rpc('get_my_church_subscription_status');
-            if (!error && data?.[0]) return data[0];
+            if (error) return { status: 'ativa', blocked: false };
+            const row = Array.isArray(data) ? data[0] : data;
+            if (row && typeof row === 'object' && 'status' in row) return row as { status: string; blocked: boolean };
         } catch { }
         return { status: 'ativa', blocked: false };
     },

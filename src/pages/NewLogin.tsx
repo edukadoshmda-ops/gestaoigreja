@@ -48,6 +48,12 @@ export default function NewLogin() {
         document.documentElement.setAttribute('data-theme', 'oceano-profundo');
         document.body.setAttribute('data-theme', 'oceano-profundo');
 
+        // Se ?trial=1, marcar para signup trial
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('trial') === '1') {
+            try { sessionStorage.setItem('trial_signup', '1'); } catch {}
+        }
+
         // Cleanup: restaura o tema do usuário apenas se estiver navegando para área autenticada
         return () => {
             // Só restaura se não estiver indo para outra página pública

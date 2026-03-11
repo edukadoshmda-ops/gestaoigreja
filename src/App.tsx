@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import NewLogin from "./pages/NewLogin";
+import CadastroIgrejaTrial from "./pages/CadastroIgrejaTrial";
 import Landing from "./pages/Landing";
 import HotmartSuccess from "./pages/HotmartSuccess";
 import ConfirmScale from "./pages/ConfirmScale";
@@ -17,6 +18,7 @@ import Assets from "./pages/Assets";
 import { InstallPWA } from "@/components/InstallPWA";
 import { MainLayout } from "@/components/MainLayout";
 import { SubscriptionBlock } from "@/components/SubscriptionBlock";
+import { TrialGate } from "@/components/TrialGate";
 import { UserRole } from "@/types";
 import { Loader2 } from "lucide-react";
 
@@ -42,6 +44,8 @@ const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
 const ComoAcessar = lazy(() => import("./pages/ComoAcessar"));
 const Schools = lazy(() => import("./pages/Schools"));
 const Discipleship = lazy(() => import("./pages/Discipleship"));
+const Blog = lazy(() => import("./pages/Blog"));
+const Artigo = lazy(() => import("./pages/Artigo"));
 
 function PageFallback() {
   return (
@@ -55,9 +59,15 @@ const queryClient = new QueryClient();
 
 import { hasProfileCompleted } from '@/lib/profileCompletion';
 
-/** Membro/congregado deve ir para cadastro na primeira vez */
+/** Membro/congregado deve ir para cadastro na primeira vez. Trial: primeira tela = Institucional */
 function getPostLoginPath(user: { role?: string; registrationCompleted?: boolean; id?: string } | null): string {
   if (!user) return '/dashboard';
+  try {
+    if (sessionStorage.getItem('redirect_to_institucional') === '1') {
+      sessionStorage.removeItem('redirect_to_institucional');
+      return '/institucional';
+    }
+  } catch {}
   const isMemberOrCongregado = user.role === 'membro' || user.role === 'congregado';
   const hasCompleted = user.registrationCompleted === true || (user.id ? hasProfileCompleted(user.id) : false);
   if (isMemberOrCongregado && !hasCompleted) return '/cadastro';
@@ -99,11 +109,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SubscriptionBlock>
-      <MainLayout key={window.location.pathname}>
-        <Suspense fallback={<PageFallback />}>{children}</Suspense>
-      </MainLayout>
-    </SubscriptionBlock>
+    <TrialGate>
+      <SubscriptionBlock>
+        <MainLayout key={window.location.pathname}>
+          <Suspense fallback={<PageFallback />}>{children}</Suspense>
+        </MainLayout>
+      </SubscriptionBlock>
+    </TrialGate>
   );
 }
 
@@ -126,11 +138,13 @@ function RoleProtectedRoute({ children, roles }: { children: React.ReactNode; ro
   }
 
   return (
-    <SubscriptionBlock>
-      <MainLayout key={window.location.pathname}>
-        <Suspense fallback={<PageFallback />}>{children}</Suspense>
-      </MainLayout>
-    </SubscriptionBlock>
+    <TrialGate>
+      <SubscriptionBlock>
+        <MainLayout key={window.location.pathname}>
+          <Suspense fallback={<PageFallback />}>{children}</Suspense>
+        </MainLayout>
+      </SubscriptionBlock>
+    </TrialGate>
   );
 }
 
@@ -153,6 +167,9 @@ function AppRoutes() {
         <Route path="/" element={isAuthenticated ? <Navigate to={postLoginPath} replace /> : <Landing />} />
         <Route path="/checkout" element={<Navigate to="/" replace />} />
         <Route path="/hotmart-success" element={<HotmartSuccess />} />
+        <Route path="/cadastro-igreja-trial" element={<CadastroIgrejaTrial />} />
+        <Route path="/blog" element={<Suspense fallback={<PageFallback />}><Blog /></Suspense>} />
+        <Route path="/blog/:slug" element={<Suspense fallback={<PageFallback />}><Artigo /></Suspense>} />
         <Route path="/login" element={isAuthenticated ? <Navigate to={postLoginPath} replace /> : <NewLogin />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/membros" element={<RoleProtectedRoute roles={['pastor', 'secretario', 'superadmin']}><Members /></RoleProtectedRoute>} />

@@ -716,6 +716,70 @@ export interface Database {
                     created_at?: string
                 }
             }
+            app_tip_preferences: {
+                Row: {
+                    id: string
+                    church_id: string
+                    email_enabled: boolean
+                    whatsapp_enabled: boolean
+                    frequency: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    church_id: string
+                    email_enabled?: boolean
+                    whatsapp_enabled?: boolean
+                    frequency?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    church_id?: string
+                    email_enabled?: boolean
+                    whatsapp_enabled?: boolean
+                    frequency?: string
+                    updated_at?: string
+                }
+            }
+            blog_articles: {
+                Row: {
+                    id: string
+                    slug: string
+                    title: string
+                    description: string
+                    category: string
+                    content: string | null
+                    read_time: number
+                    published_at: string
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    slug: string
+                    title: string
+                    description: string
+                    category: string
+                    content?: string | null
+                    read_time?: number
+                    published_at?: string
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    slug?: string
+                    title?: string
+                    description?: string
+                    category?: string
+                    content?: string | null
+                    read_time?: number
+                    published_at?: string
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
         }
         Views: {
             member_statistics: {

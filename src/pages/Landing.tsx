@@ -137,7 +137,13 @@ export default function Landing() {
               <Logo size="sm" showText={false} />
             </div>
           </div>
-          <div className="flex items-center justify-end gap-1 flex-shrink-0">
+          <div className="flex items-center justify-end gap-1 sm:gap-2 flex-shrink-0 flex-wrap">
+            <Link to="/cadastro-igreja-trial" className="shrink-0">
+              <Button variant="default" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm gap-1.5 whitespace-nowrap">
+                <Gift className="h-4 w-4 shrink-0" />
+                <span>Testar grátis</span>
+              </Button>
+            </Link>
             {!isInstalled && (
               <Button variant="outline" size="sm" className="inline-flex gap-1.5 shrink-0 text-xs sm:text-sm" onClick={handleInstallClick}>
                 <Download className="h-4 w-4 shrink-0" />
@@ -202,15 +208,75 @@ export default function Landing() {
               Gestão de Excelência
             </span>
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-12">
+          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-8">
             O hub definitivo para simplificar a administração e engajar a sua congregação. Tudo o que você precisa em um único App.
           </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <Link to="/cadastro-igreja-trial" className="inline-flex">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto text-base sm:text-lg min-h-[52px] px-8 rounded-xl font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 transition-all"
+              >
+                <span>Testar grátis</span>
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/login">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto text-base min-h-[52px] px-8 rounded-xl font-semibold">
+                Já tenho conta · Entrar
+              </Button>
+            </Link>
+          </div>
 
           <PurchaseCard timeLeft={timeLeft} />
         </div>
 
         {/* Background decorative elements */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/20 blur-[120px] rounded-full opacity-50 pointer-events-none -z-10" />
+      </section>
+
+      {/* Galeria do sistema — imagens/mockups das telas */}
+      <section className="py-16 md:py-24 bg-background border-b border-primary/10">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
+              <LayoutDashboard className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-foreground mb-3">
+              Conheça as telas do sistema
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Interface intuitiva para administrar membros, células, finanças e muito mais.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: LayoutDashboard, title: 'Dashboard', desc: 'Versículo do dia, aniversariantes e ações rápidas.', color: 'from-cyan-500/20 to-blue-600/20' },
+              { icon: Users, title: 'Membros', desc: 'Cadastro completo com fotos, categorias e buscas.', color: 'from-blue-500/20 to-indigo-600/20' },
+              { icon: Church, title: 'Células e Ministérios', desc: 'Organize grupos, líderes e frequências.', color: 'from-indigo-500/20 to-purple-600/20' },
+              { icon: BarChart, title: 'Relatórios', desc: 'Estatísticas de membros, finanças e células.', color: 'from-primary/20 to-cyan-500/20' },
+            ].map((item, idx) => (
+              <motion.div
+                key={item.title}
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.08 }}
+                className="group relative rounded-2xl overflow-hidden border-2 border-border/60 bg-card shadow-lg hover:shadow-2xl hover:border-primary/50 transition-all duration-300 aspect-[4/3]"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-80`} />
+                <div className="relative z-10 p-6 h-full flex flex-col justify-end">
+                  <div className="p-3 bg-background/90 rounded-xl w-max mb-4 backdrop-blur-sm">
+                    <item.icon className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="font-bold text-lg text-foreground">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{item.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Vídeo de apresentação */}
@@ -535,6 +601,20 @@ export default function Landing() {
           </div>
 
           <div className="w-full h-px bg-border/50 mb-8" />
+
+          <Link
+            to="/blog"
+            className="group mb-10 flex flex-col items-center gap-3 rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 px-6 py-6 transition-all hover:border-primary hover:shadow-lg hover:shadow-primary/10 sm:flex-row sm:justify-center"
+          >
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary transition group-hover:scale-105">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-base font-bold text-foreground sm:text-lg">Dicas para pastores e líderes</p>
+              <p className="text-sm text-muted-foreground">Gestão, finanças, membros e tecnologia → Acesse o Blog</p>
+            </div>
+            <ArrowRight className="h-5 w-5 shrink-0 text-primary opacity-70 transition group-hover:translate-x-1 sm:ml-2" />
+          </Link>
 
           <Logo size="sm" showText={true} className="justify-center opacity-70 mb-4" />
           <p className="text-sm text-muted-foreground">

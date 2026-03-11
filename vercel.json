@@ -1,9 +1,14 @@
 {
   "name": "gestao-igreja",
   "framework": "vite",
-
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "crons": [
+    {
+      "path": "/api/send-tips",
+      "schedule": "0 12 * * 1"
+    }
+  ]
 }

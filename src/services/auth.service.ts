@@ -97,9 +97,9 @@ export const authService = {
                 church:churches(*)
             `)
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 is code for "no rows found"
+        if (error) {
             console.error('Error fetching profile:', error);
             throw error;
         }

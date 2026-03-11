@@ -33,12 +33,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const location = useLocation();
     const [themeId, setThemeId] = useState<string>(() => {
-        const saved = localStorage.getItem('church_theme') || 'fe-radiante';
+        const saved = localStorage.getItem('church_theme') || 'oceano-profundo';
         return saved;
     });
 
     // Lista de páginas públicas que sempre devem usar o tema azul oceano
-    const publicPages = ['/', '/login', '/checkout', '/hotmart-success'];
+    const publicPages = ['/', '/login', '/cadastro-igreja-trial', '/checkout', '/hotmart-success'];
     const isPublicPage = publicPages.includes(location.pathname);
     const effectiveThemeId = isPublicPage ? 'oceano-profundo' : themeId;
     const currentTheme = themes.find(t => t.id === effectiveThemeId) || themes[0];

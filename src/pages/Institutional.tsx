@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { supabase } from '@/lib/supabaseClient';
 import { churchesService } from '@/services/churches.service';
+import { trialService } from '@/services/trial.service';
 import { DEFAULT_CHURCH_NAME } from '@/lib/constants';
 
 const DEFAULT_LOGO = '/logo-app.png?v=2';
@@ -74,6 +75,11 @@ export default function Institutional() {
         logo_url: churchData.logoUrl || null,
         president_name: churchData.presidentName || null,
       } as any);
+      const nameFilled = churchData.name?.trim() && churchData.name !== DEFAULT_CHURCH_NAME;
+      const presidentFilled = churchData.presidentName?.trim();
+      if (nameFilled && presidentFilled) {
+        await trialService.setInstitutionalCompleted(effectiveChurchId);
+      }
       toast({ title: 'Dados salvos!', description: 'As informações institucionais foram atualizadas.' });
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e?.message, variant: 'destructive' });

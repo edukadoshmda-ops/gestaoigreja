@@ -20,6 +20,7 @@ import {
   MapPin,
   GraduationCap,
   Package,
+  Gift,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ interface NavItem {
   label: string;
   href: string;
   roles: UserRole[];
+  /** Abre em nova aba (ex: link de cadastro trial) */
+  openInNewTab?: boolean;
 }
 
 interface NavGroup {
@@ -57,6 +60,7 @@ const navGroups: NavGroup[] = [
       { icon: Package, label: 'Patrimonial', href: '/patrimonio', roles: ['admin', 'pastor', 'superadmin', 'diretor_patrimonio'] },
       { icon: Share2, label: 'Redes Sociais', href: '/redes-sociais', roles: ['admin', 'pastor', 'secretario', 'membro', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
       { icon: CreditCard, label: 'Contas e PIX Igreja', href: '/pix-donacoes', roles: ['admin', 'pastor', 'secretario', 'membro', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'] },
+      { icon: Gift, label: 'Cadastrar Igreja - Teste 30 dias', href: '/cadastro-igreja-trial', roles: ['admin', 'pastor', 'secretario', 'membro', 'lider_ministerio', 'aluno', 'congregado', 'superadmin'], openInNewTab: true },
     ],
   },
 ];
@@ -195,18 +199,29 @@ export function Sidebar() {
               </p>
             )}
             {group.items.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isActive = !item.openInNewTab && location.pathname === item.href;
+              const className = cn(
+                'flex items-center gap-4 px-4 min-h-[48px] py-3.5 rounded-xl transition-all duration-300 font-medium active:scale-[0.98]',
+                isActive
+                  ? 'bg-primary text-primary-foreground shadow-md hover:shadow-lg'
+                  : 'text-foreground hover:bg-primary/5 hover:shadow-sm'
+              );
+              if (item.openInNewTab) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={className}
+                  >
+                    <item.icon className={cn('h-6 w-6 flex-shrink-0', 'text-primary')} />
+                    {!collapsed && <span className="text-[12px]">{item.label}</span>}
+                  </a>
+                );
+              }
               return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-4 px-4 min-h-[48px] py-3.5 rounded-xl transition-all duration-300 font-medium active:scale-[0.98]',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-md hover:shadow-lg'
-                      : 'text-foreground hover:bg-primary/5 hover:shadow-sm'
-                  )}
-                >
+                <Link key={item.href} to={item.href} className={className}>
                   <item.icon className={cn(
                     'h-6 w-6 flex-shrink-0',
                     !isActive && 'text-primary'
