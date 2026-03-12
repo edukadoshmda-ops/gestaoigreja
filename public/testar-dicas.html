@@ -32,12 +32,23 @@
       try {
         const base = urlInput.value.replace(/\/$/, '');
         const res = await fetch(base + '/api/send-tips', { method: 'POST' });
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          result.className = 'result error';
+          result.textContent = 'A API retornou texto em vez de JSON:\n\n' + (text.slice(0, 500) || '(vazio)');
+          if (text.includes('<!') || text.includes('<html')) {
+            result.textContent += '\n\n⚠️ Pode ser que /api/send-tips esteja retornando a página HTML (SPA) em vez da API. Verifique se o deploy incluiu a pasta api/.';
+          }
+          return;
+        }
         result.className = 'result ' + (res.ok ? 'success' : 'error');
         result.textContent = JSON.stringify(data, null, 2);
       } catch (e) {
         result.className = 'result error';
-        result.textContent = 'Erro: ' + e.message;
+        result.textContent = 'Erro de rede: ' + e.message;
       }
       btn.disabled = false;
     };

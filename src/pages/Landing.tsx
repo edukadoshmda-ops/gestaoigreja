@@ -200,7 +200,7 @@ export default function Landing() {
             className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-4 sm:py-2 rounded-full bg-blue-900 border border-blue-800 text-white font-bold mb-6 sm:mb-8 text-[10px] sm:text-sm text-center justify-center mx-auto whitespace-nowrap sm:whitespace-normal"
           >
             <Gift className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse shrink-0" />
-            7 dias grátis para testar · 50 primeiras assinaturas: 50% de Desconto!
+            50 primeiras assinaturas: 50% de Desconto!
           </motion.div>
 
           <h1 className="text-[2rem] sm:text-[2.5rem] md:text-[3rem] font-black mb-4 sm:mb-6 max-w-4xl mx-auto leading-[1.15] tracking-tighter">
@@ -252,10 +252,10 @@ export default function Landing() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: LayoutDashboard, title: 'Dashboard', desc: 'Versículo do dia, aniversariantes e ações rápidas.', color: 'from-cyan-500/20 to-blue-600/20' },
-              { icon: Users, title: 'Membros', desc: 'Cadastro completo com fotos, categorias e buscas.', color: 'from-blue-500/20 to-indigo-600/20' },
-              { icon: Church, title: 'Células e Ministérios', desc: 'Organize grupos, líderes e frequências.', color: 'from-indigo-500/20 to-purple-600/20' },
-              { icon: BarChart, title: 'Relatórios', desc: 'Estatísticas de membros, finanças e células.', color: 'from-primary/20 to-cyan-500/20' },
+              { icon: LayoutDashboard, title: 'Dashboard', desc: 'Versículo do dia, aniversariantes e ações rápidas.', color: 'from-primary/20 to-blue-600/20' },
+              { icon: Users, title: 'Membros', desc: 'Cadastro completo com fotos, categorias e buscas.', color: 'from-primary/20 to-blue-600/20' },
+              { icon: Church, title: 'Células e Ministérios', desc: 'Organize grupos, líderes e frequências.', color: 'from-primary/20 to-blue-600/20' },
+              { icon: BarChart, title: 'Relatórios', desc: 'Estatísticas de membros, finanças e células.', color: 'from-primary/20 to-blue-600/20' },
             ].map((item, idx) => (
               <motion.div
                 key={item.title}

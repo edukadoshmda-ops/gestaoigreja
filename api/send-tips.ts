@@ -25,27 +25,32 @@ export const config = {
 };
 
 export default async function handler(req: Request): Promise<Response> {
+  const json = (obj: object) => new Response(JSON.stringify(obj), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const jsonErr = (obj: object, status: number) => new Response(JSON.stringify(obj), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-    });
+    return jsonErr({ error: 'Method not allowed' }, 405);
   }
 
   if (CRON_SECRET) {
     const authHeader = req.headers.get('authorization');
     const secret = authHeader?.replace('Bearer ', '');
     if (secret !== CRON_SECRET) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-      });
+      return jsonErr({ error: 'Unauthorized' }, 401);
     }
   }
 
   if (!RESEND_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    return new Response(
-      JSON.stringify({ error: 'Missing RESEND_API_KEY, SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' }),
-      { status: 500 }
-    );
+    return jsonErr({
+      error: 'Variáveis faltando',
+      detail: 'RESEND_API_KEY, SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas na Vercel',
+    }, 500);
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -56,14 +61,11 @@ export default async function handler(req: Request): Promise<Response> {
     );
 
     if (usersError || !users?.length) {
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          sent: 0,
-          message: usersError ? usersError.message : 'Nenhum usuário para enviar',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return json({
+        ok: true,
+        sent: 0,
+        message: usersError ? usersError.message : 'Nenhum usuário para enviar',
+      });
     }
 
     const { data: tips, error: tipsError } = await supabase
@@ -74,10 +76,7 @@ export default async function handler(req: Request): Promise<Response> {
       .order('sort_order', { ascending: true });
 
     if (tipsError || !tips?.length) {
-      return new Response(
-        JSON.stringify({ ok: true, sent: 0, message: 'Nenhuma dica ativa' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return json({ ok: true, sent: 0, message: 'Nenhuma dica ativa' });
     }
 
     let sent = 0;
@@ -141,15 +140,11 @@ export default async function handler(req: Request): Promise<Response> {
       if (res.ok) sent++;
     }
 
-    return new Response(
-      JSON.stringify({ ok: true, sent, total: users.length }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return json({ ok: true, sent, total: users.length });
   } catch (err: any) {
-    return new Response(
-      JSON.stringify({ error: err?.message || 'Erro ao enviar dicas' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return jsonErr({
+      error: err?.message || 'Erro ao enviar dicas',
+    }, 500);
   }
 }
 

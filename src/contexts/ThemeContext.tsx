@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
 
 export interface ThemeConfig {
     id: string;
@@ -31,30 +30,19 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-    const location = useLocation();
-    const [themeId, setThemeId] = useState<string>(() => {
+    const [, setThemeId] = useState<string>(() => {
         const saved = localStorage.getItem('church_theme') || 'oceano-profundo';
         return saved;
     });
 
-    // Lista de páginas públicas que sempre devem usar o tema azul oceano
-    const publicPages = ['/', '/login', '/cadastro-igreja-trial', '/checkout', '/hotmart-success'];
-    const isPublicPage = publicPages.includes(location.pathname);
-    const effectiveThemeId = isPublicPage ? 'oceano-profundo' : themeId;
+    // Tema azul (oceano profundo) em todas as páginas
+    const effectiveThemeId = 'oceano-profundo';
     const currentTheme = themes.find(t => t.id === effectiveThemeId) || themes[0];
 
     useEffect(() => {
-        if (isPublicPage) {
-            // Em páginas públicas, sempre força o tema azul oceano
-            document.documentElement.setAttribute('data-theme', 'oceano-profundo');
-            document.body.setAttribute('data-theme', 'oceano-profundo');
-        } else {
-            // Em páginas autenticadas, aplica o tema escolhido pelo usuário
-            document.documentElement.setAttribute('data-theme', themeId);
-            document.body.setAttribute('data-theme', themeId);
-            localStorage.setItem('church_theme', themeId);
-        }
-    }, [themeId, location.pathname]);
+        document.documentElement.setAttribute('data-theme', 'oceano-profundo');
+        document.body.setAttribute('data-theme', 'oceano-profundo');
+    }, []);
 
     const setTheme = (id: string) => {
         setThemeId(id);
