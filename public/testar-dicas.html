@@ -5,33 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Testar envio de dicas</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 40px auto; padding: 20px; }
-    input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
-    button { background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 8px; }
+    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 40px auto; padding: 20px; }
+    label { display: block; margin-top: 12px; font-weight: 500; }
+    input { width: 100%; padding: 12px; margin: 4px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+    button { background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 12px; }
     button:hover { background: #1d4ed8; }
     button:disabled { background: #94a3b8; cursor: not-allowed; }
     .result { margin-top: 16px; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 14px; }
     .success { background: #dcfce7; color: #166534; }
     .error { background: #fee2e2; color: #991b1b; }
+    .hint { font-size: 12px; color: #64748b; margin-top: 2px; }
   </style>
 </head>
 <body>
   <h1>Testar dicas por e-mail</h1>
-  <p>Chama a API que envia dicas para admins/pastores/secretários cadastrados.</p>
-  <input type="text" id="url" placeholder="URL do app (ex: https://church-gest-oficial.vercel.app)" value="https://church-gest-oficial.vercel.app">
+  <p>Chama a API (Vercel ou Supabase Edge Function) que envia dicas para admins/pastores/secretários.</p>
+
+  <label>URL do endpoint</label>
+  <input type="text" id="url" placeholder="Vercel: https://seu-app.vercel.app  ou  Supabase: https://xxx.supabase.co/functions/v1/send-tips" value="">
+  <p class="hint">Vercel: use a URL do app (ex: https://church-gest-oficial.vercel.app). Supabase: use a URL completa da função.</p>
+
+  <label>Token (opcional) — CRON_SECRET se a API exigir</label>
+  <input type="password" id="token" placeholder="Deixe vazio se não usar CRON_SECRET">
+
   <button id="btn">Enviar dicas agora</button>
   <div id="result"></div>
+
   <script>
     const urlInput = document.getElementById('url');
+    const tokenInput = document.getElementById('token');
     const btn = document.getElementById('btn');
     const result = document.getElementById('result');
+
+    // Sugestão: Supabase Edge Function (prioridade) ou Vercel
+    const isSupabase = /supabase\.co\/functions\/v1\//.test(window.location.href);
+    if (!urlInput.value) {
+      urlInput.placeholder = isSupabase
+        ? 'https://SEU_PROJETO.supabase.co/functions/v1/send-tips'
+        : 'https://church-gest-oficial.vercel.app';
+    }
+
     btn.onclick = async () => {
       btn.disabled = true;
       result.textContent = 'Enviando...';
       result.className = 'result';
       try {
-        const base = urlInput.value.replace(/\/$/, '');
-        const res = await fetch(base + '/api/send-tips', { method: 'POST' });
+        let apiUrl = urlInput.value.trim().replace(/\/$/, '');
+        if (!apiUrl) {
+          result.className = 'result error';
+          result.textContent = 'Informe a URL do endpoint.';
+          btn.disabled = false;
+          return;
+        }
+        if (!apiUrl.startsWith('http')) apiUrl = 'https://' + apiUrl;
+        if (!apiUrl.includes('supabase.co/functions/v1/')) {
+          apiUrl = apiUrl + '/api/send-tips';
+        }
+        const opts = { method: 'POST' };
+        const token = tokenInput.value.trim();
+        if (token) opts.headers = { Authorization: 'Bearer ' + token };
+
+        const res = await fetch(apiUrl, opts);
         const text = await res.text();
         let data;
         try {
@@ -39,16 +73,17 @@
         } catch {
           result.className = 'result error';
           result.textContent = 'A API retornou texto em vez de JSON:\n\n' + (text.slice(0, 500) || '(vazio)');
-          if (text.includes('<!') || text.includes('<html')) {
-            result.textContent += '\n\n⚠️ Pode ser que /api/send-tips esteja retornando a página HTML (SPA) em vez da API. Verifique se o deploy incluiu a pasta api/.';
+          if (text.includes('An error occurred') || text.includes('<!')) {
+            result.textContent += '\n\n💡 Tente usar a Supabase Edge Function — veja supabase/DICAS_EDGE_FUNCTION.md';
           }
+          btn.disabled = false;
           return;
         }
         result.className = 'result ' + (res.ok ? 'success' : 'error');
         result.textContent = JSON.stringify(data, null, 2);
       } catch (e) {
         result.className = 'result error';
-        result.textContent = 'Erro de rede: ' + e.message;
+        result.textContent = 'Erro de rede: ' + e.message + '\n\nVerifique se a URL está correta e acessível.';
       }
       btn.disabled = false;
     };
