@@ -1,0 +1,255 @@
+{
+  "name": "Telegram - Vincular Usuario",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "1",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.message?.text || ''}}",
+        "rules": {
+          "values": [
+            {
+              "operation": "startsWith",
+              "value2": "/start"
+            },
+            {
+              "operation": "startsWith",
+              "value2": "CONECTAR "
+            }
+          ]
+        },
+        "fallbackOutput": 2
+      },
+      "id": "2",
+      "name": "Switch Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{$json.message.chat.id}}",
+        "text": "Ola! Gere seu codigo no app e envie aqui no formato:\n\nCONECTAR ABCD1234"
+      },
+      "id": "3",
+      "name": "Telegram Start Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        780,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.message?.text || '';\nconst token = text.replace(/^CONECTAR\\s+/i, '').trim();\nconst chat_id = String($json.message.chat.id);\n\nreturn [{\n  json: {\n    token,\n    chat_id,\n    original_message: text\n  }\n}];"
+      },
+      "id": "4",
+      "name": "Extract Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/rpc/consume_telegram_link_token'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_token\": $json.token,\n  \"p_chat_id\": $json.chat_id\n}"
+      },
+      "id": "5",
+      "name": "Consume Link Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1030,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json[0]?.success === true}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "6",
+      "name": "Linked?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{$item(0).$node['Telegram Trigger'].json.message.chat.id}}",
+        "text": "Telegram vinculado com sucesso ao seu perfil."
+      },
+      "id": "7",
+      "name": "Telegram Success Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1490,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{$item(0).$node['Telegram Trigger'].json.message.chat.id}}",
+        "text": "Token invalido ou expirado. Gere um novo codigo no app e tente novamente."
+      },
+      "id": "8",
+      "name": "Telegram Error Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1490,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{$json.message.chat.id}}",
+        "text": "Comando nao reconhecido. Gere um codigo no app e envie no formato:\n\nCONECTAR ABCD1234"
+      },
+      "id": "9",
+      "name": "Telegram Help Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        780,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Command": {
+      "main": [
+        [
+          {
+            "node": "Telegram Start Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram Help Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Token": {
+      "main": [
+        [
+          {
+            "node": "Consume Link Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consume Link Token": {
+      "main": [
+        [
+          {
+            "node": "Linked?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Linked?": {
+      "main": [
+        [
+          {
+            "node": "Telegram Success Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram Error Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

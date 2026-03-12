@@ -1,0 +1,708 @@
+{
+  "name": "Dicas - Telegram com fallback Email",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "2",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        180,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/rpc/get_users_for_tips_channels'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={}"
+      },
+      "id": "3",
+      "name": "Get Users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1
+      },
+      "id": "4",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        690,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.telegram_enabled === true && !!$json.telegram_chat_id}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "Can Use Telegram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        930,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/rpc/get_next_tip_for_user'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_user_id\": $json.user_id,\n  \"p_channel\": \"whatsapp\"\n}"
+      },
+      "id": "6",
+      "name": "Get Telegram Tip",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1170,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.length > 0}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "7",
+      "name": "Telegram Tip Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1400,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "tip_id",
+              "value": "={{$json[0].tip_id}}",
+              "type": "string"
+            },
+            {
+              "name": "title",
+              "value": "={{$json[0].title}}",
+              "type": "string"
+            },
+            {
+              "name": "content_short",
+              "value": "={{$json[0].content_short}}",
+              "type": "string"
+            },
+            {
+              "name": "user_id",
+              "value": "={{$item(0).$node['Split In Batches'].json.user_id}}",
+              "type": "string"
+            },
+            {
+              "name": "church_id",
+              "value": "={{$item(0).$node['Split In Batches'].json.church_id}}",
+              "type": "string"
+            },
+            {
+              "name": "user_email",
+              "value": "={{$item(0).$node['Split In Batches'].json.user_email}}",
+              "type": "string"
+            },
+            {
+              "name": "telegram_chat_id",
+              "value": "={{$item(0).$node['Split In Batches'].json.telegram_chat_id}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "8",
+      "name": "Map Telegram Tip",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1630,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": $json.telegram_chat_id,\n  \"text\": '📌 ' + $json.title + '\\n\\n' + ($json.content_short || 'Abra o app para ver a dica completa.')\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      },
+      "id": "9",
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1870,
+        120
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.ok === true}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "10",
+      "name": "Telegram Sent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2090,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/app_tip_deliveries'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tip_id\": $item(0).$node['Map Telegram Tip'].json.tip_id,\n  \"user_id\": $item(0).$node['Map Telegram Tip'].json.user_id,\n  \"church_id\": $item(0).$node['Map Telegram Tip'].json.church_id,\n  \"channel\": \"whatsapp\",\n  \"status\": \"sent\",\n  \"error_message\": null\n}"
+      },
+      "id": "11",
+      "name": "Log Telegram Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2320,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/rpc/get_next_tip_for_user'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_user_id\": $item(0).$node['Split In Batches'].json.user_id,\n  \"p_channel\": \"email\"\n}"
+      },
+      "id": "12",
+      "name": "Get Email Tip",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1170,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.length > 0}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "13",
+      "name": "Email Tip Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1400,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "tip_id",
+              "value": "={{$json[0].tip_id}}",
+              "type": "string"
+            },
+            {
+              "name": "title",
+              "value": "={{$json[0].title}}",
+              "type": "string"
+            },
+            {
+              "name": "content_short",
+              "value": "={{$json[0].content_short}}",
+              "type": "string"
+            },
+            {
+              "name": "content",
+              "value": "={{$json[0].content}}",
+              "type": "string"
+            },
+            {
+              "name": "user_id",
+              "value": "={{$item(0).$node['Split In Batches'].json.user_id}}",
+              "type": "string"
+            },
+            {
+              "name": "church_id",
+              "value": "={{$item(0).$node['Split In Batches'].json.church_id}}",
+              "type": "string"
+            },
+            {
+              "name": "user_email",
+              "value": "={{$item(0).$node['Split In Batches'].json.user_email}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "14",
+      "name": "Map Email Tip",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1630,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.user_email}}",
+        "subject": "={{'Dica do Gestao Igreja: ' + $json.title}}",
+        "emailType": "text",
+        "message": "={{$json.content_short || $json.content}}"
+      },
+      "id": "15",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1870,
+        380
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/app_tip_deliveries'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tip_id\": $item(0).$node['Map Email Tip'].json.tip_id,\n  \"user_id\": $item(0).$node['Map Email Tip'].json.user_id,\n  \"church_id\": $item(0).$node['Map Email Tip'].json.church_id,\n  \"channel\": \"email\",\n  \"status\": \"sent\",\n  \"error_message\": null\n}"
+      },
+      "id": "16",
+      "name": "Log Email Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2090,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.message || ''}}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "17",
+      "name": "Email Sent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2090,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/app_tip_deliveries'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tip_id\": $item(0).$node['Map Email Tip'].json.tip_id,\n  \"user_id\": $item(0).$node['Map Email Tip'].json.user_id,\n  \"church_id\": $item(0).$node['Map Email Tip'].json.church_id,\n  \"channel\": \"email\",\n  \"status\": \"failed\",\n  \"error_message\": $json.message || 'email send failed'\n}"
+      },
+      "id": "18",
+      "name": "Log Email Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2320,
+        620
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Get Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Users": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "Can Use Telegram?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Use Telegram?": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram Tip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Email Tip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram Tip": {
+      "main": [
+        [
+          {
+            "node": "Telegram Tip Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Tip Found?": {
+      "main": [
+        [
+          {
+            "node": "Map Telegram Tip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Email Tip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Telegram Tip": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram": {
+      "main": [
+        [
+          {
+            "node": "Telegram Sent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Sent?": {
+      "main": [
+        [
+          {
+            "node": "Log Telegram Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Email Tip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Email Tip": {
+      "main": [
+        [
+          {
+            "node": "Email Tip Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Tip Found?": {
+      "main": [
+        [
+          {
+            "node": "Map Email Tip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Map Email Tip": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Email Sent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Sent?": {
+      "main": [
+        [
+          {
+            "node": "Log Email Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Email Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

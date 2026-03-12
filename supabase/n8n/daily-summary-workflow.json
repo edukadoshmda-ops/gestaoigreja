@@ -1,0 +1,120 @@
+{
+  "name": "Dicas - Resumo Diario",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        260,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL + '/rest/v1/app_tip_deliveries?select=channel,status,error_message,sent_at&sent_at=gte.' + encodeURIComponent(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            }
+          ]
+        }
+      },
+      "id": "2",
+      "name": "Get Deliveries 24h",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = items[0]?.json || [];\nconst summary = {\n  telegram_sent: 0,\n  telegram_failed: 0,\n  email_sent: 0,\n  email_failed: 0,\n};\nconst errors = {};\n\nfor (const row of rows) {\n  if (row.channel === 'whatsapp' && row.status === 'sent') summary.telegram_sent += 1;\n  if (row.channel === 'whatsapp' && row.status === 'failed') summary.telegram_failed += 1;\n  if (row.channel === 'email' && row.status === 'sent') summary.email_sent += 1;\n  if (row.channel === 'email' && row.status === 'failed') summary.email_failed += 1;\n\n  if (row.status === 'failed') {\n    const key = row.error_message || 'erro_desconhecido';\n    errors[key] = (errors[key] || 0) + 1;\n  }\n}\n\nconst top_erros = Object.entries(errors)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 3)\n  .map(([message, count]) => `${message} (${count})`)\n  .join('\\n') || 'Sem falhas nas ultimas 24h';\n\nreturn [{ json: { ...summary, top_erros } }];"
+      },
+      "id": "3",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": $env.TELEGRAM_ADMIN_CHAT_ID,\n  \"text\": '📊 Resumo diario - Dicas (24h)\\n\\nTelegram:\\n- Enviadas: ' + ($json.telegram_sent || 0) + '\\n- Falhas: ' + ($json.telegram_failed || 0) + '\\n\\nEmail:\\n- Enviadas: ' + ($json.email_sent || 0) + '\\n- Falhas: ' + ($json.email_failed || 0) + '\\n\\nTop erros:\\n' + ($json.top_erros || 'Sem falhas nas ultimas 24h')\n}"
+      },
+      "id": "4",
+      "name": "Send Admin Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        260
+      ]
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Get Deliveries 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Deliveries 24h": {
+      "main": [
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Admin Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}
