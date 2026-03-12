@@ -24,15 +24,19 @@ export const config = {
   maxDuration: 60,
 };
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 export default async function handler(req: Request): Promise<Response> {
-  const json = (obj: object) => new Response(JSON.stringify(obj), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-  const jsonErr = (obj: object, status: number) => new Response(JSON.stringify(obj), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+  const headers = { ...corsHeaders, 'Content-Type': 'application/json' };
+  const json = (obj: object) => new Response(JSON.stringify(obj), { status: 200, headers });
+  const jsonErr = (obj: object, status: number) => new Response(JSON.stringify(obj), { status, headers });
 
   if (req.method !== 'POST') {
     return jsonErr({ error: 'Method not allowed' }, 405);

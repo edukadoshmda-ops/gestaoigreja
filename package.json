@@ -20,7 +20,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "electron:build": "npm run build && electron-builder --win",
-    "electron:dev": "electron ."
+    "electron:dev": "electron .",
+    "deploy": "vercel --prod",
+    "deploy:preview": "vercel"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

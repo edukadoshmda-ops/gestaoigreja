@@ -30,19 +30,18 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-    const [, setThemeId] = useState<string>(() => {
-        const saved = localStorage.getItem('church_theme') || 'oceano-profundo';
-        return saved;
+    const [themeId, setThemeId] = useState<string>(() => {
+        if (typeof window === 'undefined') return 'oceano-profundo';
+        return localStorage.getItem('church_theme') || 'oceano-profundo';
     });
 
-    // Tema azul (oceano profundo) em todas as páginas
-    const effectiveThemeId = 'oceano-profundo';
-    const currentTheme = themes.find(t => t.id === effectiveThemeId) || themes[0];
+    const currentTheme = themes.find(t => t.id === themeId) || themes[0];
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', 'oceano-profundo');
-        document.body.setAttribute('data-theme', 'oceano-profundo');
-    }, []);
+        document.documentElement.setAttribute('data-theme', themeId);
+        document.body.setAttribute('data-theme', themeId);
+        localStorage.setItem('church_theme', themeId);
+    }, [themeId]);
 
     const setTheme = (id: string) => {
         setThemeId(id);
