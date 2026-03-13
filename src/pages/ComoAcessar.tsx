@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   HelpCircle,
   LogIn,
@@ -28,8 +27,6 @@ import {
   Mail,
   Phone,
   Share2,
-  Loader2,
-  Bell,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,8 +34,6 @@ import { useToast } from '@/hooks/use-toast';
 import { SUBSCRIPTION_PIX } from '@/lib/subscriptionConfig';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAppTipPreferences, upsertAppTipPreferences } from '@/services/appTips.service';
-import { Switch } from '@/components/ui/switch';
 
 const features = [
   {
@@ -174,31 +169,6 @@ export default function ComoAcessar() {
   const { toast } = useToast();
   const { user } = useAuth();
   const showPixMensalidade = ['pastor', 'secretario', 'tesoureiro'].includes(user?.role ?? '');
-  const canManageTips = ['admin', 'pastor', 'secretario', 'superadmin'].includes(user?.role ?? '');
-  const churchId = user?.churchId;
-  const [prefs, setPrefs] = useState<{ email_enabled: boolean; whatsapp_enabled: boolean } | null>(null);
-  const [prefsLoading, setPrefsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!churchId || !canManageTips) return;
-    getAppTipPreferences(churchId)
-      .then((p) => setPrefs(p ? { email_enabled: p.email_enabled, whatsapp_enabled: p.whatsapp_enabled } : { email_enabled: true, whatsapp_enabled: true }))
-      .catch(() => setPrefs({ email_enabled: true, whatsapp_enabled: true }));
-  }, [churchId, canManageTips]);
-
-  const handlePrefChange = async (key: 'email_enabled' | 'whatsapp_enabled', value: boolean) => {
-    if (!churchId) return;
-    setPrefsLoading(true);
-    try {
-      const updated = await upsertAppTipPreferences(churchId, { [key]: value });
-      setPrefs({ email_enabled: updated.email_enabled, whatsapp_enabled: updated.whatsapp_enabled });
-      toast({ title: 'Preferências salvas' });
-    } catch {
-      toast({ title: 'Erro ao salvar', variant: 'destructive' });
-    } finally {
-      setPrefsLoading(false);
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
@@ -212,7 +182,6 @@ export default function ComoAcessar() {
         </p>
       </div>
 
-      {/* Passos de acesso */}
       <Card className="border-none shadow-lg overflow-hidden">
         <div className="h-2 bg-primary/20 w-full" />
         <CardHeader>
@@ -237,7 +206,6 @@ export default function ComoAcessar() {
         </CardContent>
       </Card>
 
-      {/* Funcionalidades principais */}
       <Card className="border-none shadow-lg overflow-hidden">
         <div className="h-2 bg-primary/20 w-full" />
         <CardHeader>
@@ -271,7 +239,6 @@ export default function ComoAcessar() {
         </CardContent>
       </Card>
 
-      {/* Perfis e permissões */}
       <Card className="border-none shadow-lg overflow-hidden">
         <div className="h-2 bg-primary/20 w-full" />
         <CardHeader>
@@ -305,56 +272,6 @@ export default function ComoAcessar() {
         </CardContent>
       </Card>
 
-      {/* Preferências de dicas automáticas */}
-      {canManageTips && churchId && (
-        <Card className="border-none shadow-lg overflow-hidden">
-          <div className="h-2 bg-primary/20 w-full" />
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Bell className="h-5 w-5 text-primary" />
-              Dicas automáticas por e-mail e WhatsApp
-            </CardTitle>
-            <CardDescription>
-              Receba dicas semanais de como usar o app. Você pode desativar a qualquer momento.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {prefs === null ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Carregando...
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="font-medium">Dicas por e-mail</p>
-                    <p className="text-sm text-muted-foreground">Enviadas semanalmente para seu e-mail de login</p>
-                  </div>
-                  <Switch
-                    checked={prefs.email_enabled}
-                    onCheckedChange={(v) => handlePrefChange('email_enabled', v)}
-                    disabled={prefsLoading}
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="font-medium">Dicas por WhatsApp</p>
-                    <p className="text-sm text-muted-foreground">Enviadas para o telefone cadastrado no perfil</p>
-                  </div>
-                  <Switch
-                    checked={prefs.whatsapp_enabled}
-                    onCheckedChange={(v) => handlePrefChange('whatsapp_enabled', v)}
-                    disabled={prefsLoading}
-                  />
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Dicas de uso */}
       <Card className="border-none shadow-lg overflow-hidden">
         <div className="h-2 bg-primary/20 w-full" />
         <CardHeader>
@@ -375,7 +292,6 @@ export default function ComoAcessar() {
         </CardContent>
       </Card>
 
-      {/* Resumo rápido */}
       <Card className="border-none shadow-lg overflow-hidden">
         <div className="h-2 bg-primary/20 w-full" />
         <CardHeader>
@@ -394,7 +310,6 @@ export default function ComoAcessar() {
         </CardContent>
       </Card>
 
-      {/* Mensalidade via PIX — somente para pastor, secretário e tesoureiro */}
       {showPixMensalidade && (
         <Card className="border-none shadow-lg overflow-hidden">
           <div className="h-2 bg-emerald-500/30 w-full" />
@@ -425,7 +340,6 @@ export default function ComoAcessar() {
         </Card>
       )}
 
-      {/* Contato e suporte */}
       <Card className="border-none shadow-lg overflow-hidden bg-primary/5 border-primary/20">
         <div className="h-2 bg-primary w-full" />
         <CardHeader>
