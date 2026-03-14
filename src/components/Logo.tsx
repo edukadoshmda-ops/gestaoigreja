@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useTheme } from '@/contexts/ThemeContext';
 
 const LOGO_SRC = '/logo-app.png';
+const LOGO_BLUE = '#2563EB';
 
 interface LogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -19,11 +18,6 @@ const sizeStyles: Record<string, { width: string; height: string }> = {
 };
 
 export function Logo({ size = 'md', showText = true }: LogoProps) {
-  const [imgError, setImgError] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const { currentTheme } = useTheme();
-  const logoColor = currentTheme?.primaryHex || '#F97316';
-
   const textSizeClasses = {
     xs: 'text-[1.04rem]',
     sm: 'text-[1.79rem] md:text-[1.61rem]',
@@ -44,7 +38,7 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
         <div
           className="w-full h-full relative"
           style={{
-            backgroundColor: logoColor,
+            backgroundColor: LOGO_BLUE,
             WebkitMaskImage: `url(${LOGO_SRC})`,
             maskImage: `url(${LOGO_SRC})`,
             WebkitMaskSize: 'contain',
@@ -53,7 +47,6 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
             maskRepeat: 'no-repeat',
             WebkitMaskPosition: 'center',
             maskPosition: 'center',
-            transition: 'background-color 0.5s ease',
             minHeight: '100%',
             minWidth: '100%',
           }}
@@ -64,8 +57,6 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
             alt="Gestão Igreja"
             className="w-full h-full object-contain opacity-0 pointer-events-none"
             style={{ maxWidth: '100%', maxHeight: '100%' }}
-            onLoad={() => setImgLoaded(true)}
-            onError={() => setImgError(true)}
           />
         </div>
       </div>
@@ -77,7 +68,7 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
               "font-black tracking-tight leading-none flex items-center gap-1.5",
               textSizeClasses[size]
             )}
-            style={{ color: logoColor, transition: 'color 0.5s ease' }}
+            style={{ color: LOGO_BLUE }}
           >
             <span>Gestão</span>
             <span>Igreja</span>

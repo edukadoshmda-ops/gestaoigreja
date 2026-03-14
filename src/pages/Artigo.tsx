@@ -13,18 +13,20 @@ import {
 import { fetchBlogArticleBySlug, type BlogArticle } from '@/services/blog.service';
 import NotFound from './NotFound';
 
+const BLOG_BLUE = '#2563EB';
+
 const CTA_BOX = (
-  <div className="not-prose my-8 rounded-xl border bg-primary/5 p-6">
+  <div className="not-prose my-8 rounded-xl border bg-[#2563EB]/5 p-6">
     <p className="text-foreground">
       Teste grátis nosso sistema de gestão de igreja e organize seus membros, dízimos e eventos em
       um só lugar.{' '}
-      <Link to="/cadastro-igreja-trial" className="font-semibold text-primary hover:underline">
+      <Link to="/cadastro-igreja-trial" className="font-semibold hover:underline" style={{ color: BLOG_BLUE }}>
         Clique aqui para começar.
       </Link>
     </p>
     <div className="mt-4">
       <Link to="/cadastro-igreja-trial">
-        <Button size="lg" className="gap-2">
+        <Button size="lg" className="gap-2 border-0 text-white hover:opacity-90" style={{ backgroundColor: BLOG_BLUE }}>
           Testar grátis por 30 dias
           <ArrowLeft className="h-4 w-4 rotate-180" />
         </Button>
@@ -41,7 +43,7 @@ function RelatedLinks({ articles }: { articles: ArticleMeta[] }) {
       <ul className="mt-4 space-y-3">
         {articles.map((r) => (
           <li key={r.slug}>
-            <Link to={`/blog/${r.slug}`} className="text-primary hover:underline">
+            <Link to={`/blog/${r.slug}`} className="hover:underline" style={{ color: BLOG_BLUE }}>
               Veja também nosso artigo sobre {r.title.toLowerCase()}.
             </Link>
           </li>
@@ -115,12 +117,12 @@ export default function Artigo() {
         <div className="container mx-auto max-w-3xl px-4 py-8">
           <Link
             to="/blog"
-            className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition"
+            className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-[#2563EB]"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar ao blog
           </Link>
-          <span className="mt-4 inline-block text-xs font-medium text-primary">
+          <span className="mt-4 inline-block text-xs font-medium" style={{ color: BLOG_BLUE }}>
             {cat.label}
           </span>
           <h1 className="mt-2 text-2xl font-bold text-foreground sm:text-3xl">
@@ -147,7 +149,7 @@ export default function Artigo() {
       <article className="container mx-auto max-w-3xl px-4 py-8">
         {loading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin" style={{ color: BLOG_BLUE }} />
           </div>
         ) : (
           <div className="prose prose-slate dark:prose-invert max-w-none">
@@ -157,20 +159,21 @@ export default function Artigo() {
               <>
                 <div dangerouslySetInnerHTML={{ __html: content! }} />
                 <RelatedLinks articles={related} />
-                <div className="not-prose mt-8 rounded-xl border bg-primary/5 p-6">
+                <div className="not-prose mt-8 rounded-xl border bg-[#2563EB]/5 p-6">
                   <p className="text-foreground">
                     Teste grátis nosso sistema de gestão de igreja e organize seus membros, dízimos e
                     eventos em um só lugar.{' '}
                     <Link
                       to="/cadastro-igreja-trial"
-                      className="font-semibold text-primary hover:underline"
+                      className="font-semibold hover:underline"
+                      style={{ color: BLOG_BLUE }}
                     >
                       Clique aqui para começar.
                     </Link>
                   </p>
                   <div className="mt-4">
                     <Link to="/cadastro-igreja-trial">
-                      <Button size="lg" className="gap-2">
+                      <Button size="lg" className="gap-2 border-0 text-white hover:opacity-90" style={{ backgroundColor: BLOG_BLUE }}>
                         Testar grátis por 30 dias
                         <ArrowLeft className="h-4 w-4 rotate-180" />
                       </Button>
@@ -185,7 +188,7 @@ export default function Artigo() {
 
       <footer className="border-t py-8">
         <div className="container mx-auto max-w-3xl px-4 text-center">
-          <Link to="/" className="text-primary hover:underline font-medium">
+          <Link to="/" className="font-medium hover:underline" style={{ color: BLOG_BLUE }}>
             Teste grátis nosso sistema de gestão de igreja e organize seus membros, dízimos e eventos
             em um só lugar. Clique aqui para começar →
           </Link>

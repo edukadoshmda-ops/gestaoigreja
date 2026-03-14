@@ -12,6 +12,8 @@ import {
 } from '@/lib/seoArticles';
 import { fetchBlogArticles, type BlogArticle } from '@/services/blog.service';
 
+const BLOG_BLUE = '#2563EB';
+
 function normalizeArticle(a: BlogArticle): ArticleMeta {
   return {
     slug: a.slug,
@@ -29,10 +31,10 @@ function ArticleCard({ article }: { article: ArticleMeta }) {
   return (
     <Link
       to={`/blog/${article.slug}`}
-      className="group block rounded-xl border bg-card p-5 transition hover:border-primary/50 hover:shadow-md"
+      className="group block rounded-xl border bg-card p-5 transition hover:border-[#2563EB]/50 hover:shadow-md"
     >
-      <span className="text-xs font-medium text-primary">{cat.label}</span>
-      <h3 className="mt-1 text-lg font-semibold text-foreground group-hover:text-primary transition">
+      <span className="text-xs font-medium" style={{ color: BLOG_BLUE }}>{cat.label}</span>
+      <h3 className="mt-1 text-lg font-semibold text-foreground transition group-hover:text-[#2563EB]">
         {article.title}
       </h3>
       <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
@@ -42,7 +44,7 @@ function ArticleCard({ article }: { article: ArticleMeta }) {
         <Clock className="h-3.5 w-3.5" />
         {article.readTime} min
       </div>
-      <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary opacity-0 group-hover:opacity-100 transition">
+      <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium opacity-0 transition group-hover:opacity-100" style={{ color: BLOG_BLUE }}>
         Ler artigo
         <ArrowRight className="h-4 w-4" />
       </span>
@@ -83,12 +85,12 @@ export default function Blog() {
         <div className="container mx-auto max-w-4xl px-4 py-12">
           <Link
             to="/"
-            className="text-sm font-medium text-muted-foreground hover:text-primary transition"
+            className="text-sm font-medium text-muted-foreground transition hover:text-[#2563EB]"
           >
             ← Voltar ao site
           </Link>
           <h1 className="mt-4 flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
-            <FileText className="h-8 w-8 text-primary" />
+            <FileText className="h-8 w-8" style={{ color: BLOG_BLUE }} />
             Blog Gestão Igreja
           </h1>
           <p className="mt-2 text-muted-foreground">
@@ -99,13 +101,23 @@ export default function Blog() {
         <div className="container mx-auto max-w-4xl px-4 pb-4">
           <nav className="flex flex-wrap gap-2">
             <Link to="/blog">
-              <Button variant={category === 'all' ? 'default' : 'outline'} size="sm">
+              <Button
+                variant={category === 'all' ? 'default' : 'outline'}
+                size="sm"
+                className={category === 'all' ? 'border-0 text-white hover:opacity-90' : 'border-[#2563EB]/20 text-[#2563EB] hover:border-[#2563EB]/40 hover:bg-[#2563EB]/5'}
+                style={category === 'all' ? { backgroundColor: BLOG_BLUE } : undefined}
+              >
                 Todos
               </Button>
             </Link>
             {(Object.keys(CATEGORIES) as ArticleCategory[]).map((cat) => (
               <Link key={cat} to={`/blog?categoria=${cat}`}>
-                <Button variant={category === cat ? 'default' : 'outline'} size="sm">
+                <Button
+                  variant={category === cat ? 'default' : 'outline'}
+                  size="sm"
+                  className={category === cat ? 'border-0 text-white hover:opacity-90' : 'border-[#2563EB]/20 text-[#2563EB] hover:border-[#2563EB]/40 hover:bg-[#2563EB]/5'}
+                  style={category === cat ? { backgroundColor: BLOG_BLUE } : undefined}
+                >
                   {CATEGORIES[cat].label}
                 </Button>
               </Link>
@@ -117,7 +129,7 @@ export default function Blog() {
       <main className="container mx-auto max-w-4xl px-4 py-8">
         {loading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin" style={{ color: BLOG_BLUE }} />
           </div>
         ) : (
           <>
@@ -137,7 +149,7 @@ export default function Blog() {
 
       <footer className="border-t py-8">
         <div className="container mx-auto max-w-4xl px-4 text-center">
-          <Link to="/" className="text-primary hover:underline font-medium">
+          <Link to="/" className="font-medium hover:underline" style={{ color: BLOG_BLUE }}>
             Conheça o Gestão Igreja e teste grátis por 30 dias →
           </Link>
         </div>
