@@ -73,6 +73,7 @@ export default function CadastroIgrejaTrial() {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(form));
       sessionStorage.setItem('trial_signup', '1');
+      sessionStorage.setItem('redirect_to_ativar_pagamentos', '1');
       toast({ title: 'Dados salvos!', description: 'Agora faça login ou cadastre-se para completar.' });
       navigate('/login?trial=1');
     } catch (err: any) {

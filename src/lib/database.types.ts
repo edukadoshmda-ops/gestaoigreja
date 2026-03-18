@@ -21,6 +21,7 @@ export interface Database {
                     email?: string | null
                     about?: string | null
                     created_at: string
+                    cnpj?: string | null
                     facebook_url?: string | null
                     instagram_url?: string | null
                     youtube_url?: string | null
@@ -33,6 +34,10 @@ export interface Database {
                     pix_key_type?: string | null
                     pix_beneficiary_name?: string | null
                     pix_city?: string | null
+                    stone_mode?: string | null
+                    stone_api_key?: string | null
+                    stone_recipient_id?: string | null
+                    stone_status?: string | null
                 }
                 Insert: {
                     id?: string
@@ -45,6 +50,7 @@ export interface Database {
                     email?: string | null
                     about?: string | null
                     created_at?: string
+                    cnpj?: string | null
                     facebook_url?: string | null
                     instagram_url?: string | null
                     youtube_url?: string | null
@@ -57,6 +63,10 @@ export interface Database {
                     pix_key_type?: string | null
                     pix_beneficiary_name?: string | null
                     pix_city?: string | null
+                    stone_mode?: string | null
+                    stone_api_key?: string | null
+                    stone_recipient_id?: string | null
+                    stone_status?: string | null
                 }
                 Update: {
                     id?: string
@@ -69,6 +79,7 @@ export interface Database {
                     email?: string | null
                     about?: string | null
                     created_at?: string
+                    cnpj?: string | null
                     facebook_url?: string | null
                     instagram_url?: string | null
                     youtube_url?: string | null
@@ -81,6 +92,10 @@ export interface Database {
                     pix_key_type?: string | null
                     pix_beneficiary_name?: string | null
                     pix_city?: string | null
+                    stone_mode?: string | null
+                    stone_api_key?: string | null
+                    stone_recipient_id?: string | null
+                    stone_status?: string | null
                 }
             },
             profiles: {
@@ -90,6 +105,7 @@ export interface Database {
                     full_name: string | null
                     role: 'superadmin' | 'admin' | 'pastor' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado' | null
                     phone: string | null
+                    telegram_chat_id: string | null
                     avatar_url: string | null
                     created_at: string
                     updated_at: string
@@ -100,6 +116,7 @@ export interface Database {
                     full_name?: string | null
                     role?: 'superadmin' | 'admin' | 'pastor' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado' | null
                     phone?: string | null
+                    telegram_chat_id?: string | null
                     avatar_url?: string | null
                     created_at?: string
                     updated_at?: string
@@ -110,6 +127,7 @@ export interface Database {
                     full_name?: string | null
                     role?: 'superadmin' | 'admin' | 'pastor' | 'secretario' | 'tesoureiro' | 'membro' | 'lider_celula' | 'lider_ministerio' | 'aluno' | 'congregado' | null
                     phone?: string | null
+                    telegram_chat_id?: string | null
                     avatar_url?: string | null
                     created_at?: string
                     updated_at?: string
@@ -382,6 +400,85 @@ export interface Database {
                     event_id?: string | null
                     receipt_url?: string | null
                     notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            },
+            payment_customers: {
+                Row: {
+                    id: string
+                    church_id: string | null
+                    member_id: string | null
+                    provider: string
+                    provider_customer_id: string
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    church_id?: string | null
+                    member_id?: string | null
+                    provider?: string
+                    provider_customer_id: string
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    church_id?: string | null
+                    member_id?: string | null
+                    provider?: string
+                    provider_customer_id?: string
+                    created_at?: string
+                }
+            },
+            payments: {
+                Row: {
+                    id: string
+                    church_id: string
+                    member_id: string | null
+                    amount: number
+                    currency: string
+                    status: string
+                    stone_status: string | null
+                    description: string | null
+                    provider: string
+                    provider_payment_id: string | null
+                    provider_checkout_url: string | null
+                    type: string
+                    metadata: Json | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    church_id: string
+                    member_id?: string | null
+                    amount: number
+                    currency?: string
+                    status?: string
+                    stone_status?: string | null
+                    description?: string | null
+                    provider?: string
+                    provider_payment_id?: string | null
+                    provider_checkout_url?: string | null
+                    type: string
+                    metadata?: Json | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    church_id?: string
+                    member_id?: string | null
+                    amount?: number
+                    currency?: string
+                    status?: string
+                    stone_status?: string | null
+                    description?: string | null
+                    provider?: string
+                    provider_payment_id?: string | null
+                    provider_checkout_url?: string | null
+                    type?: string
+                    metadata?: Json | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -721,6 +818,7 @@ export interface Database {
                     id: string
                     church_id: string
                     email_enabled: boolean
+                    telegram_enabled: boolean | null
                     whatsapp_enabled: boolean
                     frequency: string
                     updated_at: string
@@ -729,6 +827,7 @@ export interface Database {
                     id?: string
                     church_id: string
                     email_enabled?: boolean
+                    telegram_enabled?: boolean | null
                     whatsapp_enabled?: boolean
                     frequency?: string
                     updated_at?: string
@@ -737,6 +836,7 @@ export interface Database {
                     id?: string
                     church_id?: string
                     email_enabled?: boolean
+                    telegram_enabled?: boolean | null
                     whatsapp_enabled?: boolean
                     frequency?: string
                     updated_at?: string
@@ -809,6 +909,13 @@ export interface Database {
                     scale_id: string
                 }
                 Returns: Json
+            }
+            create_telegram_link_token: {
+                Args: Record<PropertyKey, never>
+                Returns: {
+                    token: string
+                    expires_at: string
+                }[]
             }
         }
         Enums: {

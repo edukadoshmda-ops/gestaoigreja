@@ -25,6 +25,12 @@
     touch-action: manipulation;
     line-height: 1.6;
   }
+
+  /* Garantir que menus (ex.: Select) fiquem acima do Leaflet */
+  .leaflet-container,
+  .leaflet-container * {
+    z-index: 0 !important;
+  }
 }
 
 /*

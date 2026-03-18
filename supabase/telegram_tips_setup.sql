@@ -21,7 +21,7 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- ------------------------------------------------------------
+telegram_tips_setup.sql-- ------------------------------------------------------------
 -- 1) Profiles: canal Telegram
 -- ------------------------------------------------------------
 ALTER TABLE public.profiles
@@ -74,11 +74,11 @@ BEGIN
   END IF;
 
   -- Invalida tokens anteriores ainda validos do mesmo usuario
-  UPDATE public.telegram_link_tokens
+  UPDATE public.telegram_link_tokens AS t
   SET used_at = now()
-  WHERE user_id = auth.uid()
-    AND used_at IS NULL
-    AND expires_at > now();
+  WHERE t.user_id = auth.uid()
+    AND t.used_at IS NULL
+    AND t.expires_at > now();
 
   v_token := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
   v_expires := now() + interval '10 minutes';

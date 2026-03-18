@@ -40,6 +40,7 @@ const ReadingPlans = lazy(() => import("./pages/ReadingPlans"));
 const PrayerRequests = lazy(() => import("./pages/PrayerRequests"));
 const SocialLinks = lazy(() => import("./pages/SocialLinks"));
 const PixDonations = lazy(() => import("./pages/PixDonations"));
+const AtivarPagamentos = lazy(() => import("./pages/AtivarPagamentos"));
 const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
 const ComoAcessar = lazy(() => import("./pages/ComoAcessar"));
 const Schools = lazy(() => import("./pages/Schools"));
@@ -66,6 +67,10 @@ function getPostLoginPath(user: { role?: string; registrationCompleted?: boolean
     if (sessionStorage.getItem('redirect_to_institucional') === '1') {
       sessionStorage.removeItem('redirect_to_institucional');
       return '/institucional';
+    }
+    if (sessionStorage.getItem('redirect_to_ativar_pagamentos') === '1') {
+      sessionStorage.removeItem('redirect_to_ativar_pagamentos');
+      return '/ativar-pagamentos';
     }
   } catch {}
   const isMemberOrCongregado = user.role === 'membro' || user.role === 'congregado';
@@ -187,6 +192,8 @@ function AppRoutes() {
         <Route path="/solicitacoes-oracao" element={<ProtectedRoute><PrayerRequests /></ProtectedRoute>} />
         <Route path="/redes-sociais" element={<ProtectedRoute><SocialLinks /></ProtectedRoute>} />
         <Route path="/pix-donacoes" element={<ProtectedRoute><PixDonations /></ProtectedRoute>} />
+        <Route path="/ativar-pagamentos" element={<ProtectedRoute><AtivarPagamentos /></ProtectedRoute>} />
+        <Route path="/dashboard/pagamentos" element={<ProtectedRoute><AtivarPagamentos /></ProtectedRoute>} />
         <Route path="/institucional" element={<ProtectedRoute><Institutional /></ProtectedRoute>} />
         <Route path="/privacidade" element={<ProtectedRoute><Privacy /></ProtectedRoute>} />
         <Route path="/como-acessar" element={<ProtectedRoute><ComoAcessar /></ProtectedRoute>} />

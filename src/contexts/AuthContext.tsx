@@ -90,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               slug: 'sede'
             }).select().single();
             targetChurchId = newChurch?.id;
+            try { sessionStorage.setItem('redirect_to_ativar_pagamentos', '1'); } catch {}
           } else {
             targetChurchId = (churches as { id: string }[])[0]?.id;
           }
@@ -136,7 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (isTrialSignup && profile.church_id) {
-        try { sessionStorage.setItem('redirect_to_institucional', '1'); } catch {}
+        try {
+          sessionStorage.setItem('redirect_to_institucional', '1');
+          sessionStorage.setItem('redirect_to_ativar_pagamentos', '1');
+        } catch {}
       }
 
       const newUser: User = {

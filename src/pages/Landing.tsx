@@ -212,6 +212,29 @@ export default function Landing() {
             O hub definitivo para simplificar a administração e engajar a sua congregação. Tudo o que você precisa em um único App.
           </p>
 
+          <motion.div
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="max-w-2xl mx-auto mb-8"
+          >
+            <div className="rounded-2xl border border-emerald-600/30 bg-gradient-to-br from-emerald-600 to-emerald-500 text-white shadow-xl shadow-emerald-500/20">
+              <div className="p-4 sm:p-5 flex items-start gap-3 sm:gap-4 text-left">
+                <div className="shrink-0 rounded-xl bg-white/15 p-2.5 sm:p-3 border border-white/20">
+                  <Lock className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-black tracking-tight text-base sm:text-lg leading-tight">
+                    Pagamentos processados por Stone
+                  </p>
+                  <p className="text-white/90 text-[12px] sm:text-sm font-semibold leading-snug mt-1">
+                    Mais segurança e confiabilidade para doações, dízimos e ofertas.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Link to="/cadastro-igreja-trial" className="inline-flex">
               <Button

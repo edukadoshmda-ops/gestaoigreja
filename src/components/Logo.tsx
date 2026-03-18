@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const LOGO_SRC = '/logo-app.png';
-const LOGO_BLUE = '#2563EB';
 
 interface LogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -18,6 +18,8 @@ const sizeStyles: Record<string, { width: string; height: string }> = {
 };
 
 export function Logo({ size = 'md', showText = true }: LogoProps) {
+  const { currentTheme } = useTheme();
+  const primaryColor = currentTheme?.primaryHex || '#2563EB';
   const textSizeClasses = {
     xs: 'text-[1.04rem]',
     sm: 'text-[1.79rem] md:text-[1.61rem]',
@@ -38,7 +40,7 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
         <div
           className="w-full h-full relative"
           style={{
-            backgroundColor: LOGO_BLUE,
+            backgroundColor: primaryColor,
             WebkitMaskImage: `url(${LOGO_SRC})`,
             maskImage: `url(${LOGO_SRC})`,
             WebkitMaskSize: 'contain',
@@ -68,7 +70,7 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
               "font-black tracking-tight leading-none flex items-center gap-1.5",
               textSizeClasses[size]
             )}
-            style={{ color: LOGO_BLUE }}
+            style={{ color: primaryColor }}
           >
             <span>Gestão</span>
             <span>Igreja</span>

@@ -68,7 +68,7 @@ const features = [
   },
   {
     icon: CreditCard,
-    title: 'Contas e PIX Igreja',
+    title: 'Doar dízimos e ofertas',
     items: ['Todos os usuários podem visualizar.', 'Apenas o tesoureiro pode editar e configurar PIX e QR Code para doações e ofertas.'],
   },
   {
@@ -132,7 +132,7 @@ const roles = [
   { role: 'Administrador', desc: 'Acesso total: membros, finanças, configurações, etc.' },
   { role: 'Pastor', desc: 'Dashboard, membros, secretaria, relatórios, uploads Estudos' },
   { role: 'Secretário', desc: 'Membros, documentação, boletins, uploads Atas/Fotos/Vídeos' },
-  { role: 'Tesoureiro', desc: 'Caixa diário, relatórios financeiros, Contas e PIX Igreja, uploads Financeiro' },
+  { role: 'Tesoureiro', desc: 'Caixa diário, relatórios financeiros, Doar dízimos e ofertas, uploads Financeiro' },
   { role: 'Líder de Célula', desc: 'Membros da célula, relatórios' },
   { role: 'Líder de Ministério', desc: 'Membros do ministério, relatórios' },
   { role: 'Membro/Congregado', desc: 'Sua página, avisos, escala, visualização de PIX e Uploads e Atas' },
@@ -154,7 +154,7 @@ const steps = [
   'Cadastre membros e congregados em **Membros e Congregados** (com foto e categorias).',
   'Organize células e cadastre líderes e participantes.',
   'Envie boletins e avisos para a igreja.',
-  'Visualize ou configure a chave PIX da igreja em **Contas e PIX Igreja** (todos visualizam; apenas tesoureiro edita).',
+  'Visualize ou configure a chave PIX da igreja em **Doar dízimos e ofertas** (todos visualizam; apenas tesoureiro edita).',
   'Personalize logo e dados da igreja em **Página Institucional**.',
   'Cadastre pastores com foto em **Pastores**.',
   'Controle entradas e saídas em **Caixa Diário** (administradores e tesoureiros).',

@@ -15,6 +15,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { churchesService } from '@/services/churches.service';
+import { pagamentosService } from '@/services/pagamentos.service';
+import { criarContaStone } from '@/lib/pagarme';
+import { Link } from 'react-router-dom';
 
 const PIX_KEY_TYPES = [
   { value: 'cpf', label: 'CPF' },
@@ -25,7 +28,7 @@ const PIX_KEY_TYPES = [
 ] as const;
 
 export default function PixDonations() {
-  useDocumentTitle('Contas e PIX Igreja');
+  useDocumentTitle('Doar dízimos e ofertas');
   const { churchId, viewingChurch, user } = useAuth();
   const { toast } = useToast();
   const effectiveChurchId = viewingChurch?.id ?? churchId ?? user?.churchId;
@@ -35,13 +38,25 @@ export default function PixDonations() {
   );
 
   const [church, setChurch] = useState<{
+    name?: string | null;
     pix_key?: string | null;
     pix_key_type?: string | null;
     pix_beneficiary_name?: string | null;
     pix_city?: string | null;
+    cnpj?: string | null;
+    stone_recipient_id?: string | null;
+    stone_mode?: string | null;
+    stone_api_key?: string | null;
+    stone_status?: string | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [connectingStone, setConnectingStone] = useState(false);
+  const [activatingMarketplace, setActivatingMarketplace] = useState(false);
+  const [creatingPix, setCreatingPix] = useState(false);
+  const [donationAmount, setDonationAmount] = useState<string>('10');
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (effectiveChurchId) loadData();
@@ -78,6 +93,143 @@ export default function PixDonations() {
     }
   }
 
+  async function handleCreateStonePixDonation() {
+    if (!effectiveChurchId) return;
+    setCreatingPix(true);
+    setCheckoutUrl(null);
+    setQrCodeUrl(null);
+    try {
+      const valor = Number(String(donationAmount).replace(',', '.'));
+      if (!Number.isFinite(valor) || valor <= 0) {
+        toast({
+          title: 'Valor inválido',
+          description: 'Informe um valor maior que zero.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const result = await pagamentosService.criarPix({
+        churchId: effectiveChurchId,
+        valor,
+        descricao: 'Doação',
+        tipo: 'doacao',
+      });
+
+      if (result.qr_code_url) {
+        setQrCodeUrl(result.qr_code_url);
+        toast({
+          title: 'PIX criado!',
+          description: 'Exiba o QR Code para o membro escanear.',
+        });
+      } else if (result.checkout_url) {
+        setCheckoutUrl(result.checkout_url);
+        window.open(result.checkout_url, '_blank', 'noopener,noreferrer');
+        toast({
+          title: 'PIX criado!',
+          description: 'Abrimos o checkout em uma nova aba.',
+        });
+      } else {
+        toast({
+          title: 'PIX criado!',
+          description: 'Pagamento registrado. Confira os detalhes no painel de pagamentos.',
+        });
+      }
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao criar PIX',
+        description: e?.message || String(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingPix(false);
+    }
+  }
+
+  async function handleConnectStoneMei() {
+    if (!effectiveChurchId || !church || !canEdit) return;
+    const key = String(church.stone_api_key || '').trim();
+    if (!key) {
+      toast({
+        title: 'Informe a API Key',
+        description: 'Cole a API Key da Stone/Pagar.me para conectar a conta.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setConnectingStone(true);
+    try {
+      await churchesService.update(effectiveChurchId, {
+        stone_mode: 'direct',
+        stone_api_key: key,
+      } as any);
+      toast({
+        title: 'Conta conectada!',
+        description: 'A API Key foi salva e o modo foi definido como Direct (MEI).',
+      });
+      await loadData();
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao conectar',
+        description: e?.message || String(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setConnectingStone(false);
+    }
+  }
+
+  function getMarketplaceStatusLabel() {
+    const mode = String(church?.stone_mode || '').toLowerCase();
+    if (mode === 'direct') return { label: 'MEI (Direct) ativo', tone: 'muted' as const };
+    if (church?.stone_recipient_id) return { label: 'Conta marketplace ativa', tone: 'success' as const };
+    if (church?.stone_status) return { label: `Pendente (${church.stone_status})`, tone: 'warning' as const };
+    return { label: 'Não ativada', tone: 'warning' as const };
+  }
+
+  async function handleActivateMarketplace() {
+    if (!effectiveChurchId || !church || !canEdit) return;
+    setActivatingMarketplace(true);
+    try {
+      // 1) Define marketplace como modo (recomendado)
+      await churchesService.update(effectiveChurchId, {
+        stone_mode: 'marketplace',
+        // segurança: limpamos a chave da igreja ao migrar para marketplace
+        stone_api_key: null,
+      } as any);
+
+      // 2) Se ainda não tem recipient, cria via endpoint seguro no backend
+      const cnpj = String((church as any)?.cnpj || '').trim();
+      const nome = String((church as any)?.name || '').trim();
+      if (!church.stone_recipient_id) {
+        if (!cnpj || !nome) {
+          toast({
+            title: 'Dados incompletos',
+            description: 'Para ativar o marketplace, a igreja precisa ter Nome e CNPJ cadastrados.',
+            variant: 'destructive',
+          });
+        } else {
+          await criarContaStone({ church_id: effectiveChurchId, nome, cnpj });
+        }
+      }
+
+      toast({
+        title: 'Pagamentos ativados!',
+        description: 'Modo marketplace configurado com sucesso.',
+      });
+      await loadData();
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao ativar',
+        description: e?.message || String(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setActivatingMarketplace(false);
+    }
+  }
+
   if (!effectiveChurchId) {
     return (
       <div className="max-w-2xl mx-auto py-12 text-center">
@@ -93,11 +245,19 @@ export default function PixDonations() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <CreditCard className="h-8 w-8 text-primary" />
-          Contas e PIX Igreja
+          Doar dízimos e ofertas
         </h1>
         <p className="text-muted-foreground mt-1">
           Configure as chaves PIX e dados bancários da igreja para recebimento de dízimos e ofertas.
         </p>
+        <div className="mt-3">
+          <Link to="/dashboard/pagamentos" className="inline-flex">
+            <Button variant="outline" className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              Ativar pagamentos (passo a passo)
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
@@ -187,6 +347,182 @@ export default function PixDonations() {
                   )}
                   Salvar dados PIX
                 </Button>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Fase MEI
+          </CardTitle>
+          <CardDescription>
+            Configure a API Key da Stone/Pagar.me diretamente na igreja (modo <code>direct</code>).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="stone_api_key">API Key da Stone</Label>
+                <Input
+                  id="stone_api_key"
+                  type="password"
+                  placeholder="Cole aqui a API Key"
+                  value={church?.stone_api_key || ''}
+                  onChange={(e) =>
+                    setChurch((p) => (p ? { ...p, stone_api_key: e.target.value || null } : null))
+                  }
+                  disabled={!canEdit}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Para produção, o recomendado é <strong>marketplace</strong> (chave só no servidor). Nesta fase, usamos direct.
+                </p>
+              </div>
+
+              {canEdit && (
+                <Button onClick={handleConnectStoneMei} disabled={connectingStone}>
+                  {connectingStone ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Conectar conta
+                </Button>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Fase Marketplace
+          </CardTitle>
+          <CardDescription>
+            Recomendado para produção: pagamentos pela conta da plataforma com repasse automático para a igreja.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border bg-muted/10 px-4 py-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">Status da conta</p>
+                  <p className="text-xs text-muted-foreground">
+                    Recipient: <span className="font-mono">{church?.stone_recipient_id ? 'configurado' : 'não configurado'}</span>
+                  </p>
+                </div>
+                {(() => {
+                  const s = getMarketplaceStatusLabel();
+                  const cls =
+                    s.tone === 'success'
+                      ? 'bg-emerald-600 text-white border-emerald-700/30'
+                      : s.tone === 'warning'
+                        ? 'bg-amber-500 text-white border-amber-600/30'
+                        : 'bg-muted text-foreground border-border';
+                  return (
+                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-black border ${cls}`}>
+                      {s.label}
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {canEdit && (
+                <Button onClick={handleActivateMarketplace} disabled={activatingMarketplace}>
+                  {activatingMarketplace ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="h-4 w-4 mr-2" />
+                  )}
+                  Ativar pagamentos
+                </Button>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Doação via Stone/Pagar.me (PIX)
+          </CardTitle>
+          <CardDescription>
+            Teste o fluxo de pagamento PIX criando um pedido via Stone/Pagar.me e registrando em <code>payments</code>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : !church?.stone_recipient_id ? (
+            <div className="text-sm text-muted-foreground">
+              Esta igreja ainda não tem <code>stone_recipient_id</code>. Crie a conta Stone primeiro usando o endpoint
+              <code> /api/criar-conta-stone</code>.
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="donation_amount">Valor da doação (R$)</Label>
+                <Input
+                  id="donation_amount"
+                  inputMode="decimal"
+                  placeholder="Ex: 10,00"
+                  value={donationAmount}
+                  onChange={(e) => setDonationAmount(e.target.value)}
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button onClick={handleCreateStonePixDonation} disabled={creatingPix}>
+                  {creatingPix ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="h-4 w-4 mr-2" />
+                  )}
+                  Criar PIX (Stone)
+                </Button>
+              </div>
+
+              {qrCodeUrl && (
+                <div className="mt-4 space-y-2">
+                  <Label>QR Code PIX</Label>
+                  <img
+                    src={qrCodeUrl}
+                    alt="QR Code PIX"
+                    className="w-48 h-48 border rounded-md"
+                  />
+                </div>
+              )}
+
+              {checkoutUrl && !qrCodeUrl && (
+                <div className="mt-2">
+                  <a
+                    className="text-sm text-primary underline underline-offset-4"
+                    href={checkoutUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Abrir checkout
+                  </a>
+                </div>
               )}
             </>
           )}

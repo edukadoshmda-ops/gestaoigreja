@@ -381,7 +381,13 @@ export default function Cells() {
             <SelectTrigger className="w-full sm:w-[180px] h-9">
               <SelectValue placeholder="Dia da reunião" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent
+              side="bottom"
+              align="start"
+              sideOffset={6}
+              avoidCollisions={false}
+              className="w-max min-w-[220px] max-w-[calc(100vw-2rem)]"
+            >
               <SelectItem value="todos">Todos os dias</SelectItem>
               <SelectItem value="Segunda-feira">Segunda-feira</SelectItem>
               <SelectItem value="Terça-feira">Terça-feira</SelectItem>
