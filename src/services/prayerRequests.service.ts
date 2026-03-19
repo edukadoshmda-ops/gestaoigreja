@@ -13,14 +13,14 @@ export interface PrayerRequest {
 
 export const prayerRequestsService = {
   async list(churchId: string): Promise<PrayerRequest[]> {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('prayer_requests')
       .select('*')
       .eq('church_id', churchId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return (data || []) as PrayerRequest[];
+    return (data || []) as any as PrayerRequest[];
   },
 
   async create(
@@ -29,7 +29,7 @@ export const prayerRequestsService = {
   ): Promise<PrayerRequest> {
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('prayer_requests')
       .insert({
         church_id: churchId,
@@ -42,11 +42,11 @@ export const prayerRequestsService = {
       .single();
 
     if (error) throw error;
-    return data as PrayerRequest;
+    return data as any as PrayerRequest;
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('prayer_requests')
       .delete()
       .eq('id', id);
@@ -55,15 +55,16 @@ export const prayerRequestsService = {
   },
 
   async incrementPrayed(id: string): Promise<void> {
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('prayer_requests')
       .select('prayed_count')
       .eq('id', id)
       .single();
 
-    const newCount = ((data as any)?.prayed_count ?? 0) + 1;
+    const currentCount = (data as any)?.prayed_count ?? 0;
+    const newCount = currentCount + 1;
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('prayer_requests')
       .update({ prayed_count: newCount })
       .eq('id', id);

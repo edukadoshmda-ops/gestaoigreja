@@ -69,7 +69,7 @@ import { ptBR } from 'date-fns/locale';
 
 const MAX_CHURCHES = 100;
 
-type TabValue = 'gestao' | 'relatorios' | 'mensalidades';
+type TabValue = 'gestao' | 'relatorios' | 'usuarios' | 'mensalidades';
 
 export default function SuperAdmin() {
     useDocumentTitle('Painel Root - 100 Igrejas');
@@ -79,7 +79,7 @@ export default function SuperAdmin() {
     const [loadingReports, setLoadingReports] = useState(false);
     const [loadingSubs, setLoadingSubs] = useState(false);
     const [churches, setChurches] = useState<Church[]>([]);
-    const [report, setReport] = useState<{ churchId: string; churchName: string; slug: string; memberCount: number; userCount: number; createdAt: string }[]>([]);
+    const [report, setReport] = useState<{ churchId: string; churchName: string; slug: string; memberCount: number; createdAt: string }[]>([]);
     const [subscriptions, setSubscriptions] = useState<any[]>([]);
     const [stats, setStats] = useState({ totalChurches: 0, totalMembers: 0, totalUsers: 0 });
     const [search, setSearch] = useState('');
@@ -293,6 +293,7 @@ export default function SuperAdmin() {
                             <p className="text-xs text-muted-foreground mt-1">Soma de todas as congregações</p>
                         </CardContent>
                     </Card>
+
                     <Card className="relative overflow-hidden group border-none shadow-md">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -304,6 +305,7 @@ export default function SuperAdmin() {
                             <p className="text-xs text-muted-foreground mt-1">Contas vinculadas</p>
                         </CardContent>
                     </Card>
+
                     <Card className="relative overflow-hidden group border-none shadow-md">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -319,12 +321,15 @@ export default function SuperAdmin() {
             )}
 
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-                <TabsList className="grid w-full grid-cols-3 max-w-lg">
+                <TabsList className="grid w-full grid-cols-4 max-w-2xl">
                     <TabsTrigger value="gestao" className="gap-2">
                         <Building2 className="h-4 w-4" /> Gestão
                     </TabsTrigger>
                     <TabsTrigger value="relatorios" className="gap-2">
                         <BarChart3 className="h-4 w-4" /> Relatórios
+                    </TabsTrigger>
+                    <TabsTrigger value="usuarios" className="gap-2">
+                        <UserCheck className="h-4 w-4" /> Usuários
                     </TabsTrigger>
                     <TabsTrigger value="mensalidades" className="gap-2">
                         <DollarSign className="h-4 w-4" /> Mensalidades
@@ -474,7 +479,6 @@ export default function SuperAdmin() {
                                                 <TableHead>Igreja</TableHead>
                                                 <TableHead>Slug</TableHead>
                                                 <TableHead className="text-right">Membros</TableHead>
-                                                <TableHead className="text-right">Usuários</TableHead>
                                                 <TableHead>Criado em</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -484,7 +488,6 @@ export default function SuperAdmin() {
                                                     <TableCell className="font-medium">{r.churchName}</TableCell>
                                                     <TableCell><code className="text-xs">{r.slug}</code></TableCell>
                                                     <TableCell className="text-right">{r.memberCount}</TableCell>
-                                                    <TableCell className="text-right">{r.userCount}</TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">
                                                         {format(new Date(r.createdAt), "dd/MM/yyyy", { locale: ptBR })}
                                                     </TableCell>
@@ -499,6 +502,24 @@ export default function SuperAdmin() {
                                     </Table>
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="usuarios" className="mt-6">
+                    <Card className="border-none shadow-md">
+                        <CardHeader>
+                            <CardTitle>Usuários Ativos</CardTitle>
+                            <CardDescription>Gerencie as contas vinculadas à plataforma.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-full mb-4">
+                                <UserCheck className="h-10 w-10 text-emerald-500" />
+                            </div>
+                            <h3 className="text-lg font-medium">Contas Vinculadas</h3>
+                            <p className="text-muted-foreground max-w-sm mt-2">
+                                Esta aba está limpa e pronta para receber a gestão de usuários.
+                            </p>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -520,15 +541,26 @@ export default function SuperAdmin() {
                                         Instruções para as igrejas: 1) Informe o nome da igreja no PIX antes de pagar. 2) Envie o comprovante para gestaoigreja@gmail.com. Após receber, registre o pagamento no botão abaixo.
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-2 text-sm">
-                                    <p><strong>Chave PIX (celular):</strong> <span className="font-mono bg-muted px-2 py-1 rounded">{SUBSCRIPTION_PIX.pixKey}</span>
-                                    <Button variant="ghost" size="sm" className="ml-2 h-7" onClick={() => { navigator.clipboard?.writeText(SUBSCRIPTION_PIX.pixKey); toast({ title: 'Chave PIX copiada!', duration: 2000 }); }}>
-                                        <Copy className="h-3.5 w-3.5 mr-1" /> Copiar
-                                    </Button>
-                                    </p>
-                                    <p><strong>Titular:</strong> {SUBSCRIPTION_PIX.holderName}</p>
-                                    <p><strong>Banco:</strong> {SUBSCRIPTION_PIX.bank}</p>
-                                    <p className="text-muted-foreground pt-2">50 primeiras igrejas: R$ {SUBSCRIPTION_PIX.promoPrice}/mês · Demais: R$ {SUBSCRIPTION_PIX.fullPrice}/mês</p>
+                                <CardContent className="space-y-4 text-sm">
+                                    <div className="grid sm:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <p><strong>Chave PIX (CNPJ):</strong> <span className="font-mono bg-muted px-2 py-1 rounded">{SUBSCRIPTION_PIX.cnpj}</span>
+                                            <Button variant="ghost" size="sm" className="ml-2 h-7" onClick={() => { navigator.clipboard?.writeText(SUBSCRIPTION_PIX.pixKey); toast({ title: 'Chave PIX copiada!', duration: 2000 }); }}>
+                                                <Copy className="h-3.5 w-3.5 mr-1" /> Copiar
+                                            </Button>
+                                            </p>
+                                            <p><strong>Titular:</strong> {SUBSCRIPTION_PIX.holderName}</p>
+                                            <p><strong>Banco:</strong> {SUBSCRIPTION_PIX.bankId} {SUBSCRIPTION_PIX.bank}</p>
+                                            <p><strong>Agência / Conta:</strong> {SUBSCRIPTION_PIX.agency} / {SUBSCRIPTION_PIX.account}</p>
+                                            <p><strong>CNPJ:</strong> {SUBSCRIPTION_PIX.cnpj}</p>
+                                        </div>
+                                        <div className="text-muted-foreground border-l pl-6 border-primary/10">
+                                            <p className="font-bold text-foreground mb-2">Resumo de Assinatura:</p>
+                                            <p>• {SUBSCRIPTION_PIX.promoSlots} primeiras igrejas: R$ {SUBSCRIPTION_PIX.promoPrice}/mês</p>
+                                            <p>• Demais igrejas: R$ {SUBSCRIPTION_PIX.fullPrice}/mês</p>
+                                            <p className="mt-4 text-[11px]">As igrejas veem esses dados no Dashboard e devem enviar o comprovante para ativação manual ou via webhook.</p>
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
                             {loadingSubs ? (

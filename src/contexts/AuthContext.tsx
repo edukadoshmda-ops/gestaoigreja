@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!authUser) throw new Error('Falha ao obter usuário');
 
       // 3. Buscar Perfil e Igreja
-      let profileResult = await authService.getProfile();
+      const profileResult = await authService.getProfile();
       let profile: any = profileResult;
 
       // 4. Se não houver perfil ou igreja vinculada (e não for superadmin)
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw new Error(e?.message || 'Não foi possível criar igreja de teste. Limite de 100 vagas pode ter sido atingido.');
           }
         } else {
-          let { data: churches } = await supabase.from('churches').select('id').limit(1);
+          const { data: churches } = await supabase.from('churches').select('id').limit(1);
           if (!churches || churches.length === 0) {
             const { data: newChurch } = await (supabase.from('churches') as any).insert({
               name: 'Igreja Sede',
@@ -300,7 +300,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           registrationCompleted: !!(profile as any).registration_completed,
         };
         setUser(u);
-        let cid = (profile as any).church_id || undefined;
+        const cid = (profile as any).church_id || undefined;
         if (u.role === 'superadmin') {
           try {
             const viewing = sessionStorage.getItem('superadmin_viewing_church');

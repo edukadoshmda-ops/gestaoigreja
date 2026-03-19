@@ -76,7 +76,6 @@ export default function Dashboard() {
   useEffect(() => {
     setConfig(getDashboardConfig(user?.id, user?.role));
   }, [user?.id, user?.role]);
-
   // Tesoureiro, secretário e diretor de patrimônio veem todos os ícones; permissões são mantidas nas rotas
   const rolesQueVeemTodos = ['tesoureiro', 'secretario', 'diretor_patrimonio'];
   const visibleActions = user && rolesQueVeemTodos.includes(user.role ?? '')
@@ -117,38 +116,99 @@ export default function Dashboard() {
           </div>
         )}
         {showPixNotice && (
-          <Card className="xl:col-span-2 border-primary/30 bg-primary/5 shadow-lg" data-widget-pix-mensalidade>
-            <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="p-3 rounded-xl bg-primary/20">
-                    <CreditCard className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg">Mensalidade da plataforma</h3>
-                    <p className="text-sm text-muted-foreground">Pague via PIX e envie o comprovante</p>
-                  </div>
+          <Card className="xl:col-span-2 border-primary/30 bg-primary/5 shadow-lg overflow-hidden" data-widget-pix-mensalidade>
+            <CardContent className="p-0">
+              <div className="bg-primary/10 px-6 py-4 border-b border-primary/20 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CreditCard className="h-6 w-6 text-primary" />
+                  <h3 className="font-bold text-lg">Pagamento via PIX (mensalidades)</h3>
                 </div>
-                <div className="flex-1 grid sm:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-1">
-                    <p><strong>Chave PIX:</strong> <span className="font-mono bg-muted px-2 py-1 rounded">{SUBSCRIPTION_PIX.pixKey}</span>
-                      <Button variant="ghost" size="sm" className="h-7 ml-2" onClick={() => { navigator.clipboard?.writeText(SUBSCRIPTION_PIX.pixKey); toast({ title: 'Chave PIX copiada!', duration: 2000 }); }}>
-                        <Copy className="h-4 w-4 mr-1" /> Copiar
-                      </Button>
-                    </p>
-                    <p><strong>Banco:</strong> {SUBSCRIPTION_PIX.holderName} · {SUBSCRIPTION_PIX.bank}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p><strong>Envie o comprovante para:</strong></p>
-                    <a href={`mailto:${SUBSCRIPTION_PIX.receiptEmail}?subject=Comprovante%20PIX%20-%20Mensalidade`} className="inline-flex items-center gap-2 text-primary font-medium hover:underline">
-                      <Mail className="h-4 w-4" />
-                      {SUBSCRIPTION_PIX.receiptEmail}
-                    </a>
-                    <p className="text-xs text-muted-foreground">Informe o nome da igreja no PIX antes de pagar.</p>
-                  </div>
-                </div>
+                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                  Assinatura Ativa
+                </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-4">50 primeiras igrejas: R$ {SUBSCRIPTION_PIX.promoPrice}/mês · Demais: R$ {SUBSCRIPTION_PIX.fullPrice}/mês</p>
+
+              <div className="p-6">
+                <div className="grid lg:grid-cols-3 gap-8">
+                  {/* Instructions & Bank Data */}
+                  <div className="lg:col-span-3 space-y-6">
+                    <div className="grid sm:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <h4 className="font-bold text-sm flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          Dados para Depósito/PIX
+                        </h4>
+                        <div className="space-y-2 p-4 rounded-xl bg-white dark:bg-card border border-primary/5 shadow-sm text-sm">
+                          <p className="flex justify-between items-center group">
+                            <span className="text-muted-foreground">Chave PIX (CNPJ):</span>
+                            <span className="font-bold flex items-center gap-2">
+                              {SUBSCRIPTION_PIX.cnpj}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => {
+                                  navigator.clipboard?.writeText(SUBSCRIPTION_PIX.pixKey);
+                                  toast({ title: 'Chave copiada!', duration: 2000 });
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </span>
+                          </p>
+                          <p className="flex justify-between">
+                            <span className="text-muted-foreground">Titular:</span>
+                            <span className="font-bold">{SUBSCRIPTION_PIX.holderName}</span>
+                          </p>
+                          <p className="flex justify-between">
+                            <span className="text-muted-foreground">Banco:</span>
+                            <span className="font-bold">{SUBSCRIPTION_PIX.bankId} {SUBSCRIPTION_PIX.bank}</span>
+                          </p>
+                          <p className="flex justify-between">
+                            <span className="text-muted-foreground">Agência / Conta:</span>
+                            <span className="font-bold">{SUBSCRIPTION_PIX.agency} / {SUBSCRIPTION_PIX.account}</span>
+                          </p>
+                          <p className="flex justify-between">
+                            <span className="text-muted-foreground">CNPJ:</span>
+                            <span className="font-bold">{SUBSCRIPTION_PIX.cnpj}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-bold text-sm flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          Instruções
+                        </h4>
+                        <div className="space-y-3 text-sm text-muted-foreground">
+                          <div className="flex gap-3">
+                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">1</span>
+                            <p>Informe o <strong>nome da igreja</strong> no campo de mensagem do PIX.</p>
+                          </div>
+                          <div className="flex gap-3">
+                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">2</span>
+                            <p>Envie o comprovante para <a href={`mailto:${SUBSCRIPTION_PIX.receiptEmail}`} className="text-primary font-bold hover:underline">{SUBSCRIPTION_PIX.receiptEmail}</a>.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <Button className="flex-1 gap-2 shadow-lg shadow-primary/20 h-11" onClick={() => navigate('/caixa-diario')}>
+                        <DollarSign className="h-4 w-4" />
+                        Registrar pagamento
+                      </Button>
+                      <Button variant="outline" className="flex-1 gap-2 h-11" onClick={() => window.open(`https://wa.me/5591993837093?text=Olá,%20gostaria%20de%20enviar%20o%20comprovante%20da%20mensalidade%20do%20app`, '_blank')}>
+                        Falar com suporte
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-center text-muted-foreground mt-8 border-t border-primary/10 pt-4 italic">
+                  Promoção ativa: Primeiras {SUBSCRIPTION_PIX.promoSlots} igrejas pagam R$ {SUBSCRIPTION_PIX.promoPrice},00/mês vitalício. Demais igrejas R$ {SUBSCRIPTION_PIX.fullPrice},00/mês.
+                </p>
+              </div>
             </CardContent>
           </Card>
         )}

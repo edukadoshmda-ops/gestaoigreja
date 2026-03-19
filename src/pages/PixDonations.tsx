@@ -251,12 +251,6 @@ export default function PixDonations() {
           Configure as chaves PIX e dados bancários da igreja para recebimento de dízimos e ofertas.
         </p>
         <div className="mt-3">
-          <Link to="/dashboard/pagamentos" className="inline-flex">
-            <Button variant="outline" className="gap-2">
-              <CreditCard className="h-4 w-4" />
-              Ativar pagamentos (passo a passo)
-            </Button>
-          </Link>
         </div>
       </div>
 

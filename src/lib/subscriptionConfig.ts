@@ -8,11 +8,19 @@ export const TRIAL_DAYS = 7;
 
 export const SUBSCRIPTION_PIX = {
   /** Chave PIX - Celular */
-  pixKey: '(91) 99383-7093',
+  pixKey: '65157665000159',
   /** Titular da conta */
   holderName: 'Luiz Eduardo Santos da Silva',
   /** Banco */
-  bank: 'Nubank',
+  bank: 'Banco Inter',
+  /** Agência */
+  agency: '0001',
+  /** Conta */
+  account: '52111484-5',
+  /** Banco Code */
+  bankId: '077',
+  /** CNPJ */
+  cnpj: '65.157.665/0001-59',
   /** E-mail para enviar comprovante */
   receiptEmail: 'gestaoigreja@gmail.com',
   /** Valor normal (após 50 primeiras igrejas) */
