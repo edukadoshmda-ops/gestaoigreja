@@ -18,8 +18,7 @@ const sizeStyles: Record<string, { width: string; height: string }> = {
 };
 
 export function Logo({ size = 'md', showText = true }: LogoProps) {
-  const { currentTheme } = useTheme();
-  const primaryColor = currentTheme?.primaryHex || '#2563EB';
+  const primaryColor = 'hsl(var(--primary))';
   const textSizeClasses = {
     xs: 'text-[1.04rem]',
     sm: 'text-[1.79rem] md:text-[1.61rem]',

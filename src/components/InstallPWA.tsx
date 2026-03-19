@@ -26,7 +26,7 @@ export function InstallPWA() {
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const { currentTheme } = useTheme();
 
-  const logoColor = currentTheme?.primaryHex || "hsl(var(--primary))";
+  const logoColor = 'hsl(var(--primary))';
 
   useEffect(() => {
     if (typeof window === "undefined") return;
