@@ -38,8 +38,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const currentTheme = themes.find(t => t.id === themeId) || themes[0];
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', themeId);
-        document.body.setAttribute('data-theme', themeId);
+        const path = typeof window !== 'undefined' ? window.location.pathname : '';
+        const publicPages = ['/', '/login', '/checkout', '/hotmart-success'];
+        
+        if (!publicPages.includes(path)) {
+            document.documentElement.setAttribute('data-theme', themeId);
+            document.body.setAttribute('data-theme', themeId);
+        }
         localStorage.setItem('church_theme', themeId);
     }, [themeId]);
 
