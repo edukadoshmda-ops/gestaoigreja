@@ -108,8 +108,8 @@ export default function Landing() {
   const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'oceano-profundo');
-    document.body.setAttribute('data-theme', 'oceano-profundo');
+    document.documentElement.setAttribute('data-theme', 'fe-radiante');
+    document.body.setAttribute('data-theme', 'fe-radiante');
 
     const timer = setInterval(() => setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0)), 1000);
 
