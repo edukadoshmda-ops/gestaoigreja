@@ -26,7 +26,7 @@ export function InstallPWA() {
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const { currentTheme } = useTheme();
 
-  const logoColor = currentTheme?.primaryHex || "#3B82F6";
+  const logoColor = currentTheme?.primaryHex || "hsl(var(--primary))";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -100,12 +100,12 @@ export function InstallPWA() {
             Use Gestão Igreja como app no celular, tablet ou PC
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
-          <Button size="sm" onClick={handleInstall} className="gap-2 text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4">
+        <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
+          <Button size="sm" onClick={handleInstall} className="gap-2 text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
             <Download className="h-4 w-4" />
-            Instalar
+            <span className="font-bold">Instalar</span>
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleDismiss}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full hover:bg-muted" onClick={handleDismiss}>
             <X className="h-4 w-4" />
           </Button>
         </div>

@@ -80,7 +80,7 @@ const PurchaseCard = ({ timeLeft }: { timeLeft: number }) => (
       <a href={HOTMART_CHECKOUT_URL} target="_blank" rel="noopener noreferrer" className="w-full block">
         <Button
           size="lg"
-          className="w-full text-sm sm:text-base md:text-lg min-h-[52px] sm:min-h-[56px] md:h-16 rounded-xl font-bold gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 group transition-all duration-300 hover:scale-[1.02] flex items-center justify-center flex-wrap overflow-hidden bg-blue-900 hover:bg-blue-800 text-white border-0"
+          className="w-full text-sm sm:text-base md:text-lg min-h-[52px] sm:min-h-[56px] md:h-16 rounded-xl font-bold gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 group transition-all duration-300 hover:scale-[1.02] flex items-center justify-center flex-wrap overflow-hidden bg-primary hover:bg-primary/90 text-primary-foreground border-0 shadow-lg shadow-primary/20"
         >
           <span className="text-center leading-tight break-words max-w-full">Assinar com 50% OFF por R$ 75,00/mês</span>
           <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 ml-0.5 group-hover:translate-x-1 transition-transform" />
@@ -197,7 +197,7 @@ export default function Landing() {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-4 sm:py-2 rounded-full bg-blue-900 border border-blue-800 text-white font-bold mb-6 sm:mb-8 text-[10px] sm:text-sm text-center justify-center mx-auto whitespace-nowrap sm:whitespace-normal"
+            className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-4 sm:py-2 rounded-full bg-primary border border-primary/20 text-primary-foreground font-bold mb-6 sm:mb-8 text-[10px] sm:text-sm text-center justify-center mx-auto whitespace-nowrap sm:whitespace-normal"
           >
             <Gift className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse shrink-0" />
             50 primeiras assinaturas: 50% de Desconto!
