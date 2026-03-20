@@ -411,9 +411,24 @@ function TransferLetter({ members, canEdit }: { members: Member[], canEdit: bool
                 </div>
             </div>
 
-            <div className="flex flex-col max-w-2xl mx-auto font-serif leading-relaxed text-justify space-y-6 mt-12 text-black bg-white p-12 shadow-xl rounded-lg print:shadow-none print:p-0">
+            <div className="flex flex-col max-w-2xl mx-auto font-serif leading-relaxed text-justify space-y-6 mt-12 text-foreground bg-card p-12 shadow-xl rounded-lg print:shadow-none print:p-0 print:text-black print:bg-white">
                 <div className="flex justify-center mb-6">
-                    <img src="/logo-app.png?v=2" alt="Logo" className="w-60 h-60 object-contain brightness-0" style={{ filter: 'brightness(0)' }} />
+                    <div
+                        style={{
+                            width: '15rem',
+                            height: '15rem',
+                            backgroundColor: 'hsl(var(--primary))',
+                            WebkitMaskImage: 'url(/logo-app.png)',
+                            maskImage: 'url(/logo-app.png)',
+                            WebkitMaskSize: 'contain',
+                            maskSize: 'contain',
+                            WebkitMaskRepeat: 'no-repeat',
+                            maskRepeat: 'no-repeat',
+                            WebkitMaskPosition: 'center',
+                            maskPosition: 'center',
+                        }}
+                        title="Gestão Igreja"
+                    />
                 </div>
                 <h1 className="text-2xl font-bold text-center uppercase mb-12">Carta de Transferência</h1>
 
@@ -855,71 +870,71 @@ function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit
             {/* Credencial Preview/Print */}
             <div className="flex flex-col items-center gap-12 py-8 bg-muted/20 rounded-xl print:bg-transparent print:p-0 id-card-print-container">
                 {/* Frente */}
-                <div className="w-[400px] h-[250px] bg-white border-2 border-primary/20 rounded-xl overflow-hidden shadow-xl print:shadow-none flex relative text-black text-left id-card-print-piece">
-                    <div className="w-1/3 bg-primary/5 border-r p-4 flex flex-col items-center justify-center gap-3">
-                        <img src="/logo-app.png?v=2" alt="Logo" className="w-[120px] h-[120px] object-contain flex-shrink-0 text-primary" style={{ filter: 'brightness(0) opacity(0.9)' }} />
-                        <div className="w-24 h-24 rounded-lg bg-muted flex items-center justify-center border-2 border-primary/10 overflow-hidden">
+                <div className="w-[400px] h-[250px] bg-slate-900 border-2 border-slate-700 rounded-xl overflow-hidden shadow-xl print:shadow-none flex relative text-left id-card-print-piece">
+                    <div className="w-1/3 bg-slate-800/80 border-r border-slate-700 p-4 flex flex-col items-center justify-center gap-3">
+                        <img src="/logo-app.png?v=2" alt="Logo" className="w-[120px] h-[120px] object-contain flex-shrink-0" style={{ filter: 'brightness(0) saturate(100%) invert(90%) sepia(60%) saturate(600%) hue-rotate(-15deg)' }} />
+                        <div className="w-24 h-24 rounded-lg bg-slate-700/50 flex items-center justify-center border-2 border-slate-600 overflow-hidden">
                             {(photoDataUrl || selectedMember?.photoUrl) ? (
                                 <img src={photoDataUrl || selectedMember?.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
                             ) : (
-                                <Users className="h-12 w-12 text-muted-foreground/30" />
+                                <Users className="h-12 w-12 text-amber-400" />
                             )}
                         </div>
-                        <div className="text-[10px] font-bold uppercase text-primary text-center leading-tight">
+                        <div className="text-[10px] font-bold uppercase text-amber-400 text-center leading-tight">
                             Credencial Oficial
                         </div>
                     </div>
                     <div className="w-2/3 p-4 flex flex-col justify-between">
                         <div className="flex justify-between items-start">
                             <div ref={nameContainerRef} className="space-y-0.5 min-w-0 flex-1 overflow-hidden">
-                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider"><span>Nome do Membro</span></h4>
-                                <p ref={nameTextRef} style={{ fontSize: nameFontSize }} className="font-black uppercase text-primary leading-tight whitespace-nowrap overflow-hidden text-ellipsis"><span>{formData.name || ''}</span></p>
+                                <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider"><span>Nome do Membro</span></h4>
+                                <p ref={nameTextRef} style={{ fontSize: nameFontSize }} className="font-black uppercase text-amber-400 leading-tight whitespace-nowrap overflow-hidden text-ellipsis"><span>{formData.name || ''}</span></p>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 mt-2">
                             <div className="space-y-0.5 text-left">
-                                <h4 className="text-[8px] font-bold text-muted-foreground uppercase"><span>Nascimento</span></h4>
-                                <p className="text-[10px] font-bold"><span>{formData.birthDate ? format(new Date(formData.birthDate), 'dd/MM/yyyy') : '--/--/----'}</span></p>
+                                <h4 className="text-[8px] font-bold text-amber-400 uppercase"><span>Nascimento</span></h4>
+                                <p className="text-[10px] font-bold text-amber-400"><span>{formData.birthDate ? format(new Date(formData.birthDate), 'dd/MM/yyyy') : '--/--/----'}</span></p>
                             </div>
                             <div className="space-y-0.5 text-left">
-                                <h4 className="text-[8px] font-bold text-muted-foreground uppercase"><span>Batismo</span></h4>
-                                <p className="text-[10px] font-bold"><span>{formData.baptismDate ? format(new Date(formData.baptismDate), 'dd/MM/yyyy') : '--/--/----'}</span></p>
+                                <h4 className="text-[8px] font-bold text-amber-400 uppercase"><span>Batismo</span></h4>
+                                <p className="text-[10px] font-bold text-amber-400"><span>{formData.baptismDate ? format(new Date(formData.baptismDate), 'dd/MM/yyyy') : '--/--/----'}</span></p>
                             </div>
                         </div>
 
-                        <div className="mt-1.5 py-1.5 px-2 bg-primary/10 rounded border border-primary/20 text-left">
-                            <p className="text-[8px] font-bold text-primary uppercase leading-none">Função Eclesiástica</p>
-                            <p className="text-[10px] font-black uppercase tracking-wide leading-tight mt-0.5">{formData.role}</p>
+                        <div className="mt-1.5 py-1.5 px-2 bg-slate-800/60 rounded border border-slate-600 text-left">
+                            <p className="text-[8px] font-bold text-amber-400 uppercase leading-none">Função Eclesiástica</p>
+                            <p className="text-[10px] font-black uppercase tracking-wide leading-tight mt-0.5 text-amber-400">{formData.role}</p>
                         </div>
 
                         <div className="mt-4 flex flex-col items-center">
-                            <div className="w-32 border-t border-black/30"></div>
-                            <p className="text-[8px] uppercase font-bold mt-1">Portador(a)</p>
+                            <div className="w-32 border-t border-amber-400/50"></div>
+                            <p className="text-[8px] uppercase font-bold mt-1 text-amber-400">Portador(a)</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Verso */}
-                <div className="w-[400px] h-[250px] bg-white border-2 border-primary/20 rounded-xl overflow-hidden shadow-xl print:shadow-none flex flex-col items-center p-2 relative text-black text-center id-card-print-piece">
+                <div className="w-[400px] h-[250px] bg-slate-900 border-2 border-slate-700 rounded-xl overflow-hidden shadow-xl print:shadow-none flex flex-col items-center p-2 relative text-center id-card-print-piece">
                     <div className="w-full flex flex-col items-center mb-0.5">
-                        <img src="/logo-app.png?v=2" alt="Logo" className="w-[84px] h-[84px] object-contain mb-0.5 text-primary" style={{ filter: 'brightness(0) opacity(0.9)' }} />
-                        <div className="text-[10px] font-black uppercase tracking-tighter text-primary leading-tight">{formData.churchName}</div>
+                        <img src="/logo-app.png?v=2" alt="Logo" className="w-[84px] h-[84px] object-contain mb-0.5" style={{ filter: 'brightness(0) saturate(100%) invert(90%) sepia(60%) saturate(600%) hue-rotate(-15deg)' }} />
+                        <div className="text-[10px] font-black uppercase tracking-tighter text-amber-400 leading-tight">{formData.churchName}</div>
                     </div>
 
                     <div className="space-y-0.5">
-                        <p className="text-[9px] font-bold uppercase leading-tight">CNPJ: {formData.cnpj}</p>
-                        <p className="text-[8px] text-muted-foreground leading-tight">{formData.churchAddress}</p>
+                        <p className="text-[9px] font-bold uppercase leading-tight text-amber-400">CNPJ: {formData.cnpj}</p>
+                        <p className="text-[8px] text-amber-400 leading-tight">{formData.churchAddress}</p>
                     </div>
 
                     <div className="flex-1 w-full flex flex-col justify-center gap-2 mt-1 min-h-0">
                         <div className="flex flex-col items-center">
-                            <div className="w-40 border-t border-black/40"></div>
-                            <p className="text-[8px] font-bold uppercase mt-0.5 leading-none">Pastor Presidente</p>
+                            <div className="w-40 border-t border-amber-400/50"></div>
+                            <p className="text-[8px] font-bold uppercase mt-0.5 leading-none text-amber-400">Pastor Presidente</p>
                         </div>
                     </div>
 
-                    <div className="w-full mt-1 text-[7px] text-muted-foreground uppercase font-medium leading-tight">
+                    <div className="w-full mt-1 text-[7px] text-amber-400 uppercase font-medium leading-tight">
                         Esta credencial é de uso pessoal e intransferível.
                     </div>
                 </div>

@@ -141,9 +141,8 @@ export default function Cells() {
         leader_id: newCell.leaderId || null,
         host_id: newCell.hostId || null,
         active: true,
-        // Inclua latitude e longitude após executar no Supabase: supabase/cells_geolocation.sql
-        // latitude: newCell.latitude ?? null,
-        // longitude: newCell.longitude ?? null,
+        latitude: newCell.latitude ?? null,
+        longitude: newCell.longitude ?? null,
       }, user.churchId);
       setCreateOpen(false);
       setNewCell({ name: '', address: '', meetingDay: '', meetingTime: '', leaderId: '', hostId: '', latitude: null, longitude: null });

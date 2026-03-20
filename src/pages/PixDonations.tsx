@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Loader2, DollarSign, CreditCard } from 'lucide-react';
+import { Save, Loader2, DollarSign, CreditCard, Copy, Check, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,8 +15,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { churchesService } from '@/services/churches.service';
-import { pagamentosService } from '@/services/pagamentos.service';
-import { criarContaStone } from '@/lib/pagarme';
+import { ministriesService } from '@/services/ministries.service';
+import { QrCodePix } from 'qrcode-pix';
 import { Link } from 'react-router-dom';
 
 const PIX_KEY_TYPES = [
@@ -51,16 +51,28 @@ export default function PixDonations() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [connectingStone, setConnectingStone] = useState(false);
-  const [activatingMarketplace, setActivatingMarketplace] = useState(false);
-  const [creatingPix, setCreatingPix] = useState(false);
-  const [donationAmount, setDonationAmount] = useState<string>('10');
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [ministries, setMinistries] = useState<any[]>([]);
+  const [selectedMinistryId, setSelectedMinistryId] = useState<string>('');
+  const [genAmount, setGenAmount] = useState<string>('');
+  const [qrCode, setQrCode] = useState<string>('');
+  const [copyPaste, setCopyPaste] = useState<string>('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (effectiveChurchId) loadData();
+    if (effectiveChurchId) {
+      loadData();
+      loadMinistries();
+    }
   }, [effectiveChurchId]);
+
+  async function loadMinistries() {
+    try {
+      const data = await ministriesService.getActive();
+      setMinistries(data || []);
+    } catch (e) {
+      console.error('Erro ao carregar ministérios', e);
+    }
+  }
 
   async function loadData() {
     if (!effectiveChurchId) return;
@@ -93,142 +105,63 @@ export default function PixDonations() {
     }
   }
 
-  async function handleCreateStonePixDonation() {
-    if (!effectiveChurchId) return;
-    setCreatingPix(true);
-    setCheckoutUrl(null);
-    setQrCodeUrl(null);
-    try {
-      const valor = Number(String(donationAmount).replace(',', '.'));
-      if (!Number.isFinite(valor) || valor <= 0) {
-        toast({
-          title: 'Valor inválido',
-          description: 'Informe um valor maior que zero.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const result = await pagamentosService.criarPix({
-        churchId: effectiveChurchId,
-        valor,
-        descricao: 'Doação',
-        tipo: 'doacao',
-      });
-
-      if (result.qr_code_url) {
-        setQrCodeUrl(result.qr_code_url);
-        toast({
-          title: 'PIX criado!',
-          description: 'Exiba o QR Code para o membro escanear.',
-        });
-      } else if (result.checkout_url) {
-        setCheckoutUrl(result.checkout_url);
-        window.open(result.checkout_url, '_blank', 'noopener,noreferrer');
-        toast({
-          title: 'PIX criado!',
-          description: 'Abrimos o checkout em uma nova aba.',
-        });
-      } else {
-        toast({
-          title: 'PIX criado!',
-          description: 'Pagamento registrado. Confira os detalhes no painel de pagamentos.',
-        });
-      }
-    } catch (e: any) {
+  async function handleGeneratePix() {
+    if (!church?.pix_key) {
       toast({
-        title: 'Erro ao criar PIX',
-        description: e?.message || String(e),
-        variant: 'destructive',
-      });
-    } finally {
-      setCreatingPix(false);
-    }
-  }
-
-  async function handleConnectStoneMei() {
-    if (!effectiveChurchId || !church || !canEdit) return;
-    const key = String(church.stone_api_key || '').trim();
-    if (!key) {
-      toast({
-        title: 'Informe a API Key',
-        description: 'Cole a API Key da Stone/Pagar.me para conectar a conta.',
+        title: 'Configuração incompleta',
+        description: 'Configure a chave PIX da igreja primeiro.',
         variant: 'destructive',
       });
       return;
     }
 
-    setConnectingStone(true);
-    try {
-      await churchesService.update(effectiveChurchId, {
-        stone_mode: 'direct',
-        stone_api_key: key,
-      } as any);
+    const ministry = ministries.find((m) => m.id === selectedMinistryId);
+    if (!selectedMinistryId || !ministry) {
       toast({
-        title: 'Conta conectada!',
-        description: 'A API Key foi salva e o modo foi definido como Direct (MEI).',
-      });
-      await loadData();
-    } catch (e: any) {
-      toast({
-        title: 'Erro ao conectar',
-        description: e?.message || String(e),
+        title: 'Selecione um ministério',
+        description: 'Escolha para qual ministério deseja gerar o PIX.',
         variant: 'destructive',
       });
-    } finally {
-      setConnectingStone(false);
+      return;
+    }
+
+    try {
+      const valor = genAmount ? Number(genAmount.replace(',', '.')) : undefined;
+      const description = `Doação ${ministry.name}`.substring(0, 25); // PIX tem limite de 25 chars em alguns campos
+
+      const sdk = QrCodePix({
+        version: '01',
+        key: church.pix_key,
+        name: church.pix_beneficiary_name || church.name || 'Igreja',
+        city: church.pix_city || 'BR',
+        message: description,
+        value: valor,
+      });
+
+      const b64 = await sdk.base64();
+      const payload = sdk.payload();
+
+      setQrCode(b64);
+      setCopyPaste(payload);
+      toast({ title: 'PIX Gerado!', description: 'QR Code e código Copia e Cola prontos.' });
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao gerar PIX',
+        description: e.message,
+        variant: 'destructive',
+      });
     }
   }
 
-  function getMarketplaceStatusLabel() {
-    const mode = String(church?.stone_mode || '').toLowerCase();
-    if (mode === 'direct') return { label: 'MEI (Direct) ativo', tone: 'muted' as const };
-    if (church?.stone_recipient_id) return { label: 'Conta marketplace ativa', tone: 'success' as const };
-    if (church?.stone_status) return { label: `Pendente (${church.stone_status})`, tone: 'warning' as const };
-    return { label: 'Não ativada', tone: 'warning' as const };
+  function handleCopy() {
+    if (!copyPaste) return;
+    navigator.clipboard.writeText(copyPaste);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({ title: 'Copiado!', description: 'Código PIX copiado para a área de transferência.' });
   }
 
-  async function handleActivateMarketplace() {
-    if (!effectiveChurchId || !church || !canEdit) return;
-    setActivatingMarketplace(true);
-    try {
-      // 1) Define marketplace como modo (recomendado)
-      await churchesService.update(effectiveChurchId, {
-        stone_mode: 'marketplace',
-        // segurança: limpamos a chave da igreja ao migrar para marketplace
-        stone_api_key: null,
-      } as any);
 
-      // 2) Se ainda não tem recipient, cria via endpoint seguro no backend
-      const cnpj = String((church as any)?.cnpj || '').trim();
-      const nome = String((church as any)?.name || '').trim();
-      if (!church.stone_recipient_id) {
-        if (!cnpj || !nome) {
-          toast({
-            title: 'Dados incompletos',
-            description: 'Para ativar o marketplace, a igreja precisa ter Nome e CNPJ cadastrados.',
-            variant: 'destructive',
-          });
-        } else {
-          await criarContaStone({ church_id: effectiveChurchId, nome, cnpj });
-        }
-      }
-
-      toast({
-        title: 'Pagamentos ativados!',
-        description: 'Modo marketplace configurado com sucesso.',
-      });
-      await loadData();
-    } catch (e: any) {
-      toast({
-        title: 'Erro ao ativar',
-        description: e?.message || String(e),
-        variant: 'destructive',
-      });
-    } finally {
-      setActivatingMarketplace(false);
-    }
-  }
 
   if (!effectiveChurchId) {
     return (
@@ -350,178 +283,70 @@ export default function PixDonations() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Fase MEI
+            <QrCode className="h-5 w-5" />
+            Gerar QR Code PIX (Ministérios)
           </CardTitle>
           <CardDescription>
-            Configure a API Key da Stone/Pagar.me diretamente na igreja (modo <code>direct</code>).
+            Gere um QR Code PIX para um ministério específico com descrição automática.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {loading ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="stone_api_key">API Key da Stone</Label>
-                <Input
-                  id="stone_api_key"
-                  type="password"
-                  placeholder="Cole aqui a API Key"
-                  value={church?.stone_api_key || ''}
-                  onChange={(e) =>
-                    setChurch((p) => (p ? { ...p, stone_api_key: e.target.value || null } : null))
-                  }
-                  disabled={!canEdit}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Para produção, o recomendado é <strong>marketplace</strong> (chave só no servidor). Nesta fase, usamos direct.
-                </p>
+          <div className="space-y-2">
+            <Label>Ministério</Label>
+            <Select value={selectedMinistryId} onValueChange={setSelectedMinistryId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o ministério" />
+              </SelectTrigger>
+              <SelectContent>
+                {ministries.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gen_amount">Valor (opcional)</Label>
+            <Input
+              id="gen_amount"
+              placeholder="Ex: 50,00"
+              value={genAmount}
+              onChange={(e) => setGenAmount(e.target.value)}
+            />
+          </div>
+
+          <Button className="w-full" onClick={handleGeneratePix} variant="outline">
+            <QrCode className="mr-2 h-4 w-4" />
+            Gerar PIX
+          </Button>
+
+          {qrCode && (
+            <div className="mt-6 flex flex-col items-center space-y-4 border rounded-lg p-6 bg-muted/5 font-primary">
+              <div className="bg-white p-2 rounded-lg border shadow-sm">
+                <img src={qrCode} alt="QR Code PIX" className="w-48 h-48" />
               </div>
-
-              {canEdit && (
-                <Button onClick={handleConnectStoneMei} disabled={connectingStone}>
-                  {connectingStone ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Conectar conta
-                </Button>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Fase Marketplace
-          </CardTitle>
-          <CardDescription>
-            Recomendado para produção: pagamentos pela conta da plataforma com repasse automático para a igreja.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border bg-muted/10 px-4 py-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold">Status da conta</p>
-                  <p className="text-xs text-muted-foreground">
-                    Recipient: <span className="font-mono">{church?.stone_recipient_id ? 'configurado' : 'não configurado'}</span>
-                  </p>
-                </div>
-                {(() => {
-                  const s = getMarketplaceStatusLabel();
-                  const cls =
-                    s.tone === 'success'
-                      ? 'bg-emerald-600 text-white border-emerald-700/30'
-                      : s.tone === 'warning'
-                        ? 'bg-amber-500 text-white border-amber-600/30'
-                        : 'bg-muted text-foreground border-border';
-                  return (
-                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-black border ${cls}`}>
-                      {s.label}
-                    </span>
-                  );
-                })()}
-              </div>
-
-              {canEdit && (
-                <Button onClick={handleActivateMarketplace} disabled={activatingMarketplace}>
-                  {activatingMarketplace ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <CreditCard className="h-4 w-4 mr-2" />
-                  )}
-                  Ativar pagamentos
-                </Button>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Doação via Stone/Pagar.me (PIX)
-          </CardTitle>
-          <CardDescription>
-            Teste o fluxo de pagamento PIX criando um pedido via Stone/Pagar.me e registrando em <code>payments</code>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : !church?.stone_recipient_id ? (
-            <div className="text-sm text-muted-foreground">
-              Esta igreja ainda não tem <code>stone_recipient_id</code>. Crie a conta Stone primeiro usando o endpoint
-              <code> /api/criar-conta-stone</code>.
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="donation_amount">Valor da doação (R$)</Label>
-                <Input
-                  id="donation_amount"
-                  inputMode="decimal"
-                  placeholder="Ex: 10,00"
-                  value={donationAmount}
-                  onChange={(e) => setDonationAmount(e.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button onClick={handleCreateStonePixDonation} disabled={creatingPix}>
-                  {creatingPix ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <CreditCard className="h-4 w-4 mr-2" />
-                  )}
-                  Criar PIX (Stone)
-                </Button>
-              </div>
-
-              {qrCodeUrl && (
-                <div className="mt-4 space-y-2">
-                  <Label>QR Code PIX</Label>
-                  <img
-                    src={qrCodeUrl}
-                    alt="QR Code PIX"
-                    className="w-48 h-48 border rounded-md"
+              
+              <div className="w-full space-y-2">
+                <Label className="text-xs uppercase text-muted-foreground font-bold">PIX Copia e Cola</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    readOnly 
+                    value={copyPaste} 
+                    className="flex-1 font-mono text-xs overflow-hidden text-ellipsis h-9" 
                   />
+                  <Button size="icon" variant="secondary" onClick={handleCopy} className="h-9 w-9">
+                    {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
                 </div>
-              )}
-
-              {checkoutUrl && !qrCodeUrl && (
-                <div className="mt-2">
-                  <a
-                    className="text-sm text-primary underline underline-offset-4"
-                    href={checkoutUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Abrir checkout
-                  </a>
-                </div>
-              )}
-            </>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
+
+
     </div>
   );
 }

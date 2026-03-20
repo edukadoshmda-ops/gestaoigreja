@@ -243,11 +243,11 @@ function QuickAction({ icon: Icon, label, href }: { icon?: ElementType | null; l
       className="flex flex-col items-center gap-4 p-8 sm:p-6 rounded-2xl bg-white dark:bg-card hover:bg-primary/5 border-2 border-primary/10 hover:border-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-xl group shadow-md cursor-pointer"
     >
       {Icon && (
-        <div className="p-4 rounded-xl bg-primary group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
-          <Icon className="h-8 w-8 sm:h-6 sm:w-6 text-primary-foreground" />
+        <div className="p-4 rounded-xl bg-primary/10 group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
+          <Icon className="h-8 w-8 sm:h-6 sm:w-6 text-primary" />
         </div>
       )}
-      <span className="text-base sm:text-sm font-black text-center text-foreground group-hover:text-primary transition-colors">
+      <span className="text-base sm:text-sm font-black text-center text-primary transition-colors">
         {label}
       </span>
     </button>

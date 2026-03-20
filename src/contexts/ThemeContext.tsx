@@ -20,6 +20,8 @@ export const themes: ThemeConfig[] = [
     { id: 'esperanca-viva', name: 'Esperança Viva', emoji: '🍃', primaryHex: '#059669', glowColor: 'rgba(5, 150, 105, 0.35)', hueShift: '150deg' },
     { id: 'acai-profundo', name: 'Açaí Profundo', emoji: '🍇', primaryHex: '#4C1D95', glowColor: 'rgba(76, 29, 149, 0.35)', hueShift: '275deg' },
     { id: 'cidade-ouro', name: 'Cidade de Ouro', emoji: '👑', primaryHex: '#B8860B', glowColor: 'rgba(184, 134, 11, 0.35)', hueShift: '22deg' },
+    { id: 'obsidian-gold', name: 'Obsidian Gold', emoji: '🖤✨', primaryHex: '#F5C518', glowColor: 'rgba(245, 197, 24, 0.45)', hueShift: '45deg' },
+    { id: 'azul-noturno', name: 'Azul Noturno', emoji: '🌙', primaryHex: '#FFFFFF', glowColor: 'rgba(180, 210, 255, 0.35)', hueShift: '218deg' },
 ];
 
 interface ThemeContextType {

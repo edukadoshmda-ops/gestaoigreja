@@ -78,7 +78,7 @@ export function InstallPWA() {
 
   return (
     <>
-      <div className="fixed bottom-4 left-4 right-4 sm:left-4 sm:right-auto sm:max-w-md md:bottom-6 md:left-6 md:max-w-[420px] z-50 flex items-center gap-3 sm:gap-4 p-3 sm:p-4 md:p-5 rounded-2xl shadow-xl border bg-white dark:bg-zinc-900 dark:border-zinc-800 animate-in slide-in-from-bottom-4">
+      <div className="fixed bottom-4 left-4 right-4 sm:left-4 sm:right-auto sm:max-w-md md:bottom-6 md:left-6 md:max-w-[420px] z-50 flex items-center gap-3 sm:gap-4 p-3 sm:p-4 md:p-5 rounded-2xl shadow-xl border border-border bg-card animate-in slide-in-from-bottom-4">
         <div
           className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 shrink-0 transition-colors duration-500"
           style={{
@@ -95,8 +95,8 @@ export function InstallPWA() {
           title="Gestão Igreja"
         />
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-black dark:text-white text-sm sm:text-base md:text-lg">Instalar App</p>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+          <p className="font-semibold text-foreground text-sm sm:text-base md:text-lg">Instalar App</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Use Gestão Igreja como app no celular, tablet ou PC
           </p>
         </div>
@@ -105,7 +105,7 @@ export function InstallPWA() {
             <Download className="h-4 w-4" />
             <span className="font-bold">Instalar</span>
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full hover:bg-muted" onClick={handleDismiss}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full hover:bg-muted text-foreground" onClick={handleDismiss}>
             <X className="h-4 w-4" />
           </Button>
         </div>
