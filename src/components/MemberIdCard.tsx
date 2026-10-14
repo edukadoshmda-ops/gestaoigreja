@@ -1515,7 +1515,6 @@ export function MemberIdCard({
                       className="py-1 px-2 rounded-md transition-all group relative"
                       style={{
                         backgroundColor: `${config.primaryColor}12`,
-                        borderLeft: `3px solid ${config.secondaryColor}`,
                         textAlign: config.textAlign || 'left',
                       }}
                     >
