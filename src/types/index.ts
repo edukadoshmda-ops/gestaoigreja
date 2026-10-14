@@ -29,6 +29,60 @@ export interface User {
   registrationCompleted?: boolean;
 }
 
+export type CardFontFamily =
+  | 'sans'
+  | 'serif'
+  | 'cinzel'
+  | 'mono'
+  | 'handwriting'
+  | 'playfair'
+  | 'montserrat'
+  | 'poppins'
+  | 'slab'
+  | 'gothic'
+  | 'script';
+
+export type CardFrameStyle =
+  | 'classic'
+  | 'geometric'
+  | 'modern'
+  | 'minimal'
+  | 'luxury'
+  | 'vintage'
+  | 'royal'
+  | 'badge'
+  | 'double_gold'
+  | 'ornate';
+
+export type CardTextAlign = 'left' | 'center' | 'right' | 'justify';
+
+export type CardBackgroundType = 'solid' | 'gradient' | 'light' | 'dark' | 'mesh';
+
+export interface CardCustomizationConfig {
+  fontFamily: CardFontFamily;
+  fontSize: number; // member name font size
+  fontWeight: 'normal' | 'semibold' | 'bold' | 'black';
+  textTransform: 'uppercase' | 'capitalize' | 'none';
+  textAlign?: CardTextAlign;
+  letterSpacing?: number;
+  primaryColor: string; // Header, badges, title
+  secondaryColor: string; // Accent, borders, subtle highlights
+  backgroundColor: string; // Card surface
+  textColor: string; // Text color
+  headerTextColor?: string; // Cor da fonte do cabeçalho (Nome da Igreja)
+  badgeTextColor?: string; // Cor da fonte do selo (Credencial Oficial)
+  frameStyle: CardFrameStyle;
+  showPhoto: boolean;
+  showQrCode: boolean;
+  showBloodType: boolean;
+  showOrganDonor: boolean;
+  showDocuments: boolean; // CPF / RG
+  showParentage: boolean; // Filiação (Mãe / Pai)
+  showBaptismDate: boolean;
+  showValidity: boolean;
+  customWatermark?: string;
+}
+
 export interface Member {
   id: string;
   churchId: string; // Vínculo com a igreja
@@ -43,6 +97,25 @@ export interface Member {
   category: 'membro' | 'congregado';
   photoUrl?: string;
   createdAt: string;
+
+  // Novos campos do modelo de cadastro (conforme referência visual)
+  prefix?: string; // Prefixo (ex: Pr., Ev., Ir., Dca., Ap.)
+  nickname?: string; // Apelido
+  gender?: string; // Feminino / Masculino / Outro
+  organDonor?: string; // Não / Sim
+  nationality?: string; // Brasileira
+  education?: string; // Escolaridade
+  profession?: string; // Profissão
+  bloodType?: string; // Tipo sanguíneo (A+, O+, etc.)
+  specialNeeds?: string; // Necessidades especiais (Não / Sim)
+  cpf?: string; // CPF
+  rg?: string; // RG
+  passport?: string; // Passaporte
+  motherName?: string; // Nome da Mãe
+  fatherName?: string; // Nome do Pai
+  registrationUpdatedAt?: string; // Data de atualização cadastral
+  status?: string; // Disponível, Ativo, etc.
+  customCardConfig?: Partial<CardCustomizationConfig>;
 }
 
 export interface Ministry {
@@ -55,6 +128,9 @@ export interface Ministry {
   memberCount: number;
   meetingsCount?: number;
   monthlyActivityReport?: string;
+  visitorsCount?: number;
+  membersPresentCount?: number;
+  meetingDate?: string;
 }
 
 export interface CellReport {

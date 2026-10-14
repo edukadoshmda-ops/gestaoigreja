@@ -89,8 +89,19 @@ export function MinistryCard({ ministry, onDelete, onAddMember }: MinistryCardPr
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Reuniões: <strong className="text-primary">{ministry.meetingsCount ?? 0}</strong></span>
+          <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/40 text-center">
+            <div className="bg-muted/40 rounded-lg py-1 px-1.5">
+              <span className="block text-[10px] text-muted-foreground uppercase font-semibold">Reuniões</span>
+              <strong className="text-xs font-bold text-primary">{ministry.meetingsCount ?? 0}</strong>
+            </div>
+            <div className="bg-muted/40 rounded-lg py-1 px-1.5">
+              <span className="block text-[10px] text-muted-foreground uppercase font-semibold">Presentes</span>
+              <strong className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{ministry.membersPresentCount ?? 0}</strong>
+            </div>
+            <div className="bg-muted/40 rounded-lg py-1 px-1.5">
+              <span className="block text-[10px] text-muted-foreground uppercase font-semibold">Visitantes</span>
+              <strong className="text-xs font-bold text-amber-600 dark:text-amber-400">{ministry.visitorsCount ?? 0}</strong>
+            </div>
           </div>
 
           <Button

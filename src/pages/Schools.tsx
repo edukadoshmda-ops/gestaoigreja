@@ -21,7 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ExcelSchoolMonthlyReportButton } from '@/components/ExcelSchoolMonthlyReport';
+import { ExcelMinistriesDashboardButton } from '@/components/ExcelMinistriesDashboardButton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { membersService } from '@/services/members.service';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -215,7 +215,7 @@ export default function Schools() {
           <p className="text-muted-foreground mt-1">Gerencie escolas (Bíblica, Líderes, etc.) e seus alunos.</p>
         </div>
         <div className="flex gap-2">
-          {canDownloadReports && <ExcelSchoolMonthlyReportButton schools={schools} />}
+          {canDownloadReports && <ExcelMinistriesDashboardButton />}
           {canCreate && (
             <Button onClick={() => setDialogOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />

@@ -64,6 +64,7 @@ const navGroups: NavGroup[] = [
       { icon: MessageSquare, label: 'Chat', href: '/chat', roles: ['admin', 'pastor', 'pastor_admin', 'secretario', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'tesoureiro', 'superadmin', 'diretor_patrimonio'] },
       { icon: Users, label: 'Membros e Congregados', href: '/membros', roles: ['pastor', 'pastor_admin', 'secretario', 'superadmin', 'lider_celula', 'lider_ministerio'] },
       { icon: UserPlus, label: 'Consolidação', href: '/consolidacao', roles: ['pastor', 'pastor_admin', 'secretario', 'lider_celula', 'lider_ministerio', 'superadmin'] },
+      { icon: DollarSign, label: 'Gestão Financeira', href: '/caixa-diario', roles: ['admin', 'pastor', 'pastor_admin', 'secretario', 'tesoureiro', 'superadmin'] },
       { icon: Send, label: 'Boletins e Avisos', href: '/boletins', roles: ['admin', 'pastor', 'pastor_admin', 'secretario', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'tesoureiro', 'diretor_patrimonio', 'superadmin'] },
       { icon: BookOpen, label: 'Planos de Leitura', href: '/planos-leitura', roles: ['admin', 'pastor', 'pastor_admin', 'secretario', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'tesoureiro', 'diretor_patrimonio', 'superadmin'] },
       { icon: Package, label: 'Patrimonial', href: '/patrimonio', roles: ['admin', 'pastor', 'pastor_admin', 'secretario', 'superadmin', 'diretor_patrimonio', 'tesoureiro'] },

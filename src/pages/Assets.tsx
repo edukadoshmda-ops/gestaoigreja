@@ -29,6 +29,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AssetMaintenanceModal } from '@/components/AssetMaintenanceModal';
 import { ExcelPatrimonyReportButton } from '@/components/ExcelPatrimonyReport';
+import { ExcelAdministrativeDashboardButton } from '@/components/ExcelAdministrativeDashboardButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -325,7 +326,7 @@ export default function Assets() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="max-w-md"
                 />
-                <ExcelPatrimonyReportButton assets={assets} />
+                <ExcelAdministrativeDashboardButton />
             </div>
 
             {isLoading ? (

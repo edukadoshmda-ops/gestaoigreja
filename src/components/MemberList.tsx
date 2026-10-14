@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Search, Trash2, Edit, Phone, Mail, MapPin, Cake, MessageSquare, Loader2 } from 'lucide-react';
+import { Search, Trash2, Edit, Phone, Mail, MapPin, Cake, MessageSquare, Loader2, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,10 +25,11 @@ interface MemberListProps {
   members: Member[];
   onDelete: (id: string) => void | Promise<void>;
   onEdit: (member: Member) => void;
+  onViewCard?: (member: Member) => void;
   deletingId?: string | null;
 }
 
-export function MemberList({ members, onDelete, onEdit, deletingId }: MemberListProps) {
+export function MemberList({ members, onDelete, onEdit, onViewCard, deletingId }: MemberListProps) {
   const [search, setSearch] = useState('');
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const { user } = useAuth();
@@ -92,15 +93,18 @@ export function MemberList({ members, onDelete, onEdit, deletingId }: MemberList
                     )}
                   </div>
                   <div className="space-y-2 min-w-0 flex-1 overflow-hidden">
-                    <h3 className="font-semibold text-lg truncate">{member.name}</h3>
+                    <h3 className="font-semibold text-lg truncate">
+                      {member.prefix ? `${member.prefix} ` : ''}{member.name}
+                      {member.nickname ? <span className="text-sm font-normal text-muted-foreground ml-2">({member.nickname})</span> : null}
+                    </h3>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1 min-w-0 max-w-full">
                         <Mail className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{member.email}</span>
+                        <span className="truncate">{member.email || 'Não informado'}</span>
                       </span>
                       <span className="flex items-center gap-1 group">
                         <Phone className="h-4 w-4" />
-                        {member.phone}
+                        {member.phone || 'Não informado'}
                         {member.phone && (
                           <Button
                             variant="ghost"
@@ -126,19 +130,42 @@ export function MemberList({ members, onDelete, onEdit, deletingId }: MemberList
                       <Badge variant={member.category === 'membro' ? 'default' : 'secondary'} className="capitalize">
                         {member.category}
                       </Badge>
+                      {member.role && (
+                        <Badge variant="outline" className="font-semibold text-primary border-primary/30">
+                          {member.role}
+                        </Badge>
+                      )}
                       <Badge variant="outline" className="capitalize">
                         {member.maritalStatus}
                       </Badge>
-                      <span className="flex items-center gap-1 min-w-0 max-w-full">
-                        <MapPin className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{member.address}</span>
-                      </span>
+                      {member.bloodType && member.bloodType !== 'selecione' && (
+                        <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50 dark:bg-red-950/30">
+                          Sangue: {member.bloodType}
+                        </Badge>
+                      )}
+                      {member.address && (
+                        <span className="flex items-center gap-1 min-w-0 max-w-full">
+                          <MapPin className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{member.address}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0 sm:pl-2 pt-3 sm:pt-0 border-t sm:border-t-0 mt-3 sm:mt-0 sm:self-start">
+                  {onViewCard && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Carteirinha de Membro (Ver / Personalizar / Imprimir)"
+                      className="text-primary hover:text-primary hover:bg-primary/10"
+                      onClick={() => onViewCard(member)}
+                    >
+                      <CreditCard className="h-4 w-4" />
+                    </Button>
+                  )}
                   {canEdit && (
-                    <Button variant="ghost" size="icon" onClick={() => onEdit(member)}>
+                    <Button variant="ghost" size="icon" onClick={() => onEdit(member)} title="Editar dados">
                       <Edit className="h-4 w-4" />
                     </Button>
                   )}
@@ -149,6 +176,7 @@ export function MemberList({ members, onDelete, onEdit, deletingId }: MemberList
                       className="text-destructive"
                       disabled={!!deletingId}
                       onClick={() => setMemberToDelete(member)}
+                      title="Excluir membro"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -14,6 +14,7 @@ export interface PrayerRequest {
   assigned_to_name?: string | null;
   return_date?: string | null;
   testimony?: string | null;
+  answered_at?: string | null;
   prayed_count: number;
   created_at: string;
 }
@@ -38,13 +39,18 @@ export const prayerRequestsService = {
       requesterName?: string;
       contact?: string;
       category?: 'saude' | 'familia' | 'financeiro' | 'espiritual' | 'outros';
+      status?: 'pendente' | 'em_oracao' | 'respondido' | 'concluido';
       assignedTo?: string;
       assignedToName?: string;
       returnDate?: string;
       testimony?: string;
+      answeredAt?: string;
     }
   ): Promise<PrayerRequest> {
     const { data: { user } } = await supabase.auth.getUser();
+
+    const initialStatus = params.status || (params.testimony?.trim() ? 'respondido' : 'pendente');
+    const initialAnsweredAt = params.answeredAt || (params.testimony?.trim() ? new Date().toISOString() : null);
 
     const { data, error } = await supabase
       .from('prayer_requests')
@@ -56,11 +62,12 @@ export const prayerRequestsService = {
         requester_name: params.isAnonymous ? null : (params.requesterName?.trim() || user?.email?.split('@')[0] || 'Anônimo'),
         contact: params.contact?.trim() || null,
         category: params.category || 'outros',
-        status: 'pendente',
+        status: initialStatus,
         assigned_to: params.assignedTo || null,
         assigned_to_name: params.assignedToName || null,
         return_date: params.returnDate || null,
         testimony: params.testimony?.trim() || null,
+        answered_at: initialAnsweredAt,
       })
       .select()
       .single();

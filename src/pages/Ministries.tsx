@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, Trash2, Save, Users, Calendar, FileText } from 'lucide-react';
+import { Plus, Loader2, Trash2, Save, Users, Calendar, FileText, UserCheck, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +33,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { usePermissions } from '@/hooks/usePermissions';
-import MinistryMonthlyReportExcel from '@/components/MinistryMonthlyReportExcel';
+import { ExcelMinistriesDashboardButton } from '@/components/ExcelMinistriesDashboardButton';
+import { parseMinistryReport, formatMinistryReport, getTodayDateString } from '@/utils/ministriesReportHelper';
 export default function Ministries() {
   useDocumentTitle('Ministérios');
   const [ministries, setMinistries] = useState<Ministry[]>([]);
@@ -72,6 +73,7 @@ export default function Ministries() {
 
       const mappedMinistries = await Promise.all((data || []).map(async (m: any) => {
         const count = await ministriesService.getMemberCount(m.id);
+        const rep = parseMinistryReport(m.monthly_activity_report);
         return {
           id: m.id,
           churchId: m.church_id || '',
@@ -81,7 +83,10 @@ export default function Ministries() {
           icon: m.icon || 'Church',
           memberCount: count,
           meetingsCount: m.meetings_count ?? 0,
-          monthlyActivityReport: m.monthly_activity_report ?? '',
+          monthlyActivityReport: rep.notes,
+          visitorsCount: m.visitors_count ?? rep.visitorsCount,
+          membersPresentCount: m.members_present_count ?? rep.membersPresentCount,
+          meetingDate: m.meeting_date ?? rep.meetingDate,
         };
       }));
 
@@ -253,7 +258,11 @@ export default function Ministries() {
             </DialogContent>
           </Dialog>
         )}
-          {canDownloadReports && <MinistryMonthlyReportExcel disabled={loading} />}
+          {canDownloadReports && (
+            <div className="flex flex-wrap items-center gap-2">
+              <ExcelMinistriesDashboardButton />
+            </div>
+          )}
         </div>
       </div>
 
@@ -298,6 +307,9 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
   const [removeMemberConfirm, setRemoveMemberConfirm] = useState<{ open: boolean; memberId: string }>({ open: false, memberId: '' });
   const [meetingsCount, setMeetingsCount] = useState<number>(0);
   const [monthlyReport, setMonthlyReport] = useState('');
+  const [visitorsCount, setVisitorsCount] = useState<number>(0);
+  const [membersPresentCount, setMembersPresentCount] = useState<number>(0);
+  const [meetingDate, setMeetingDate] = useState<string>(getTodayDateString());
   const { toast } = useToast();
   const { churchId, user } = useAuth();
   const { canEditMinistries } = usePermissions();
@@ -308,9 +320,20 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
     if (open) {
       setMeetingsCount(ministry.meetingsCount ?? 0);
       setMonthlyReport(ministry.monthlyActivityReport ?? '');
+      setVisitorsCount(ministry.visitorsCount ?? 0);
+      setMembersPresentCount(ministry.membersPresentCount ?? 0);
+      setMeetingDate(ministry.meetingDate || getTodayDateString());
       loadDetails();
     }
-  }, [open, ministry.id, ministry.meetingsCount, ministry.monthlyActivityReport]);
+  }, [
+    open,
+    ministry.id,
+    ministry.meetingsCount,
+    ministry.monthlyActivityReport,
+    ministry.visitorsCount,
+    ministry.membersPresentCount,
+    ministry.meetingDate,
+  ]);
 
   async function loadDetails() {
     try {
@@ -359,11 +382,17 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
   const handleSaveReport = async () => {
     try {
       setSavingReport(true);
+      const combinedReport = formatMinistryReport(monthlyReport, {
+        visitorsCount,
+        membersPresentCount,
+        meetingDate,
+      });
+
       await ministriesService.update(ministry.id, {
         meetings_count: meetingsCount,
-        monthly_activity_report: monthlyReport || null,
+        monthly_activity_report: combinedReport || null,
       });
-      toast({ title: 'Salvo!', description: 'Relatório e dados de atividade atualizados.' });
+      toast({ title: 'Salvo!', description: 'Relatório, presença e dados de atividade atualizados com sucesso.' });
       onSuccess();
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -385,51 +414,119 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 flex items-center gap-3">
-                <Users className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Participantes</p>
-                  <p className="text-2xl font-bold text-primary">{members.length}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl bg-primary/10 border border-primary/20 p-3 sm:p-4 flex items-center gap-3">
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Participantes</p>
+                  <p className="text-xl sm:text-2xl font-bold text-primary">{members.length}</p>
                 </div>
               </div>
-              <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 flex items-center gap-3">
-                <Calendar className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Reuniões (mês)</p>
-                  <p className="text-2xl font-bold text-primary">{meetingsCount}</p>
+              <div className="rounded-xl bg-primary/10 border border-primary/20 p-3 sm:p-4 flex items-center gap-3">
+                <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Reuniões (mês)</p>
+                  <p className="text-xl sm:text-2xl font-bold text-primary">{meetingsCount}</p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 sm:p-4 flex items-center gap-3">
+                <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Presentes</p>
+                  <p className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">{membersPresentCount}</p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 sm:p-4 flex items-center gap-3">
+                <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Visitantes</p>
+                  <p className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400">{visitorsCount}</p>
                 </div>
               </div>
             </div>
 
-            {(canEdit || monthlyReport) && (
+            {(canEdit || monthlyReport || meetingsCount > 0 || visitorsCount > 0 || membersPresentCount > 0) && (
               <>
                 <Separator />
                 <div className="space-y-4">
                   <Label className="text-lg font-bold flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
+                    <FileText className="h-5 w-5 text-primary" />
                     Relatório da Atividade Mensal
                   </Label>
                   {canEdit ? (
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="meetings-count">Número de reuniões</Label>
-                        <Input
-                          id="meetings-count"
-                          type="number"
-                          min={0}
-                          value={meetingsCount}
-                          onChange={(e) => setMeetingsCount(Math.max(0, parseInt(e.target.value) || 0))}
-                          placeholder="0"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="meeting-date" className="flex items-center gap-1.5 font-medium">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            Data da reunião
+                          </Label>
+                          <Input
+                            id="meeting-date"
+                            type="date"
+                            value={meetingDate}
+                            onChange={(e) => setMeetingDate(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="meetings-count" className="flex items-center gap-1.5 font-medium">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            Número de reuniões (mês)
+                          </Label>
+                          <Input
+                            id="meetings-count"
+                            type="number"
+                            min={0}
+                            value={meetingsCount}
+                            onChange={(e) => setMeetingsCount(Math.max(0, parseInt(e.target.value) || 0))}
+                            placeholder="0"
+                          />
+                        </div>
                       </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="members-present" className="flex items-center gap-1.5 font-medium">
+                            <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            Número de membros presentes
+                          </Label>
+                          <Input
+                            id="members-present"
+                            type="number"
+                            min={0}
+                            value={membersPresentCount}
+                            onChange={(e) => setMembersPresentCount(Math.max(0, parseInt(e.target.value) || 0))}
+                            placeholder="0"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="visitors-count" className="flex items-center gap-1.5 font-medium">
+                            <UserPlus className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            Número de visitantes
+                          </Label>
+                          <Input
+                            id="visitors-count"
+                            type="number"
+                            min={0}
+                            value={visitorsCount}
+                            onChange={(e) => setVisitorsCount(Math.max(0, parseInt(e.target.value) || 0))}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
-                        <Label htmlFor="monthly-report">Relatório (atividades realizadas)</Label>
+                        <Label htmlFor="monthly-report" className="flex items-center gap-1.5 font-medium">
+                          <FileText className="h-4 w-4 text-primary" />
+                          Relatório (atividades realizadas / observações)
+                        </Label>
                         <Textarea
                           id="monthly-report"
                           value={monthlyReport}
                           onChange={(e) => setMonthlyReport(e.target.value)}
-                          placeholder="Descreva as atividades realizadas no mês..."
+                          placeholder="Descreva as atividades realizadas no mês, metas e observações..."
                           rows={4}
                           className="resize-none"
                         />
@@ -440,9 +537,31 @@ function MinistryDetailsDialog({ open, onOpenChange, ministry, onSuccess }: {
                       </Button>
                     </div>
                   ) : (
-                    <div className="rounded-xl bg-muted/50 p-4 space-y-2">
-                      <p className="text-sm text-muted-foreground">Reuniões no mês: <strong className="text-foreground">{meetingsCount}</strong></p>
-                      {monthlyReport && <p className="text-sm whitespace-pre-wrap">{monthlyReport}</p>}
+                    <div className="rounded-xl bg-muted/50 p-4 space-y-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Data da reunião:</span>
+                          <strong className="text-foreground">{meetingDate || 'Não informada'}</strong>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Reuniões no mês:</span>
+                          <strong className="text-foreground">{meetingsCount}</strong>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Membros presentes:</span>
+                          <strong className="text-emerald-600 dark:text-emerald-400">{membersPresentCount}</strong>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Visitantes:</span>
+                          <strong className="text-amber-600 dark:text-amber-400">{visitorsCount}</strong>
+                        </div>
+                      </div>
+                      {monthlyReport && (
+                        <div className="pt-2 border-t border-border/40">
+                          <span className="text-muted-foreground text-xs block mb-1">Atividades realizadas:</span>
+                          <p className="text-sm whitespace-pre-wrap">{monthlyReport}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

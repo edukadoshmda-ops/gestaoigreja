@@ -8,6 +8,7 @@ import { membersService } from '@/services/members.service';
 import { churchesService } from '@/services/churches.service';
 import { pastorsService } from '@/services/pastors.service';
 import { setProfileCompleted } from '@/lib/profileCompletion';
+import { packExtendedFieldsToNotes } from '@/lib/memberUtils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
@@ -36,14 +37,17 @@ export default function Registration() {
             const cid = effectiveChurchId;
             if (!cid) throw new Error('Nenhuma igreja vinculada. Entre em contato com o administrador.');
 
+            const packedNotes = packExtendedFieldsToNotes('', data);
+
             const newMember = await membersService.create({
                 name: data.name,
                 email: data.email || null,
                 phone: data.phone || null,
                 birth_date: data.birthDate || null,
-                marital_status: data.maritalStatus || null,
+                marital_status: data.maritalStatus as any,
                 address: data.address || null,
                 photo_url: data.photoUrl || null,
+                notes: packedNotes,
                 status: data.category === 'congregado' ? 'visitante' : 'ativo',
             }, cid);
 

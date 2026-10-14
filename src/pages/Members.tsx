@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, Cake, Users as UsersIcon, FileDown, Filter } from 'lucide-react';
+import { Plus, Loader2, Cake, Users as UsersIcon, FileDown, Filter, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,22 +17,33 @@ import { Member } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { membersService } from '@/services/members.service';
 import { ExcelMembersButton } from '@/components/ExcelMembersReport';
+import { ImportMembersModal } from '@/components/ImportMembersModal';
 import { churchesService } from '@/services/churches.service';
 import { pastorsService } from '@/services/pastors.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { PlanBanner, MemberLimitGuard } from '@/components/PlanBanner';
 import { useSubscriptionPlan } from '@/hooks/useSubscriptionPlan';
+import { extractExtendedFields, packExtendedFieldsToNotes } from '@/lib/memberUtils';
+import { MemberIdCard } from '@/components/MemberIdCard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useTenant } from '@/hooks/useTenant';
 
 export default function Members() {
   useDocumentTitle('Membros');
+  const { tenant } = useTenant();
   const [members, setMembers] = useState<Member[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [selectedCardMember, setSelectedCardMember] = useState<Member | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [churchName, setChurchName] = useState<string>('');
-  const [pastorName, setPastorName] = useState<string>('');
+  const [churchName, setChurchName] = useState<string>(tenant?.name || '');
+  const [churchLogo, setChurchLogo] = useState<string>(tenant?.logo_url || '');
+  const [churchCnpj, setChurchCnpj] = useState<string>((tenant as any)?.cnpj || '');
+  const [churchAddress, setChurchAddress] = useState<string>(tenant?.address || '');
+  const [pastorName, setPastorName] = useState<string>(tenant?.president_name || '');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('todos');
@@ -49,6 +60,13 @@ export default function Members() {
   }, [effectiveChurchId, viewingChurch?.id]);
 
   useEffect(() => {
+    if (tenant) {
+      if (tenant.name) setChurchName(tenant.name);
+      if (tenant.logo_url) setChurchLogo(tenant.logo_url);
+      if ((tenant as any).cnpj) setChurchCnpj((tenant as any).cnpj);
+      if (tenant.address) setChurchAddress(tenant.address);
+      if (tenant.president_name) setPastorName(tenant.president_name);
+    }
     if (!effectiveChurchId) return;
     (async () => {
       try {
@@ -56,17 +74,21 @@ export default function Members() {
           churchesService.getById(effectiveChurchId),
           pastorsService.listByChurch(effectiveChurchId),
         ]);
-        const churchObj = church as { name?: string } | null;
+        const churchObj = church as any;
         const pastorsArr = Array.isArray(pastors) ? pastors : [];
         const firstPastor = pastorsArr[0] as { name?: string } | undefined;
-        setChurchName(churchObj?.name ?? '');
-        setPastorName(firstPastor?.name ?? '');
+        if (churchObj?.name) setChurchName(churchObj.name);
+        if (churchObj?.logo_url) setChurchLogo(churchObj.logo_url);
+        if (churchObj?.cnpj) setChurchCnpj(churchObj.cnpj);
+        if (churchObj?.address) setChurchAddress(churchObj.address);
+        setPastorName(firstPastor?.name || churchObj?.president_name || tenant?.president_name || '');
       } catch {
-        setChurchName(viewingChurch?.name || '');
-        setPastorName('');
+        setChurchName(viewingChurch?.name || tenant?.name || '');
+        setChurchLogo(tenant?.logo_url || '');
+        setPastorName(tenant?.president_name || '');
       }
     })();
-  }, [effectiveChurchId, viewingChurch?.name]);
+  }, [effectiveChurchId, viewingChurch?.name, tenant]);
 
   async function loadMembers() {
     try {
@@ -74,19 +96,24 @@ export default function Members() {
       setLoading(true);
       const data = await membersService.getAll(effectiveChurchId);
       // Map DB snake_case to Frontend camelCase
-      const mappedMembers: Member[] = (data || []).map((m: any) => ({
-        id: m.id,
-        churchId: m.church_id || '',
-        name: m.name,
-        email: m.email || '',
-        phone: m.phone || '',
-        birthDate: m.birth_date || '',
-        maritalStatus: m.marital_status || 'solteiro',
-        address: m.address || '',
-        photoUrl: m.photo_url || '',
-        category: m.status === 'visitante' ? 'congregado' : 'membro',
-        createdAt: m.created_at,
-      }));
+      const mappedMembers: Member[] = (data || []).map((m: any) => {
+        const ext = extractExtendedFields(m);
+        return {
+          id: m.id,
+          churchId: m.church_id || '',
+          name: m.name,
+          email: m.email || '',
+          phone: m.phone || '',
+          birthDate: m.birth_date || '',
+          maritalStatus: m.marital_status || 'solteiro',
+          address: m.address || '',
+          photoUrl: m.photo_url || '',
+          category: m.status === 'visitante' ? 'congregado' : 'membro',
+          createdAt: m.created_at,
+          notes: m.notes,
+          ...ext,
+        } as Member;
+      });
       setMembers(mappedMembers);
     } catch (err: any) {
       console.error('Erro ao carregar membros:', err);
@@ -107,27 +134,32 @@ export default function Members() {
   const handleAddMember = async (data: MemberFormData) => {
     try {
       setSaving(true);
+      const packedNotes = packExtendedFieldsToNotes(
+        (editingMember as any)?.notes || '',
+        data
+      );
+
+      const cid = effectiveChurchId || editingMember?.churchId || 'igreja-padrao';
+
       if (editingMember) {
         await membersService.update(editingMember.id, {
           name: data.name,
-          email: data.email,
-          phone: data.phone,
-          birth_date: data.birthDate,
+          email: data.email || null,
+          phone: data.phone || null,
+          birth_date: data.birthDate || null,
           marital_status: data.maritalStatus as any,
-          address: data.address,
-          photo_url: data.photoUrl,
+          address: data.address || null,
+          photo_url: data.photoUrl || null,
+          notes: packedNotes,
           status: data.category === 'congregado' ? 'visitante' : 'ativo',
-        });
-
+          church_id: cid,
+        }, cid);
 
         toast({
           title: 'Cadastro atualizado!',
           description: `${data.name} foi atualizado com sucesso.`,
         });
       } else {
-        const cid = effectiveChurchId;
-        if (!cid) throw new Error('Selecione uma igreja no Painel Root ou faça login em uma igreja.');
-
         await membersService.create({
           name: data.name,
           email: data.email || null,
@@ -136,6 +168,7 @@ export default function Members() {
           marital_status: data.maritalStatus as any,
           address: data.address || null,
           photo_url: data.photoUrl || null,
+          notes: packedNotes,
           status: data.category === 'congregado' ? 'visitante' : 'ativo',
         }, cid);
 
@@ -146,12 +179,12 @@ export default function Members() {
       }
       setShowForm(false);
       setEditingMember(null);
-      loadMembers(); // Reload list
-    } catch (error) {
+      await loadMembers();
+    } catch (error: any) {
       console.error('Erro ao salvar membro:', error);
       toast({
         title: 'Erro ao salvar',
-        description: 'Ocorreu um problema ao tentar salvar os dados. Verifique sua permissão ou conexão.',
+        description: error?.message || 'Ocorreu um problema ao tentar salvar os dados. Verifique sua permissão ou conexão.',
         variant: 'destructive',
       });
     } finally {
@@ -167,17 +200,26 @@ export default function Members() {
   const handleDeleteMember = async (id: string) => {
     try {
       setDeletingId(id);
-      await membersService.delete(id);
+      await membersService.delete(id, effectiveChurchId);
       setMembers(members.filter(m => m.id !== id));
       toast({
         title: 'Membro removido',
         description: 'O membro foi excluído do sistema.',
         variant: 'destructive',
       });
-    } catch (error) {
+    } catch (error: any) {
+      const msg = error?.message || '';
+      let friendlyMsg = 'Não foi possível remover o membro.';
+      if (msg.includes('cells_host_id_fkey') || msg.includes('cells_leader_id_fkey') || msg.includes('cells')) {
+        friendlyMsg = 'O membro possuía vínculo como anfitrião ou líder de célula. A referência foi desvinculada, tente excluir novamente.';
+      } else if (msg.includes('foreign key') || msg.includes('violates')) {
+        friendlyMsg = 'Não foi possível excluir porque o membro possui vínculos ativos em outros módulos.';
+      } else if (msg) {
+        friendlyMsg = msg;
+      }
       toast({
         title: 'Erro ao excluir',
-        description: 'Não foi possível remover o membro.',
+        description: friendlyMsg,
         variant: 'destructive',
       });
     } finally {
@@ -202,8 +244,18 @@ export default function Members() {
         </div>
         {!showForm && (
           <div className="flex flex-wrap gap-2">
-            {members.length > 0 && (user?.role === 'superadmin' || !['aluno', 'membro', 'congregado'].includes(user?.role ?? '')) && (
+            {(user?.role === 'superadmin' || !['aluno', 'membro', 'congregado'].includes(user?.role ?? '')) && (
               <ExcelMembersButton />
+            )}
+            {(user?.role === 'superadmin' || (!['aluno', 'membro', 'congregado', 'tesoureiro'].includes(user?.role ?? ''))) && (
+              <Button
+                variant="outline"
+                onClick={() => setImportModalOpen(true)}
+                className="gap-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold"
+              >
+                <Upload className="h-4 w-4 text-emerald-600" />
+                Importar Planilha Excel
+              </Button>
             )}
             {(user?.role === 'superadmin' || (user?.role !== 'aluno' && user?.role !== 'membro' && user?.role !== 'congregado' && user?.role !== 'tesoureiro')) && (
               <MemberLimitGuard
@@ -307,6 +359,7 @@ export default function Members() {
               })}
               onDelete={handleDeleteMember}
               onEdit={handleEdit}
+              onViewCard={(member) => setSelectedCardMember(member)}
               deletingId={deletingId}
             />
           </TabsContent>
@@ -327,6 +380,7 @@ export default function Members() {
               })}
               onDelete={handleDeleteMember}
               onEdit={handleEdit}
+              onViewCard={(member) => setSelectedCardMember(member)}
               deletingId={deletingId}
             />
             {members.filter(m => {
@@ -341,6 +395,52 @@ export default function Members() {
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Modal / Dialog da Carteirinha Personalizada do Membro */}
+      <Dialog
+        open={!!selectedCardMember}
+        onOpenChange={(open) => !open && setSelectedCardMember(null)}
+      >
+        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto p-6">
+          <DialogHeader className="pb-2 border-b">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <span>Personalização da Carteirinha</span>
+              {selectedCardMember && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  — {selectedCardMember.name}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedCardMember && (
+            <MemberIdCard
+              member={selectedCardMember}
+              churchName={churchName || 'Igreja Evangélica'}
+              churchLogo={churchLogo}
+              pastorName={pastorName || 'Pastor Presidente'}
+              cnpj={churchCnpj}
+              churchAddress={churchAddress}
+              onSaveConfig={(newConfig) => {
+                // Atualiza a configuração local do membro
+                setSelectedCardMember(prev => prev ? { ...prev, customCardConfig: newConfig } : null);
+              }}
+              onUpdateMember={(updated) => {
+                setSelectedCardMember(prev => prev ? { ...prev, ...updated } : null);
+                setMembers(prev => prev.map(m => m.id === selectedCardMember.id ? { ...m, ...updated } : m));
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Importação de Planilha Excel */}
+      <ImportMembersModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        churchId={effectiveChurchId || 'igreja-padrao'}
+        onSuccess={() => loadMembers()}
+      />
     </div>
   );
 }

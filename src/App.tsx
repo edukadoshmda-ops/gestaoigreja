@@ -205,7 +205,9 @@ function AppRoutes() {
         <Route path="/ministerios" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'tesoureiro', 'superadmin', 'diretor_patrimonio']}><Ministries /></RoleProtectedRoute>} />
         <Route path="/eventos" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'membro', 'lider_ministerio', 'aluno', 'congregado', 'superadmin']}><Events /></RoleProtectedRoute>} />
         <Route path="/patrimonio" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'superadmin', 'diretor_patrimonio', 'tesoureiro']}><Assets /></RoleProtectedRoute>} />
-        <Route path="/caixa-diario" element={<RoleProtectedRoute roles={['pastor', 'pastor_admin', 'tesoureiro', 'superadmin']}><DailyCash /></RoleProtectedRoute>} />
+        <Route path="/caixa-diario" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'tesoureiro', 'superadmin']}><DailyCash /></RoleProtectedRoute>} />
+        <Route path="/financeiro" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'tesoureiro', 'superadmin']}><DailyCash /></RoleProtectedRoute>} />
+        <Route path="/gestao-financeira" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'tesoureiro', 'superadmin']}><DailyCash /></RoleProtectedRoute>} />
         <Route path="/cadastro" element={<ProtectedRoute><Registration /></ProtectedRoute>} />
         <Route path="/relatorios" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'lider_ministerio', 'superadmin']}><Reports /></RoleProtectedRoute>} />
         <Route path="/uploads" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'membro', 'lider_ministerio', 'aluno', 'congregado', 'superadmin']}><Uploads /></RoleProtectedRoute>} />

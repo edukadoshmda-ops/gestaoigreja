@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { FileText, Send, Users, Loader2, Download, Trash2, CreditCard, Search, Plus, Minus, FileSpreadsheet } from 'lucide-react';
+import { FileText, Send, Users, Loader2, Download, Trash2, CreditCard, Search, Plus, Minus, FileSpreadsheet, Upload, Church } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,9 @@ import { membersService } from '@/services/members.service';
 import { documentsService, ChurchDocument } from '@/services/documents.service';
 import { Member } from '@/types';
 import SecretaryMonthlyReportExcel from '@/components/SecretaryMonthlyReportExcel';
+import { ExcelMembersButton } from '@/components/ExcelMembersReport';
+import { ImportMembersModal } from '@/components/ImportMembersModal';
+import { ExcelAdministrativeDashboardButton } from '@/components/ExcelAdministrativeDashboardButton';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -37,6 +40,10 @@ import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 import { DEFAULT_CHURCH_NAME, DEFAULT_CNPJ } from '@/lib/constants';
 import { maskCNPJ } from '@/lib/masks';
+import { MemberIdCard } from '@/components/MemberIdCard';
+import { extractExtendedFields } from '@/lib/memberUtils';
+import { useTenant, globalChurchLogo, globalChurchName } from '@/hooks/useTenant';
+import { churchesService } from '@/services/churches.service';
 
 export default function Secretariat() {
     useDocumentTitle('Secretaria');
@@ -45,9 +52,83 @@ export default function Secretariat() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
-    const { user, churchId } = useAuth();
+    const { user, churchId, viewingChurch } = useAuth();
     const { canEditSecretariat } = usePermissions();
-    const effectiveChurchId = churchId ?? user?.churchId;
+    const { tenant } = useTenant();
+    const effectiveChurchId = viewingChurch?.id || churchId || user?.churchId;
+
+    const [churchData, setChurchData] = useState({
+        name: tenant?.name || viewingChurch?.name || globalChurchName || DEFAULT_CHURCH_NAME,
+        logoUrl: tenant?.logo_url || globalChurchLogo || '',
+        address: tenant?.address || 'Av. Principal, 1000 - Centro',
+        cnpj: (tenant as any)?.cnpj || DEFAULT_CNPJ,
+        presidentName: tenant?.president_name || 'Pastor Presidente',
+    });
+
+    useEffect(() => {
+        if (tenant) {
+            setChurchData(prev => ({
+                ...prev,
+                name: tenant.name || prev.name,
+                logoUrl: tenant.logo_url || prev.logoUrl,
+                address: tenant.address || prev.address,
+                cnpj: (tenant as any).cnpj || prev.cnpj,
+                presidentName: tenant.president_name || prev.presidentName,
+            }));
+        }
+        if (effectiveChurchId) {
+            churchesService.getById(effectiveChurchId).then((c: any) => {
+                if (c) {
+                    setChurchData(prev => ({
+                        ...prev,
+                        name: c.name || prev.name,
+                        logoUrl: c.logo_url || prev.logoUrl,
+                        address: c.address || prev.address,
+                        cnpj: c.cnpj || prev.cnpj,
+                        presidentName: c.president_name || prev.presidentName,
+                    }));
+                }
+            }).catch(() => {});
+        } else if (!tenant) {
+            churchesService.getAll().then((list: any[]) => {
+                const c = list?.[0];
+                if (c) {
+                    setChurchData(prev => ({
+                        ...prev,
+                        name: c.name || prev.name,
+                        logoUrl: c.logo_url || prev.logoUrl,
+                        address: c.address || prev.address,
+                        cnpj: c.cnpj || prev.cnpj,
+                        presidentName: c.president_name || prev.presidentName,
+                    }));
+                }
+            }).catch(() => {});
+        }
+    }, [effectiveChurchId, tenant, viewingChurch?.id, viewingChurch?.name]);
+
+    useEffect(() => {
+        const handleBranding = (e: any) => {
+            const detail = e.detail;
+            if (detail) {
+                setChurchData(prev => ({
+                    ...prev,
+                    name: detail.name || prev.name,
+                    logoUrl: detail.logo || prev.logoUrl,
+                }));
+            }
+        };
+        const handleLogo = (e: any) => {
+            if (e.detail) {
+                setChurchData(prev => ({ ...prev, logoUrl: e.detail }));
+            }
+        };
+        window.addEventListener('churchBrandingUpdated', handleBranding);
+        window.addEventListener('churchLogoUpdated', handleLogo);
+        return () => {
+            window.removeEventListener('churchBrandingUpdated', handleBranding);
+            window.removeEventListener('churchLogoUpdated', handleLogo);
+        };
+    }, []);
 
     // Permissão: Pastor, Secretário e SuperAdmin podem editar
     const canEdit = canEditSecretariat;
@@ -69,19 +150,23 @@ export default function Secretariat() {
 
             const mappedMembers: Member[] = (data || []).map((m: any) => {
                 try {
+                    const ext = extractExtendedFields(m);
                     return {
                         id: m.id,
+                        churchId: m.church_id || '',
                         name: m.name || 'Sem Nome',
                         email: m.email || '',
                         phone: m.phone || '',
                         birthDate: m.birth_date || '',
                         baptismDate: m.baptism_date || '',
-                        role: m.church_role || 'Membro',
+                        role: m.church_role || ext.role || 'Membro',
                         address: m.address || '',
                         photoUrl: m.photo_url || '',
                         category: m.status === 'visitante' ? 'congregado' : 'membro',
                         createdAt: m.created_at || new Date().toISOString(),
-                    };
+                        notes: m.notes,
+                        ...ext,
+                    } as Member;
                 } catch (e) {
                     return null;
                 }
@@ -136,8 +221,8 @@ export default function Secretariat() {
                     </p>
                 </div>
                 {canEdit && (
-                    <div className="flex gap-2">
-                        <SecretaryMonthlyReportExcel />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <ExcelAdministrativeDashboardButton />
                         <Button onClick={handlePrint} className="gap-2">
                             <Download className="h-4 w-4" />
                             Baixar PDF / Imprimir
@@ -185,11 +270,11 @@ export default function Secretariat() {
 
                 <div className="bg-white dark:bg-card p-8 rounded-xl shadow-sm print:shadow-none min-h-[600px] print:p-0 text-foreground print-content">
                     <TabsContent value="minutes" className="mt-0 space-y-6">
-                        <MinutesTemplate canEdit={canEdit} />
+                        <MinutesTemplate canEdit={canEdit} churchName={churchData.name} churchLogo={churchData.logoUrl} />
                     </TabsContent>
 
                     <TabsContent value="transfer" className="mt-0 space-y-6">
-                        <TransferLetter members={members} canEdit={canEdit} />
+                        <TransferLetter members={members} canEdit={canEdit} churchName={churchData.name} churchLogo={churchData.logoUrl} pastorName={churchData.presidentName} />
                     </TabsContent>
 
                     <TabsContent value="roll" className="mt-0 space-y-6">
@@ -198,12 +283,12 @@ export default function Secretariat() {
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             </div>
                         ) : (
-                            <MembersRoll members={members} />
+                            <MembersRoll members={members} canEdit={canEdit} onRefresh={loadMembers} churchName={churchData.name} churchLogo={churchData.logoUrl} />
                         )}
                     </TabsContent>
 
                     <TabsContent value="idcard" className="mt-0 space-y-6">
-                        <MemberIdCardTemplate members={members} canEdit={canEdit} />
+                        <MemberIdCardTemplate members={members} canEdit={canEdit} defaultChurchData={churchData} />
                     </TabsContent>
                 </div>
             </Tabs>
@@ -211,7 +296,7 @@ export default function Secretariat() {
     );
 }
 
-function MinutesTemplate({ canEdit }: { canEdit: boolean }) {
+function MinutesTemplate({ canEdit, churchName, churchLogo }: { canEdit: boolean; churchName?: string; churchLogo?: string }) {
     const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
@@ -297,8 +382,17 @@ function MinutesTemplate({ canEdit }: { canEdit: boolean }) {
             </div>
 
             <div className="hidden print:block space-y-6 font-serif text-black">
-                <div className="flex justify-center mb-4">
-                    <img src="/logo-app.png?v=2" alt="Logo" className="w-16 h-16 object-contain" />
+                <div className="flex flex-col items-center justify-center mb-6 text-center">
+                    {churchLogo ? (
+                        <img src={churchLogo} alt={churchName || 'Logo da Igreja'} className="max-h-20 max-w-[200px] object-contain mb-2" />
+                    ) : (
+                        <div className="w-14 h-14 rounded-full border border-black/80 flex items-center justify-center mb-2">
+                            <Church className="w-7 h-7 text-black" />
+                        </div>
+                    )}
+                    {churchName && (
+                        <h4 className="text-base font-bold uppercase tracking-wider text-black">{churchName}</h4>
+                    )}
                 </div>
                 <div className="text-center mb-8">
                     <h3 className="text-xl font-bold">{title || 'Título da Ata'}</h3>
@@ -317,14 +411,32 @@ function MinutesTemplate({ canEdit }: { canEdit: boolean }) {
     );
 }
 
-function TransferLetter({ members, canEdit }: { members: Member[], canEdit: boolean }) {
+function TransferLetter({
+    members,
+    canEdit,
+    churchName,
+    churchLogo,
+    pastorName
+}: {
+    members: Member[];
+    canEdit: boolean;
+    churchName?: string;
+    churchLogo?: string;
+    pastorName?: string;
+}) {
     const [name, setName] = useState('');
     const [destination, setDestination] = useState('');
-    const [origin, setOrigin] = useState('Igreja Comunidade Cristã');
+    const [origin, setOrigin] = useState(churchName || 'Igreja Comunidade Cristã');
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [saving, setSaving] = useState(false);
     const [clearConfirm, setClearConfirm] = useState(false);
     const { toast } = useToast();
+
+    useEffect(() => {
+        if (churchName) {
+            setOrigin(churchName);
+        }
+    }, [churchName]);
 
     const handleClear = () => setClearConfirm(true);
     const executeClear = () => {
@@ -416,8 +528,21 @@ function TransferLetter({ members, canEdit }: { members: Member[], canEdit: bool
             </div>
 
             <div className="flex flex-col max-w-2xl mx-auto font-serif leading-relaxed text-justify space-y-6 mt-12 text-black bg-white p-12 shadow-xl rounded-xl print:shadow-none print:p-0">
-                <div className="flex justify-center mb-6">
-                    <img src="/logo-app.png?v=2" alt="Logo" className="w-60 h-60 object-contain brightness-0" style={{ filter: 'brightness(0)' }} />
+                <div className="flex flex-col items-center justify-center mb-6 text-center">
+                    {churchLogo ? (
+                        <img
+                            src={churchLogo}
+                            alt={origin || churchName || 'Logo da Igreja'}
+                            className="max-h-24 max-w-[220px] object-contain mb-3"
+                        />
+                    ) : (
+                        <div className="w-16 h-16 rounded-full border-2 border-black/80 flex items-center justify-center mb-3">
+                            <Church className="w-8 h-8 text-black" />
+                        </div>
+                    )}
+                    <h2 className="text-xl font-bold uppercase tracking-wider text-black">
+                        {origin || churchName || 'Nome da Igreja'}
+                    </h2>
                 </div>
                 <h1 className="text-2xl font-bold text-center uppercase mb-12">Carta de Transferência</h1>
 
@@ -442,15 +567,28 @@ function TransferLetter({ members, canEdit }: { members: Member[], canEdit: bool
                 </p>
 
                 <div className="mt-24 pt-4 border-t border-black w-64 mx-auto text-center">
-                    <p>Pastor Responsável</p>
+                    <p>{pastorName || 'Pastor Responsável'}</p>
                 </div>
             </div>
         </div>
     );
 }
 
-function MembersRoll({ members }: { members: Member[] }) {
+function MembersRoll({
+    members,
+    canEdit = true,
+    onRefresh,
+    churchName,
+    churchLogo
+}: {
+    members: Member[];
+    canEdit?: boolean;
+    onRefresh?: () => void;
+    churchName?: string;
+    churchLogo?: string;
+}) {
     const [filter, setFilter] = useState('');
+    const [importModalOpen, setImportModalOpen] = useState(false);
     const { toast } = useToast();
 
     const filtered = members.filter(m =>
@@ -491,7 +629,18 @@ function MembersRoll({ members }: { members: Member[] }) {
                         </div>
                     </div>
                 </div>
-                <div className="flex justify-center mt-4 print:hidden">
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-5 print:hidden">
+                    <ExcelMembersButton />
+                    {canEdit && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setImportModalOpen(true)}
+                            className="gap-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold"
+                        >
+                            <Upload className="h-4 w-4 text-emerald-600" />
+                            Importar Planilha Excel
+                        </Button>
+                    )}
                     <Button
                         variant="outline"
                         size="sm"
@@ -515,6 +664,14 @@ function MembersRoll({ members }: { members: Member[] }) {
                         Salvar Snapshot do Rol
                     </Button>
                 </div>
+
+                <ImportMembersModal
+                    open={importModalOpen}
+                    onOpenChange={setImportModalOpen}
+                    onSuccess={() => {
+                        if (onRefresh) onRefresh();
+                    }}
+                />
             </div>
 
             <div className="print:hidden mb-4">
@@ -527,8 +684,17 @@ function MembersRoll({ members }: { members: Member[] }) {
 
             <div className="print:block">
                 <div className="hidden print:block text-center mb-8">
-                    <div className="flex justify-center mb-4">
-                        <img src="/logo-app.png?v=2" alt="Logo" className="w-16 h-16 object-contain" />
+                    <div className="flex flex-col items-center justify-center mb-4 text-center">
+                        {churchLogo ? (
+                            <img src={churchLogo} alt={churchName || 'Logo da Igreja'} className="max-h-20 max-w-[200px] object-contain mb-2" />
+                        ) : (
+                            <div className="w-14 h-14 rounded-full border border-black/80 flex items-center justify-center mb-2">
+                                <Church className="w-7 h-7 text-black" />
+                            </div>
+                        )}
+                        {churchName && (
+                            <h3 className="text-base font-bold uppercase tracking-wider text-black">{churchName}</h3>
+                        )}
                     </div>
                     <h1 className="text-2xl font-bold uppercase text-black">Rol Geral de Membros e Congregados</h1>
                     <p className="text-sm text-gray-500">Gerado em {format(new Date(), "dd/MM/yyyy", { locale: ptBR })}</p>
@@ -571,363 +737,162 @@ function MembersRoll({ members }: { members: Member[] }) {
     );
 }
 
-function MemberIdCardTemplate({ members, canEdit }: { members: Member[], canEdit: boolean }) {
-    const [selectedMemberId, setSelectedMemberId] = useState('');
-    const [formData, setFormData] = useState({
-        name: '',
-        birthDate: '',
-        baptismDate: '',
-        role: 'Membro',
-        cnpj: DEFAULT_CNPJ,
-        churchAddress: 'Av. Principal, 1000 - Centro',
-        churchName: DEFAULT_CHURCH_NAME
-    });
+function MemberIdCardTemplate({
+    members,
+    canEdit,
+    defaultChurchData
+}: {
+    members: Member[];
+    canEdit: boolean;
+    defaultChurchData?: {
+        name: string;
+        logoUrl?: string;
+        address: string;
+        cnpj: string;
+        presidentName: string;
+    };
+}) {
+    const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id || '');
+    const [cnpj, setCnpj] = useState(defaultChurchData?.cnpj || DEFAULT_CNPJ);
+    const [churchName, setChurchName] = useState(defaultChurchData?.name || DEFAULT_CHURCH_NAME);
+    const [pastorName, setPastorName] = useState(defaultChurchData?.presidentName || 'Pastor Presidente');
+    const [churchAddress, setChurchAddress] = useState(defaultChurchData?.address || 'Av. Principal, 1000 - Centro');
+    const [churchLogo, setChurchLogo] = useState(defaultChurchData?.logoUrl || '');
     const [saving, setSaving] = useState(false);
-    const [nameFontSize, setNameFontSize] = useState(14);
-    const [photoDataUrl, setPhotoDataUrl] = useState<string>('');
-    const nameContainerRef = useRef<HTMLDivElement>(null);
-    const nameTextRef = useRef<HTMLParagraphElement>(null);
+    const { churchId, viewingChurch, user } = useAuth();
+    const effectiveChurchId = viewingChurch?.id ?? churchId ?? user?.churchId;
     const { toast } = useToast();
 
-    useLayoutEffect(() => {
-        if (!nameContainerRef.current || !nameTextRef.current || !formData.name) return;
-        const containerWidth = nameContainerRef.current.clientWidth;
-        let size = 20;
-        nameTextRef.current.style.fontSize = `${size}px`;
-        while (nameTextRef.current.scrollWidth > containerWidth && size > 8) {
-            size -= 1;
-            nameTextRef.current.style.fontSize = `${size}px`;
+    useEffect(() => {
+        if (!selectedMemberId && members.length > 0) {
+            setSelectedMemberId(members[0].id);
         }
-        setNameFontSize(size);
-    }, [formData.name]);
-
-    const roles = [
-        'Pastor',
-        'Pastora',
-        'Diácono',
-        'Diaconisa',
-        'Evangelista',
-        'Líder de Célula',
-        'Líder de Ministério',
-        'Secretário',
-        'Secretária',
-        'Tesoureiro',
-        'Tesoureira',
-        'Membro'
-    ];
-
-    const selectedMember = members.find(m => m.id === selectedMemberId);
+    }, [members, selectedMemberId]);
 
     useEffect(() => {
-        if (selectedMember) {
-            setFormData(prev => ({
-                ...prev,
-                name: selectedMember.name,
-                birthDate: selectedMember.birthDate,
-                baptismDate: selectedMember.baptismDate || '',
-                role: selectedMember.role || 'Membro'
-            }));
+        if (defaultChurchData) {
+            if (defaultChurchData.name) setChurchName(defaultChurchData.name);
+            if (defaultChurchData.cnpj) setCnpj(defaultChurchData.cnpj);
+            if (defaultChurchData.address) setChurchAddress(defaultChurchData.address);
+            if (defaultChurchData.presidentName) setPastorName(defaultChurchData.presidentName);
+            if (defaultChurchData.logoUrl) setChurchLogo(defaultChurchData.logoUrl);
         }
-    }, [selectedMemberId]);
+    }, [defaultChurchData]);
 
-    useEffect(() => {
-        const url = selectedMember?.photoUrl;
-        if (!url) {
-            setPhotoDataUrl('');
-            return;
-        }
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.drawImage(img, 0, 0);
-                    setPhotoDataUrl(canvas.toDataURL('image/jpeg', 0.9));
-                } else {
-                    setPhotoDataUrl(url);
-                }
-            } catch {
-                setPhotoDataUrl(url);
-            }
-        };
-        img.onerror = () => setPhotoDataUrl(url);
-        img.src = url;
-    }, [selectedMember?.photoUrl, selectedMember?.id]);
-
-    const handleClear = () => {
-        setSelectedMemberId('');
-        setFormData({
-            name: '',
-            birthDate: '',
-            baptismDate: '',
-            role: 'Membro',
-            cnpj: DEFAULT_CNPJ,
-            churchAddress: 'Av. Principal, 1000 - Centro',
-            churchName: DEFAULT_CHURCH_NAME
-        });
-    };
-
-    const handlePrintCard = () => {
-        window.print();
-    };
+    const selectedMember = members.find(m => m.id === selectedMemberId) || members[0];
 
     return (
-        <div className="space-y-8">
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                @media print {
-                    @page { margin: 0; size: auto; }
-                    body * { visibility: hidden; }
-                    .id-card-print-container, .id-card-print-container * { visibility: visible; }
-                    .id-card-print-container {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        display: flex !important;
-                        flex-direction: column !important;
-                        align-items: center !important;
-                        gap: 20px !important;
-                        padding-top: 20px !important;
-                        background: white !important;
-                    }
-                    .id-card-print-piece {
-                        width: 8.6cm !important;
-                        height: 5.4cm !important;
-                        min-width: 8.6cm !important;
-                        min-height: 5.4cm !important;
-                        border: 1px solid #000 !important;
-                        page-break-inside: avoid;
-                        print-color-adjust: exact;
-                        -webkit-print-color-adjust: exact;
-                    }
-                }
-            `}} />
-            <div className="flex items-center justify-between border-b pb-6 mb-6">
-                <div className="flex-1 text-center">
-                    <h2 className="text-2xl font-bold uppercase"><span>Carteira de Membro</span></h2>
-                    <p className="text-muted-foreground print:hidden"><span>Selecione um membro para gerar a credencial</span></p>
-                </div>
-                <div className="flex gap-2 print:hidden items-center">
-                    {selectedMemberId && canEdit && (
-                        <>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-2"
-                                disabled={saving}
-                                onClick={async () => {
-                                    try {
-                                        setSaving(true);
-                                        await documentsService.create({
-                                            title: `Credencial - ${formData.name}`,
-                                            description: `Credencial emitida para ${formData.name} com cargo ${formData.role}.`,
-                                            category: 'credential',
-                                            file_url: 'text://' + formData.name,
-                                            file_type: 'text/plain'
-                                        });
-                                        toast({ title: 'Sucesso', description: 'Credencial salva!' });
-                                    } catch (error) {
-                                        toast({ title: 'Erro ao salvar', variant: 'destructive' });
-                                    } finally {
-                                        setSaving(false);
-                                    }
-                                }}
-                            >
-                                <Send className="h-4 w-4" />
-                                Salvar
-                            </Button>
-                            <Button
-                                variant="default"
-                                className="bg-primary hover:bg-primary/90 gap-2"
-                                onClick={handlePrintCard}
-                            >
-                                <Download className="h-4 w-4" />
-                                Baixar / Imprimir Carteirinha
-                            </Button>
-                        </>
-                    )}
-                    {canEdit && (
-                        <Button variant="destructive" size="icon" onClick={handleClear} className="print:hidden flex-shrink-0" title="Limpar">
-                            <Trash2 className="h-4 w-4" />
+        <div className="space-y-6">
+            <div className="bg-card p-5 rounded-2xl border shadow-sm space-y-4 print:hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b">
+                    <div>
+                        <h3 className="font-bold text-base flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-primary" />
+                            <span>Emissão e Personalização de Carteirinhas</span>
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                            Selecione um membro da igreja para visualizar e customizar sua credencial oficial.
+                        </p>
+                    </div>
+                    {selectedMember && canEdit && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            disabled={saving}
+                            onClick={async () => {
+                                try {
+                                    setSaving(true);
+                                    await documentsService.create({
+                                        title: `Credencial - ${selectedMember.name}`,
+                                        description: `Credencial emitida para ${selectedMember.name} com cargo ${selectedMember.role || 'Membro'}.`,
+                                        category: 'credential',
+                                        file_url: 'text://' + selectedMember.name,
+                                        file_type: 'text/plain'
+                                    });
+                                    toast({ title: 'Sucesso', description: 'Credencial registrada no histórico de documentos!' });
+                                } catch (error) {
+                                    toast({ title: 'Erro ao salvar', variant: 'destructive' });
+                                } finally {
+                                    setSaving(false);
+                                }
+                            }}
+                        >
+                            <Send className="h-4 w-4" />
+                            Registrar Documento
                         </Button>
                     )}
                 </div>
-            </div>
 
-            <div className="grid gap-6 print:hidden">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Selecionar Membro</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-1">
+                    <div className="space-y-1.5 md:col-span-2">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">
+                            Membro Selecionado
+                        </Label>
                         <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Busque um membro..." />
+                            <SelectTrigger className="h-9 font-medium">
+                                <SelectValue placeholder="Selecione um membro..." />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-72">
                                 {members.map(m => (
-                                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                    <SelectItem key={m.id} value={m.id}>
+                                        <div className="flex items-center gap-2">
+                                            <span>{m.prefix ? `${m.prefix} ` : ''}{m.name}</span>
+                                            {m.role && <span className="text-[10px] text-muted-foreground">({m.role})</span>}
+                                        </div>
+                                    </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="space-y-2">
-                        <Label>Função/Cargo</Label>
-                        <Select
-                            value={formData.role}
-                            onValueChange={(v) => setFormData({ ...formData, role: v })}
-                            disabled={!selectedMemberId}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {roles.map(r => (
-                                    <SelectItem key={r} value={r}>{r}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Nome Completo</Label>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">
+                            Nome da Igreja
+                        </Label>
                         <Input
-                            value={formData.name}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            disabled={!selectedMemberId}
+                            value={churchName}
+                            onChange={e => setChurchName(e.target.value)}
+                            className="h-9 text-xs"
+                            placeholder="Nome oficial"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Tamanho do nome na carteirinha</Label>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9"
-                                onClick={() => setNameFontSize(s => Math.max(8, s - 1))}
-                                disabled={!formData.name}
-                                title="Diminuir fonte"
-                            >
-                                <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="text-sm tabular-nums min-w-[2rem]">{nameFontSize}px</span>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9"
-                                onClick={() => setNameFontSize(s => Math.min(24, s + 1))}
-                                disabled={!formData.name}
-                                title="Aumentar fonte"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>CNPJ da Igreja</Label>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">
+                            CNPJ da Igreja
+                        </Label>
                         <Input
+                            value={cnpj}
+                            onChange={e => setCnpj(maskCNPJ(e.target.value))}
+                            className="h-9 text-xs font-mono"
                             placeholder="00.000.000/0001-00"
-                            value={formData.cnpj}
-                            onChange={e => setFormData({ ...formData, cnpj: maskCNPJ(e.target.value) })}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Data de Nascimento</Label>
-                        <Input
-                            type="date"
-                            value={formData.birthDate}
-                            onChange={e => setFormData({ ...formData, birthDate: e.target.value })}
-                            disabled={!selectedMemberId}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Data de Batismo</Label>
-                        <Input
-                            type="date"
-                            value={formData.baptismDate}
-                            onChange={e => setFormData({ ...formData, baptismDate: e.target.value })}
-                            disabled={!selectedMemberId}
                         />
                     </div>
                 </div>
             </div>
 
-            {/* Credencial Preview/Print */}
-            <div className="flex flex-col items-center gap-12 py-8 bg-muted/20 rounded-xl print:bg-transparent print:p-0 id-card-print-container">
-                {/* Frente */}
-                <div className="w-[400px] h-[250px] bg-white border-2 border-primary/20 rounded-xl overflow-hidden shadow-xl print:shadow-none flex relative text-black text-left id-card-print-piece">
-                    <div className="w-1/3 bg-primary/5 border-r p-4 flex flex-col items-center justify-center gap-3">
-                        <img src="/logo-app.png?v=2" alt="Logo" className="w-[120px] h-[120px] object-contain flex-shrink-0 text-primary" style={{ filter: 'brightness(0) opacity(0.9)' }} />
-                        <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center border-2 border-primary/10 overflow-hidden">
-                            {(photoDataUrl || selectedMember?.photoUrl) ? (
-                                <img src={photoDataUrl || selectedMember?.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
-                            ) : (
-                                <Users className="h-12 w-12 text-muted-foreground/30" />
-                            )}
-                        </div>
-                        <div className="text-[10px] font-bold uppercase text-primary text-center leading-tight">
-                            Credencial Oficial
-                        </div>
-                    </div>
-                    <div className="w-2/3 p-4 flex flex-col justify-between">
-                        <div className="flex justify-between items-start">
-                            <div ref={nameContainerRef} className="space-y-0.5 min-w-0 flex-1 overflow-hidden">
-                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider"><span>Nome do Membro</span></h4>
-                                <p ref={nameTextRef} style={{ fontSize: nameFontSize }} className="font-black uppercase text-primary leading-tight whitespace-nowrap overflow-hidden text-ellipsis"><span>{formData.name || ''}</span></p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                            <div className="space-y-0.5 text-left">
-                                <h4 className="text-[8px] font-bold text-muted-foreground uppercase"><span>Nascimento</span></h4>
-                                <p className="text-[10px] font-bold"><span>{formData.birthDate ? format(new Date(formData.birthDate), 'dd/MM/yyyy') : '--/--/----'}</span></p>
-                            </div>
-                            <div className="space-y-0.5 text-left">
-                                <h4 className="text-[8px] font-bold text-muted-foreground uppercase"><span>Batismo</span></h4>
-                                <p className="text-[10px] font-bold"><span>{formData.baptismDate ? format(new Date(formData.baptismDate), 'dd/MM/yyyy') : '--/--/----'}</span></p>
-                            </div>
-                        </div>
-
-                        <div className="mt-1.5 py-1.5 px-2 bg-primary/10 rounded border border-primary/20 text-left">
-                            <p className="text-[8px] font-bold text-primary uppercase leading-none">Função Eclesiástica</p>
-                            <p className="text-[10px] font-black uppercase tracking-wide leading-tight mt-0.5">{formData.role}</p>
-                        </div>
-
-                        <div className="mt-4 flex flex-col items-center">
-                            <div className="w-32 border-t border-black/30"></div>
-                            <p className="text-[8px] uppercase font-bold mt-1">Portador(a)</p>
-                        </div>
-                    </div>
+            {selectedMember ? (
+                <MemberIdCard
+                    member={selectedMember}
+                    churchName={churchName}
+                    churchLogo={churchLogo}
+                    pastorName={pastorName}
+                    cnpj={cnpj}
+                    churchAddress={churchAddress}
+                    onUpdateMember={(updated) => {
+                        setMembers(prev => prev.map(m => m.id === selectedMember.id ? { ...m, ...updated } : m));
+                    }}
+                />
+            ) : (
+                <div className="text-center py-16 bg-muted/20 rounded-2xl border border-dashed">
+                    <CreditCard className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <h3 className="font-bold text-base">Nenhum membro selecionado</h3>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                        Cadastre membros na aba de Membros ou selecione um membro cadastrado no campo acima para gerar e personalizar a credencial.
+                    </p>
                 </div>
-
-                {/* Verso */}
-                <div className="w-[400px] h-[250px] bg-white border-2 border-primary/20 rounded-xl overflow-hidden shadow-xl print:shadow-none flex flex-col items-center p-2 relative text-black text-center id-card-print-piece">
-                    <div className="w-full flex flex-col items-center mb-0.5">
-                        <img src="/logo-app.png?v=2" alt="Logo" className="w-[84px] h-[84px] object-contain mb-0.5 text-primary" style={{ filter: 'brightness(0) opacity(0.9)' }} />
-                        <div className="text-[10px] font-black uppercase tracking-tighter text-primary leading-tight">{formData.churchName}</div>
-                    </div>
-
-                    <div className="space-y-0.5">
-                        <p className="text-[9px] font-bold uppercase leading-tight">CNPJ: {formData.cnpj}</p>
-                        <p className="text-[8px] text-muted-foreground leading-tight">{formData.churchAddress}</p>
-                    </div>
-
-                    <div className="flex-1 w-full flex flex-col justify-center gap-2 mt-1 min-h-0">
-                        <div className="flex flex-col items-center">
-                            <div className="w-40 border-t border-black/40"></div>
-                            <p className="text-[8px] font-bold uppercase mt-0.5 leading-none">Pastor Presidente</p>
-                        </div>
-                    </div>
-
-                    <div className="w-full mt-1 text-[7px] text-muted-foreground uppercase font-medium leading-tight">
-                        Esta credencial é de uso pessoal e intransferível.
-                    </div>
-                </div>
-            </div>
+            )}
         </div>
     );
 }

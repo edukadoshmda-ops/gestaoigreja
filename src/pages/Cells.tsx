@@ -36,6 +36,7 @@ import { Member } from '@/types';
 import { geocodeAddress, openStreetMapUrl, googleMapsUrl } from '@/lib/geocoding';
 import { CellMapPicker, CellMapView, CellsMapAll } from '@/components/CellMap';
 import { ExcelCellMonthlyReportButton } from '@/components/ExcelCellMonthlyReport';
+import { ExcelMinistriesDashboardButton } from '@/components/ExcelMinistriesDashboardButton';
 interface Cell {
   id: string;
   name: string;
@@ -302,8 +303,10 @@ export default function Cells() {
             </div>
             <p className="font-semibold text-lg">{cells.length} Células Ativas</p>
           </div>
-          <div className="flex gap-2">
-            {canDownloadReports && <ExcelCellMonthlyReportButton />}
+          <div className="flex flex-wrap items-center gap-2">
+            {canDownloadReports && (
+              <ExcelMinistriesDashboardButton />
+            )}
             {isAdmin && (
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild>

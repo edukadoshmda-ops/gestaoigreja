@@ -32,7 +32,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { usePermissions } from '@/hooks/usePermissions';
 import { discipleshipService } from '@/services/discipleship.service';
 import { membersService } from '@/services/members.service';
-import ExcelDiscipleshipMonthlyReportButton from '@/components/ExcelDiscipleshipMonthlyReport';
+import { ExcelMinistriesDashboardButton } from '@/components/ExcelMinistriesDashboardButton';
 import { Member } from '@/types';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -258,7 +258,7 @@ export default function Discipleship() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-2 gap-4">
                 <h2 className="text-xl font-bold shrink-0">Acompanhamento Ativo</h2>
                 <div className="flex w-full sm:w-auto overflow-x-auto gap-2 pb-2 sm:pb-0 scrollbar-hide snap-x [&>*]:shrink-0 [&>*]:snap-start">
-                    {canDownloadReports && <ExcelDiscipleshipMonthlyReportButton />}
+                    {canDownloadReports && <ExcelMinistriesDashboardButton />}
                     {canEdit && (
                         <Dialog open={isNewDialogOpen} onOpenChange={(open) => { setIsNewDialogOpen(open); if (!open) { setNewMentorId(''); setNewDiscipleId(''); } }}>
                             <DialogTrigger asChild>

@@ -15,7 +15,7 @@ const ROUTE_LABELS: Record<string, string> = {
   '/celulas': 'Células',
   '/eventos': 'Eventos',
   '/relatorios': 'Relatórios',
-  '/caixa-diario': 'Caixa Diário',
+  '/caixa-diario': 'Gestão Financeira',
   '/secretaria': 'Secretaria',
   '/uploads': 'Uploads',
   '/institucional': 'Institucional',

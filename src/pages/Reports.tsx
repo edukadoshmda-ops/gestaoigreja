@@ -24,6 +24,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ExcelAdministrativeDashboardButton } from '@/components/ExcelAdministrativeDashboardButton';
+import { ExcelMinistriesDashboardButton } from '@/components/ExcelMinistriesDashboardButton';
 import {
   Dialog,
   DialogContent,
@@ -635,12 +637,14 @@ export default function Reports() {
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           {canDownload && (
             <>
-              <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 h-11 min-h-[44px] text-base px-4">
-                <Printer className="h-5 w-5" />
+              <ExcelAdministrativeDashboardButton />
+              <ExcelMinistriesDashboardButton />
+              <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 h-10 text-sm px-3">
+                <Printer className="h-4 w-4" />
                 Imprimir
               </Button>
-              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 h-11 min-h-[44px] text-base px-4">
-                <FileDown className="h-5 w-5" />
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 h-10 text-sm px-3">
+                <FileDown className="h-4 w-4" />
                 Baixar PDF
               </Button>
             </>
@@ -669,10 +673,6 @@ export default function Reports() {
             <TrendingUp className="h-[20px] w-[20px]" />
             <span className="hidden sm:inline">Crescimento</span>
             <span className="sm:hidden">Cresc.</span>
-          </TabsTrigger>
-          <TabsTrigger value="distribuicao" className="gap-2 text-sm shrink-0 snap-start">
-            <PieChartIcon className="h-[20px] w-[20px]" />
-            <span className="hidden sm:inline">Mensal</span>
           </TabsTrigger>
         </TabsList>
 
@@ -712,14 +712,6 @@ export default function Reports() {
         {/* Crescimento Espiritual Tab */}
         <TabsContent value="crescimento" className="space-y-6">
           <SpiritualGrowthReport data={spiritualGrowthData} />
-        </TabsContent>
-
-        {/* Distribuição Mensal Tab */}
-        <TabsContent value="distribuicao" className="space-y-6">
-          <MonthlyDistributionReport 
-            financialData={financialData} 
-            transactions={financialDataRawTransactions} // Precisaremos garantir que temos isso
-          />
         </TabsContent>
       </Tabs>
       </div>
@@ -1395,52 +1387,6 @@ function FinancialReport({ data, totalIncome, totalExpenses, balance, chartConfi
         </Card>
       </div>
 
-      {/* Detailed Table */}
-      <Card className="border-primary/10 shadow-lg">
-        <CardHeader>
-          <CardTitle>Relatório Mensal Detalhado</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto min-w-0">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium">Mês</th>
-                  <th className="text-right py-3 px-4 font-medium">Dízimos</th>
-                  <th className="text-right py-3 px-4 font-medium">Ofertas</th>
-                  <th className="text-right py-3 px-4 font-medium">Total Entradas</th>
-                  <th className="text-right py-3 px-4 font-medium">Saídas</th>
-                  <th className="text-right py-3 px-4 font-medium">Saldo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {safeData.map((row: any) => {
-                  const income = Number(row?.income) || 0;
-                  const expenses = Number(row?.expenses) || 0;
-                  const tithes = Number(row?.tithes) || 0;
-                  const offerings = Number(row?.offerings) || 0;
-                  return (
-                    <tr key={row?.month ?? Math.random()} className="border-b hover:bg-primary/5 transition-colors">
-                      <td className="py-3 px-4 font-medium">{row?.month ?? '-'}</td>
-                      <td className="py-3 px-4 text-right">R$ {tithes.toLocaleString('pt-BR')}</td>
-                      <td className="py-3 px-4 text-right">R$ {offerings.toLocaleString('pt-BR')}</td>
-                      <td className="py-3 px-4 text-right text-primary font-semibold">
-                        R$ {income.toLocaleString('pt-BR')}
-                      </td>
-                      <td className="py-3 px-4 text-right text-destructive">
-                        R$ {expenses.toLocaleString('pt-BR')}
-                      </td>
-                      <td className={`py-3 px-4 text-right font-bold ${income - expenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        R$ {(income - expenses).toLocaleString('pt-BR')}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
     </>
   );
 }
