@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FinancialTransactionExtended,
   financialManagementService,
@@ -33,12 +33,15 @@ import {
   ExternalLink,
   FolderArchive,
   Image as ImageIcon,
+  Loader2,
   ZoomIn,
   ZoomOut,
+  HardDrive,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { googleDriveService } from '@/services/googleDrive.service';
 
 interface ReceiptsStorageViewProps {
   churchId: string;
@@ -60,12 +63,192 @@ export function ReceiptsStorageView({
   const [filterType, setFilterType] = useState('all');
   const [selectedReceipt, setSelectedReceipt] = useState<{
     url: string;
+    isImage?: boolean;
     filename?: string;
     description?: string;
     amount?: number;
     date?: string;
   } | null>(null);
   const [previewZoom, setPreviewZoom] = useState<number>(1);
+  const [driveEmail, setDriveEmail] = useState<string | null>(null);
+  const [driveLoading, setDriveLoading] = useState(true);
+  const [connectingDrive, setConnectingDrive] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const localLegacyReceipts = useMemo(
+    () => transactions.filter((transaction) => transaction.receipt_url?.startsWith('data:')),
+    [transactions]
+  );
+
+  useEffect(() => {
+    let active = true;
+    setDriveLoading(true);
+    googleDriveService.getStatus(churchId)
+      .then((status) => {
+        if (active) setDriveEmail(status.email);
+      })
+      .catch((error) => {
+        if (active) {
+          setDriveEmail(null);
+          toast({
+            title: 'Não foi possível verificar o Google Drive',
+            description: error instanceof Error ? error.message : 'Tente novamente mais tarde.',
+            variant: 'destructive',
+          });
+        }
+      })
+      .finally(() => {
+        if (active) setDriveLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [churchId, toast]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('googleDrive');
+    if (!result) return;
+    if (result === 'connected') {
+      toast({ title: 'Google Drive conectado', description: 'Os novos comprovantes serão salvos no Drive desta igreja.' });
+      googleDriveService.getStatus(churchId)
+        .then((status) => setDriveEmail(status.email))
+        .catch((error) => toast({
+          title: 'Conexão concluída, mas não foi possível confirmar o estado',
+          description: error instanceof Error ? error.message : 'Atualize a página para verificar.',
+          variant: 'destructive',
+        }));
+    } else {
+      toast({
+        title: 'Não foi possível conectar ao Google Drive',
+        description: params.get('message') || 'A autorização não foi concluída.',
+        variant: 'destructive',
+      });
+    }
+    params.delete('googleDrive');
+    params.delete('message');
+    const query = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
+    );
+  }, [churchId, toast]);
+
+  const handleConnectDrive = async () => {
+    setConnectingDrive(true);
+    try {
+      await googleDriveService.beginConnection(churchId, window.location.pathname);
+    } catch (error) {
+      setConnectingDrive(false);
+      toast({
+        title: 'Não foi possível iniciar a conexão',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const migrateLocalReceipts = async () => {
+    if (!driveEmail || migrationProgress) return;
+    const sources = new Map<string, string>();
+    const failures: string[] = [];
+    let migrated = 0;
+    setMigrationProgress({ done: 0, total: localLegacyReceipts.length });
+
+    for (let index = 0; index < localLegacyReceipts.length; index += 1) {
+      const transaction = localLegacyReceipts[index];
+      const dataUrl = transaction.receipt_url!;
+      try {
+        if (transaction.id.startsWith('tx-')) {
+          throw new Error('O lançamento existe apenas neste navegador e não pode ser sincronizado.');
+        }
+
+        let driveReceipt = sources.get(dataUrl);
+        if (!driveReceipt) {
+          const match = /^data:([^;,]+);base64,(.+)$/s.exec(dataUrl);
+          if (!match) throw new Error('Formato local de comprovante não reconhecido.');
+          const binary = atob(match[2]);
+          const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+          if (bytes.length > 5 * 1024 * 1024) throw new Error('O arquivo ultrapassa o limite de 5 MB.');
+          const file = new File(
+            [bytes],
+            transaction.receipt_filename || `comprovante-${transaction.id}`,
+            { type: match[1] }
+          );
+          driveReceipt = await googleDriveService.upload(churchId, file);
+          sources.set(dataUrl, driveReceipt);
+        }
+
+        await financialManagementService.updateTransaction(churchId, transaction.id, {
+          receipt_url: driveReceipt,
+          receipt_filename: transaction.receipt_filename || 'Comprovante',
+        });
+        migrated += 1;
+      } catch (error) {
+        console.error(`Falha ao migrar comprovante da transação ${transaction.id}:`, error);
+        failures.push(error instanceof Error ? error.message : 'Falha inesperada ao migrar um comprovante.');
+      } finally {
+        setMigrationProgress({ done: index + 1, total: localLegacyReceipts.length });
+      }
+    }
+
+    setMigrationProgress(null);
+    onRefresh();
+    if (failures.length) {
+      toast({
+        title: `${migrated} de ${localLegacyReceipts.length} comprovantes migrados`,
+        description: `Falhas: ${failures.length}. ${failures[0]}`,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Comprovantes migrados',
+        description: `${migrated} comprovantes deste navegador agora estão no Drive da igreja.`,
+      });
+    }
+  };
+
+  const openReceipt = async (transaction: FinancialTransactionExtended) => {
+    if (!transaction.receipt_url) return;
+    try {
+      const preview = await googleDriveService.createPreviewUrl(churchId, transaction.receipt_url);
+      setSelectedReceipt({
+        url: preview.url,
+        isImage: preview.isImage,
+        filename: transaction.receipt_filename || undefined,
+        description: transaction.description || undefined,
+        amount: transaction.amount,
+        date: transaction.date,
+      });
+    } catch (error) {
+      toast({
+        title: 'Não foi possível abrir o comprovante',
+        description: error instanceof Error ? error.message : 'Verifique a conexão com o Google Drive.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const downloadReceipt = async (transaction: FinancialTransactionExtended) => {
+    if (!transaction.receipt_url) return;
+    try {
+      const preview = await googleDriveService.createPreviewUrl(churchId, transaction.receipt_url);
+      const link = document.createElement('a');
+      link.href = preview.url;
+      link.download = transaction.receipt_filename || 'comprovante';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      if (preview.url.startsWith('blob:')) window.setTimeout(() => URL.revokeObjectURL(preview.url), 1000);
+    } catch (error) {
+      toast({
+        title: 'Não foi possível baixar o comprovante',
+        description: error instanceof Error ? error.message : 'Verifique a conexão com o Google Drive.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -111,14 +294,55 @@ export function ReceiptsStorageView({
             </h2>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Todos os documentos fiscais digitalizados e prontos para consulta da liderança ou envio à contabilidade.
+            Comprovantes privados no Google Drive institucional, acessíveis à equipe autorizada da igreja.
           </p>
         </div>
 
-        <Button onClick={onOpenNewTransaction} className="text-xs gap-1.5">
-          <Paperclip className="h-4 w-4" /> Anexar em Novo Lançamento
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {driveEmail ? (
+            <Badge variant="outline" className="gap-1.5">
+              <HardDrive className="h-3.5 w-3.5" /> Drive: {driveEmail}
+            </Badge>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={handleConnectDrive}
+              disabled={driveLoading || connectingDrive}
+              className="text-xs gap-1.5"
+            >
+              {connectingDrive ? <Loader2 className="h-4 w-4 animate-spin" /> : <HardDrive className="h-4 w-4" />}
+              Conectar Google Drive da igreja
+            </Button>
+          )}
+          <Button onClick={onOpenNewTransaction} className="text-xs gap-1.5">
+            <Paperclip className="h-4 w-4" /> Anexar em Novo Lançamento
+          </Button>
+        </div>
       </div>
+
+      {!driveEmail && !driveLoading && (
+        <p className="text-xs text-amber-700 dark:text-amber-300">
+          Conecte o Drive institucional da igreja para que os novos comprovantes sejam armazenados na nuvem e compartilhados com a equipe autorizada.
+        </p>
+      )}
+      {driveEmail && localLegacyReceipts.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+          <p className="text-xs text-muted-foreground">
+            Há {localLegacyReceipts.length} comprovante(s) antigo(s) guardado(s) somente neste navegador.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!!migrationProgress}
+            onClick={() => void migrateLocalReceipts()}
+            className="shrink-0 text-xs"
+          >
+            {migrationProgress ? (
+              <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Migrando {migrationProgress.done}/{migrationProgress.total}</>
+            ) : 'Migrar para o Google Drive'}
+          </Button>
+        </div>
+      )}
 
       {/* Cards de Status Documental */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -133,7 +357,13 @@ export function ReceiptsStorageView({
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-xs text-muted-foreground">Documentos digitalizados e disponíveis na nuvem</p>
+            <p className="text-xs text-muted-foreground">
+              {driveEmail
+                ? localLegacyReceipts.length
+                  ? 'No Drive e arquivos antigos deste navegador'
+                  : 'No Drive institucional conectado'
+                : 'Inclui arquivos locais deste navegador'}
+            </p>
           </CardContent>
         </Card>
 
@@ -232,11 +462,12 @@ export function ReceiptsStorageView({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredReceipts.map((t) => {
-            const isImage =
+            const isImage = !googleDriveService.isDriveReceipt(t.receipt_url) && (
               t.receipt_url?.startsWith('data:image') ||
               t.receipt_url?.endsWith('.png') ||
               t.receipt_url?.endsWith('.jpg') ||
-              t.receipt_url?.endsWith('.jpeg');
+              t.receipt_url?.endsWith('.jpeg')
+            );
 
             return (
               <Card
@@ -245,15 +476,7 @@ export function ReceiptsStorageView({
               >
                 {/* Preview Thumbnail */}
                 <div
-                  onClick={() =>
-                    setSelectedReceipt({
-                      url: t.receipt_url!,
-                      filename: t.receipt_filename || undefined,
-                      description: t.description || undefined,
-                      amount: t.amount,
-                      date: t.date,
-                    })
-                  }
+                  onClick={() => void openReceipt(t)}
                   className="h-36 bg-muted/60 relative cursor-pointer overflow-hidden flex items-center justify-center border-b border-border"
                 >
                   {isImage ? (
@@ -311,23 +534,19 @@ export function ReceiptsStorageView({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        setSelectedReceipt({
-                          url: t.receipt_url!,
-                          filename: t.receipt_filename || undefined,
-                          description: t.description || undefined,
-                          amount: t.amount,
-                          date: t.date,
-                        })
-                      }
+                      onClick={() => void openReceipt(t)}
                       className="w-full text-xs h-7 gap-1"
                     >
                       <Eye className="h-3 w-3" /> Visualizar
                     </Button>
-                    <Button asChild variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                      <a href={t.receipt_url!} download target="_blank" rel="noopener noreferrer">
-                        <Download className="h-3.5 w-3.5" />
-                      </a>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => void downloadReceipt(t)}
+                      aria-label="Baixar comprovante"
+                    >
+                      <Download className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </CardContent>
@@ -343,6 +562,7 @@ export function ReceiptsStorageView({
         open={!!selectedReceipt}
         onOpenChange={(o) => {
           if (!o) {
+            if (selectedReceipt?.url.startsWith('blob:')) URL.revokeObjectURL(selectedReceipt.url);
             setSelectedReceipt(null);
             setPreviewZoom(1);
           }
@@ -414,7 +634,8 @@ export function ReceiptsStorageView({
           </DialogHeader>
 
           <div className="flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center bg-muted/20 rounded-xl border border-border/50 my-2 min-h-[450px]">
-            {selectedReceipt?.url?.startsWith('data:image') ||
+            {selectedReceipt?.isImage ||
+            selectedReceipt?.url?.startsWith('data:image') ||
             selectedReceipt?.url?.endsWith('.png') ||
             selectedReceipt?.url?.endsWith('.jpg') ||
             selectedReceipt?.url?.endsWith('.jpeg') ||

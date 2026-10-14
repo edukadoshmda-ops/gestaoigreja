@@ -6,6 +6,8 @@ import {
   CostCenter,
   AdminArea,
   financialManagementService,
+  TransactionType,
+  TransactionStatus,
 } from '@/services/financial-management.service';
 import { ExcelFinancialDashboardReport } from './ExcelFinancialDashboardReport';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -65,6 +67,7 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { googleDriveService } from '@/services/googleDrive.service';
 
 const getXLSX = () => {
   const mod: any = XLSX;
@@ -110,7 +113,7 @@ export function TransactionsGridView({
   const [groupBy, setGroupBy] = useState<'none' | 'type' | 'account' | 'cost_center' | 'admin_area'>('none');
 
   // Preview de comprovante
-  const [previewReceipt, setPreviewReceipt] = useState<{ url: string; filename?: string } | null>(null);
+  const [previewReceipt, setPreviewReceipt] = useState<{ url: string; filename?: string; isImage?: boolean } | null>(null);
   const [previewZoom, setPreviewZoom] = useState<number>(1);
 
   // Estados para Edição de Lançamento
@@ -127,6 +130,7 @@ export function TransactionsGridView({
   const [editPaymentMethod, setEditPaymentMethod] = useState<string>('Dinheiro / PIX');
   const [editReceiptUrl, setEditReceiptUrl] = useState<string | null>(null);
   const [editReceiptFilename, setEditReceiptFilename] = useState<string | null>(null);
+  const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
   const [editSaving, setEditSaving] = useState<boolean>(false);
 
   const editAvailableCategories = useMemo(() => {
@@ -162,17 +166,35 @@ export function TransactionsGridView({
     setEditPaymentMethod(t.payment_method || 'PIX');
     setEditReceiptUrl(t.receipt_url || null);
     setEditReceiptFilename(t.receipt_filename || null);
+    setEditReceiptFile(null);
   };
 
   const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setEditReceiptUrl(reader.result as string);
-      setEditReceiptFilename(file.name);
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Arquivo muito grande', description: 'Selecione um arquivo de até 5MB.', variant: 'destructive' });
+      return;
+    }
+    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast({ title: 'Formato não aceito', description: 'Use um arquivo PDF, JPG, PNG ou WebP.', variant: 'destructive' });
+      return;
+    }
+    setEditReceiptFile(file);
+    setEditReceiptFilename(file.name);
+  };
+
+  const openReceipt = async (receiptUrl: string, filename?: string) => {
+    try {
+      const preview = await googleDriveService.createPreviewUrl(churchId, receiptUrl);
+      setPreviewReceipt({ url: preview.url, filename, isImage: preview.isImage });
+    } catch (error) {
+      toast({
+        title: 'Não foi possível abrir o comprovante',
+        description: error instanceof Error ? error.message : 'Verifique a conexão com o Google Drive.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -188,6 +210,17 @@ export function TransactionsGridView({
 
     setEditSaving(true);
     try {
+      let receiptUrl = editReceiptUrl;
+      let receiptFilename = editReceiptFilename;
+      if (editReceiptFile) {
+        if (editingTransaction.id.startsWith('tx-')) {
+          throw new Error('Este lançamento está somente neste navegador e não pode ser vinculado a um arquivo na nuvem.');
+        }
+        const status = await googleDriveService.getStatus(churchId);
+        if (!status.connected) throw new Error('Conecte o Google Drive da igreja na aba Comprovantes antes de anexar arquivos.');
+        receiptUrl = await googleDriveService.upload(churchId, editReceiptFile);
+        receiptFilename = editReceiptFile.name;
+      }
       const selectedAccount = accounts.find((a) => a.id === editAccountId);
       await financialManagementService.updateTransaction(churchId, editingTransaction.id, {
         type: editType,
@@ -201,8 +234,9 @@ export function TransactionsGridView({
         account_name: selectedAccount?.name || editingTransaction.account_name,
         description: editDescription,
         payment_method: editPaymentMethod,
-        receipt_url: editReceiptUrl,
-        receipt_filename: editReceiptFilename,
+        ...(editReceiptFile || editReceiptUrl !== editingTransaction.receipt_url
+          ? { receipt_url: receiptUrl, receipt_filename: receiptFilename }
+          : {}),
       });
 
       toast({
@@ -210,6 +244,7 @@ export function TransactionsGridView({
         description: 'As alterações foram salvas com sucesso.',
       });
       setEditingTransaction(null);
+      setEditReceiptFile(null);
       onRefresh();
     } catch (err: any) {
       toast({
@@ -725,7 +760,9 @@ export function TransactionsGridView({
                             </Badge>
                           )}
                           {t.recurrent && (
-                            <Repeat className="h-3 w-3 text-muted-foreground shrink-0" title="Recorrente" />
+                            <span title="Recorrente">
+                              <Repeat className="h-3 w-3 text-muted-foreground shrink-0" />
+                            </span>
                           )}
                         </div>
                       </TableCell>
@@ -758,12 +795,7 @@ export function TransactionsGridView({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() =>
-                              setPreviewReceipt({
-                                url: t.receipt_url!,
-                                filename: t.receipt_filename || undefined,
-                              })
-                            }
+                            onClick={() => void openReceipt(t.receipt_url!, t.receipt_filename || undefined)}
                             className="h-6 w-6 text-primary hover:text-primary/80"
                             title="Ver comprovante anexado"
                           >
@@ -820,6 +852,7 @@ export function TransactionsGridView({
         open={!!previewReceipt}
         onOpenChange={(o) => {
           if (!o) {
+            if (previewReceipt?.url.startsWith('blob:')) URL.revokeObjectURL(previewReceipt.url);
             setPreviewReceipt(null);
             setPreviewZoom(1);
           }
@@ -886,7 +919,8 @@ export function TransactionsGridView({
           </DialogHeader>
 
           <div className="flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center bg-muted/20 rounded-xl border border-border/50 my-2 min-h-[450px]">
-            {previewReceipt?.url?.startsWith('data:image') ||
+            {previewReceipt?.isImage ||
+            previewReceipt?.url?.startsWith('data:image') ||
             previewReceipt?.url?.includes('.png') ||
             previewReceipt?.url?.includes('.jpg') ||
             previewReceipt?.url?.includes('.jpeg') ||

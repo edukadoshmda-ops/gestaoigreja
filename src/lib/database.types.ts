@@ -356,6 +356,7 @@ export interface Database {
                     member_id: string | null
                     event_id: string | null
                     receipt_url: string | null
+                    receipt_filename: string | null
                     notes: string | null
                     created_at: string
                     updated_at: string
@@ -373,6 +374,7 @@ export interface Database {
                     member_id?: string | null
                     event_id?: string | null
                     receipt_url?: string | null
+                    receipt_filename?: string | null
                     notes?: string | null
                     created_at?: string
                     updated_at?: string
@@ -390,6 +392,7 @@ export interface Database {
                     member_id?: string | null
                     event_id?: string | null
                     receipt_url?: string | null
+                    receipt_filename?: string | null
                     notes?: string | null
                     created_at?: string
                     updated_at?: string

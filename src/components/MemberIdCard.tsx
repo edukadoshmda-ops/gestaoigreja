@@ -1348,7 +1348,7 @@ export function MemberIdCard({
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     {effectiveChurchLogo ? (
-                      <div className="h-5 w-5 rounded bg-white p-0.5 shrink-0 flex items-center justify-center shadow-sm">
+                      <div className="h-6 w-6 rounded bg-white p-0.5 shrink-0 flex items-center justify-center shadow-sm">
                         <img
                           src={effectiveChurchLogo}
                           alt="Logo da Igreja"
@@ -1358,7 +1358,7 @@ export function MemberIdCard({
                       </div>
                     ) : (
                       <Church
-                        className="h-4 w-4 shrink-0"
+                        className="h-4.5 w-4.5 shrink-0"
                         style={{ color: config.headerTextColor || '#ffffff' }}
                       />
                     )}
@@ -1383,9 +1383,9 @@ export function MemberIdCard({
                 {/* Corpo do Cartão Frente */}
                 <div className="flex-1 p-3 flex gap-3 relative z-10">
                   {/* Foto e Badges Médicos */}
-                  <div className="w-[100px] flex flex-col items-center gap-1.5 shrink-0">
+                  <div className="w-[90px] flex flex-col items-center gap-1.5 shrink-0">
                     <div
-                      className="w-[94px] h-[106px] rounded-lg overflow-hidden border-2 bg-muted/40 shadow-sm relative flex items-center justify-center"
+                      className="w-[85px] h-[95px] rounded-lg overflow-hidden border-2 bg-muted/40 shadow-sm relative flex items-center justify-center"
                       style={{ borderColor: config.secondaryColor }}
                     >
                       {member.photoUrl ? (

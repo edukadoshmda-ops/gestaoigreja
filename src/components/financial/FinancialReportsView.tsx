@@ -3,6 +3,7 @@ import {
   FinancialTransactionExtended,
   BankAccount,
   AdminArea,
+  CostCenter,
   DEFAULT_CHART_CATEGORIES,
 } from '@/services/financial-management.service';
 import { ExcelFinancialDashboardReport } from './ExcelFinancialDashboardReport';
@@ -302,7 +303,7 @@ export function FinancialReportsView({
         <div className="flex flex-wrap items-center gap-2">
           <ExcelFinancialDashboardReport
             churchName={churchName}
-            transactions={filteredTransactions}
+            transactions={filteredTxs}
             accounts={accounts}
             chartCategories={DEFAULT_CHART_CATEGORIES}
             costCenters={costCenters}

@@ -12,6 +12,8 @@ export interface Transaction {
   description: string | null;
   date: string;
   created_at: string;
+  receipt_url?: string | null;
+  receipt_filename?: string | null;
 }
 
 export interface CreateFinancialTransactionDTO {
@@ -20,6 +22,9 @@ export interface CreateFinancialTransactionDTO {
   amount: number;
   description?: string | null;
   date: string; // YYYY-MM-DD
+  receipt_url?: string | null;
+  receipt_filename?: string | null;
+  requireRemote?: boolean;
 }
 
 export interface FinancialSummary {
@@ -87,6 +92,9 @@ async function create(data: CreateFinancialTransactionDTO, churchId: string): Pr
   console.log('Criando transação:', { data, churchId });
 
   const hasValidUUID = isValidUUID(churchId);
+  if (data.requireRemote && !hasValidUUID) {
+    throw new Error('Não foi possível anexar um comprovante ao lançamento: a igreja não está sincronizada com a nuvem.');
+  }
 
   if (hasValidUUID) {
     try {
@@ -97,6 +105,8 @@ async function create(data: CreateFinancialTransactionDTO, churchId: string): Pr
         description: data.description ?? null,
         date: data.date,
         church_id: churchId,
+        receipt_url: data.receipt_url ?? null,
+        ...(data.receipt_filename !== undefined ? { receipt_filename: data.receipt_filename } : {}),
       };
 
       const { data: result, error } = await supabase
@@ -111,7 +121,12 @@ async function create(data: CreateFinancialTransactionDTO, churchId: string): Pr
         return result;
       }
       console.warn('Supabase insert falhou, usando persistência local:', error);
+      if (data.receipt_url?.startsWith('gdrive:')) {
+        throw new Error(error?.message || 'Não foi possível salvar a referência do comprovante na nuvem.');
+      }
+      if (data.requireRemote) throw new Error(error?.message || 'Não foi possível sincronizar o lançamento com a nuvem.');
     } catch (err) {
+      if (data.receipt_url?.startsWith('gdrive:') || data.requireRemote) throw err;
       console.warn('Exceção no Supabase, usando persistência local:', err);
     }
   }
@@ -125,6 +140,8 @@ async function create(data: CreateFinancialTransactionDTO, churchId: string): Pr
     description: data.description ?? null,
     date: data.date,
     created_at: new Date().toISOString(),
+    receipt_url: data.receipt_url ?? null,
+    receipt_filename: data.receipt_filename ?? null,
   };
 
   saveLocalTransaction(localTx, churchId);
@@ -204,6 +221,26 @@ async function remove(id: string) {
 }
 
 async function update(id: string, data: Partial<CreateFinancialTransactionDTO>, churchId?: string | null) {
+  const updatingReceipt = data.receipt_url !== undefined || data.receipt_filename !== undefined;
+  const persistRemote = async () => {
+    const updates: Record<string, unknown> = {};
+    if (data.type !== undefined) updates.type = data.type;
+    if (data.category !== undefined) updates.category = data.category;
+    if (data.amount !== undefined) updates.amount = data.amount;
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.date !== undefined) updates.date = data.date;
+    if (data.receipt_url !== undefined) updates.receipt_url = data.receipt_url;
+    if (data.receipt_filename !== undefined) updates.receipt_filename = data.receipt_filename;
+    const { error } = await (supabase.from('financial_transactions') as any)
+      .update(updates as any)
+      .eq('id', id);
+    if (error && updatingReceipt) throw error;
+  };
+
+  if (!id.startsWith('tx-') && updatingReceipt) {
+    await persistRemote();
+  }
+
   try {
     const localList = getLocalTransactions(churchId);
     const idx = localList.findIndex((t) => t.id === id);
@@ -217,16 +254,9 @@ async function update(id: string, data: Partial<CreateFinancialTransactionDTO>, 
 
   if (!id.startsWith('tx-')) {
     try {
-      await (supabase.from('financial_transactions') as any)
-        .update({
-          type: data.type,
-          category: data.category,
-          amount: data.amount,
-          description: data.description ?? null,
-          date: data.date,
-        } as any)
-        .eq('id', id);
+      if (!updatingReceipt) await persistRemote();
     } catch (err) {
+      if (updatingReceipt) throw err;
       console.warn('Exceção Supabase (update):', err);
     }
   }

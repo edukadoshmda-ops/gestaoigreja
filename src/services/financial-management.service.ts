@@ -553,7 +553,7 @@ export const financialManagementService = {
         payment_method: meta.payment_method || 'Dinheiro / PIX',
         is_reconciled: meta.is_reconciled ?? true,
         receipt_url: meta.receipt_url || (base as any).receipt_url,
-        receipt_filename: meta.receipt_filename || null,
+        receipt_filename: meta.receipt_filename || base.receipt_filename || null,
         installment_current: meta.installment_current,
         installment_total: meta.installment_total,
         recurrent: meta.recurrent,
@@ -584,12 +584,13 @@ export const financialManagementService = {
       payment_method?: string;
       receipt_url?: string | null;
       receipt_filename?: string | null;
+      requireRemote?: boolean;
       installments?: number; // Para parcelamento
       recurrent?: boolean;
       recurrent_frequency?: 'semanal' | 'mensal' | 'anual';
       recurrent_times?: number;
     }
-  ): Promise<void> {
+  ): Promise<string[]> {
     const accounts = this.getAccounts(churchId);
     const originAcc = (tx.account_id ? accounts.find(a => a.id === tx.account_id) : undefined) || accounts[0] || {
       id: 'conta-caixa',
@@ -614,6 +615,7 @@ export const financialManagementService = {
       : (tx.recurrent && tx.recurrent_times ? tx.recurrent_times : 1);
 
     const baseDate = new Date(tx.date + 'T12:00:00');
+    const createdIds: string[] = [];
 
     for (let i = 0; i < numItems; i++) {
       const itemDate = new Date(baseDate);
@@ -645,8 +647,10 @@ export const financialManagementService = {
           category: 'Transferência entre Contas',
           amount: tx.amount,
           date: dateStr,
-          description: transferDesc
+          description: transferDesc,
+          requireRemote: tx.requireRemote,
         }, churchId);
+        createdIds.push(createdSaida.id);
 
         metaMap[createdSaida.id] = {
           type: 'transferencia',
@@ -667,8 +671,10 @@ export const financialManagementService = {
           category: 'Transferência entre Contas',
           amount: tx.amount,
           date: dateStr,
-          description: `Recebido via transf. de ${originAcc.name}: ${desc}`
+          description: `Recebido via transf. de ${originAcc.name}: ${desc}`,
+          requireRemote: tx.requireRemote,
         }, churchId);
+        createdIds.push(createdEntrada.id);
 
         metaMap[createdEntrada.id] = {
           type: 'transferencia',
@@ -688,8 +694,10 @@ export const financialManagementService = {
           category: tx.category,
           amount: tx.amount,
           date: dateStr,
-          description: desc
+          description: desc,
+          requireRemote: tx.requireRemote,
         }, churchId);
+        createdIds.push(created.id);
 
         metaMap[created.id] = {
           type: tx.type,
@@ -699,8 +707,8 @@ export const financialManagementService = {
           cost_center: tx.cost_center || 'Culto Geral / Eclesiástico',
           admin_area: tx.admin_area || 'Tesouraria & Finanças',
           payment_method: tx.payment_method || 'PIX',
-          receipt_url: tx.receipt_url,
-          receipt_filename: tx.receipt_filename,
+          receipt_url: created.receipt_url || tx.receipt_url,
+          receipt_filename: created.receipt_filename || tx.receipt_filename,
           installment_current: tx.installments && tx.installments > 1 ? i + 1 : undefined,
           installment_total: tx.installments && tx.installments > 1 ? tx.installments : undefined,
           recurrent: tx.recurrent,
@@ -711,6 +719,7 @@ export const financialManagementService = {
     }
 
     setLocalData(STORAGE_KEYS.TRANSACTIONS_META(churchId), metaMap);
+    return createdIds;
   },
 
   async deleteTransaction(churchId: string, id: string): Promise<void> {
@@ -766,7 +775,6 @@ export const financialManagementService = {
       };
       setLocalData(STORAGE_KEYS.TRANSACTIONS_META(churchId), metaMap);
     } else {
-      setLocalData(STORAGE_KEYS.TRANSACTIONS_META(churchId), metaMap);
       await financialService.update(
         id,
         {
@@ -775,9 +783,12 @@ export const financialManagementService = {
           amount: updates.amount,
           description: updates.description,
           date: updates.date,
+          receipt_url: updates.receipt_url,
+          receipt_filename: updates.receipt_filename,
         },
         churchId
       );
+      setLocalData(STORAGE_KEYS.TRANSACTIONS_META(churchId), metaMap);
     }
   },
 

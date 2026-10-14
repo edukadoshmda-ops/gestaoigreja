@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { parseCurrency } from '@/utils/currencyUtils';
 import { CurrencyInput } from '@/components/financial/CurrencyInput';
+import { googleDriveService } from '@/services/googleDrive.service';
 
 interface NewTransactionModalProps {
   open: boolean;
@@ -116,7 +117,6 @@ export function NewTransactionModal({
 
   // Comprovante
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
 
   // Categorias filtradas pelo tipo atual (suporta flexivelmente receita/entrada e despesa/saida)
   const availableCategories = useMemo(() => {
@@ -227,13 +227,16 @@ export function NewTransactionModal({
       });
       return;
     }
+    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast({
+        title: 'Formato não aceito',
+        description: 'Use um arquivo PDF, JPG, PNG ou WebP.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setReceiptFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setReceiptPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -266,11 +269,19 @@ export function NewTransactionModal({
       return;
     }
 
+    let createdIds: string[] = [];
     try {
       setLoading(true);
       const effectiveChurchId = churchId || 'default-church';
 
-      await financialManagementService.createTransaction(effectiveChurchId, {
+      if (receiptFile) {
+        const driveStatus = await googleDriveService.getStatus(effectiveChurchId);
+        if (!driveStatus.connected) {
+          throw new Error('Conecte o Google Drive da igreja na aba Comprovantes antes de anexar arquivos.');
+        }
+      }
+
+      createdIds = await financialManagementService.createTransaction(effectiveChurchId, {
         type,
         status,
         amount,
@@ -282,13 +293,22 @@ export function NewTransactionModal({
         destination_account_id: type === 'transferencia' ? destinationAccountId : undefined,
         description,
         payment_method: paymentMethod,
-        receipt_url: receiptPreview,
-        receipt_filename: receiptFile ? receiptFile.name : null,
+        requireRemote: !!receiptFile,
         installments: isInstallment ? installmentsCount : undefined,
         recurrent: isRecurrent,
         recurrent_frequency: recurrentFrequency,
         recurrent_times: recurrentTimes,
       });
+
+      if (receiptFile) {
+        const receiptUrl = await googleDriveService.upload(effectiveChurchId, receiptFile);
+        for (const transactionId of createdIds) {
+          await financialManagementService.updateTransaction(effectiveChurchId, transactionId, {
+            receipt_url: receiptUrl,
+            receipt_filename: receiptFile.name,
+          });
+        }
+      }
 
       toast({
         title: 'Lançamento registrado!',
@@ -304,8 +324,19 @@ export function NewTransactionModal({
       resetForm();
     } catch (err: any) {
       console.error(err);
+      if (receiptFile && createdIds.length > 0) {
+        toast({
+          title: 'Lançamento salvo; falha ao vincular comprovante',
+          description: `${err?.message || 'Falha ao armazenar o comprovante.'} Confira o lançamento antes de tentar novamente.`,
+          variant: 'destructive',
+        });
+        onSuccess();
+        onOpenChange(false);
+        resetForm();
+        return;
+      }
       toast({
-        title: 'Erro ao salvar',
+        title: receiptFile ? 'Não foi possível concluir o lançamento' : 'Erro ao salvar',
         description: err?.message || 'Falha ao registrar lançamento.',
         variant: 'destructive',
       });
@@ -319,7 +350,6 @@ export function NewTransactionModal({
     setDescription('');
     setCategory(availableCategories[0]?.name || (type === 'entrada' ? 'Dízimos' : 'Prebendas e Honorários Pastorais'));
     setReceiptFile(null);
-    setReceiptPreview(null);
     setIsInstallment(false);
     setIsRecurrent(false);
   };
@@ -670,7 +700,6 @@ export function NewTransactionModal({
                   type="button"
                   onClick={() => {
                     setReceiptFile(null);
-                    setReceiptPreview(null);
                   }}
                   className="text-xs text-red-500 hover:underline flex items-center gap-1"
                 >
@@ -692,7 +721,7 @@ export function NewTransactionModal({
                 <input
                   type="file"
                   id="receipt-file-input"
-                  accept="image/*,application/pdf"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
                   onChange={handleFileChange}
                   className="hidden"
                 />
