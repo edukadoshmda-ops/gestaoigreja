@@ -124,7 +124,7 @@ export function CashFlowView({
   // Processar transações para o fluxo
   const chartData = useMemo(() => {
     // Transações aplicáveis
-    let filteredTxs = transactions.filter((t) => {
+    const filteredTxs = transactions.filter((t) => {
       if (selectedAccountId !== 'all' && t.account_id !== selectedAccountId) return false;
       if (mode === 'realizado' && t.status === 'planejado') return false;
       return true;
@@ -313,7 +313,7 @@ export function CashFlowView({
         </div>
 
         {/* Toggle com 1 Clique: Realizado vs Previsto */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center p-1 bg-muted/80 rounded-xl border border-border">
             <button
               type="button"

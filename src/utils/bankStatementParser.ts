@@ -172,7 +172,7 @@ export function parseBrazilianNumber(val: any): number {
   if (typeof val === 'number') return val;
   const s = String(val).trim();
   const isNegative = s.includes('-') || (s.startsWith('(') && s.endsWith(')'));
-  const clean = s.replace(/[^\d,\.]/g, '');
+  const clean = s.replace(/[^\d,.]/g, '');
 
   let num = 0;
   if (clean.includes(',') && clean.includes('.')) {
