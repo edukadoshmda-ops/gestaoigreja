@@ -606,9 +606,9 @@ export function ChartOfAccountsView({
 
       {/* Grade do Plano de Contas */}
       <Card className="rounded-2xl border-border">
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0 max-h-[70vh] overflow-auto [&>div]:overflow-visible">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-sky-100 shadow-sm dark:bg-slate-800">
               <TableRow className="text-xs">
                 <TableHead className="w-20">Código</TableHead>
                 <TableHead className="w-28">Tipo</TableHead>

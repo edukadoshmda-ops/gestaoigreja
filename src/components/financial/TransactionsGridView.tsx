@@ -606,7 +606,9 @@ export function TransactionsGridView({
 
       {/* Grade de Lançamentos */}
       <Card className="rounded-2xl border-border">
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent
+          className="p-0 max-h-[70vh] overflow-auto [&>div]:overflow-visible"
+        >
           {groupedData ? (
             /* Visualização Agrupada e Totalizada */
             <div className="space-y-6 p-4">
@@ -628,7 +630,7 @@ export function TransactionsGridView({
                   </div>
 
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-sky-100 shadow-sm dark:bg-slate-800">
                       <TableRow className="text-xs">
                         <TableHead className="w-24">Data</TableHead>
                         <TableHead>Tipo</TableHead>
@@ -699,7 +701,7 @@ export function TransactionsGridView({
           ) : (
             /* Visualização em Grade Única */
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-sky-100 shadow-sm dark:bg-slate-800">
                 <TableRow className="text-xs">
                   <TableHead className="w-24">Data</TableHead>
                   <TableHead className="w-24">Tipo</TableHead>

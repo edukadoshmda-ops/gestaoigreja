@@ -589,9 +589,9 @@ export function CashFlowView({
             Visão linha a linha das entradas, saídas e saldo residual no encerramento de cada {periodType}.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="max-h-[60vh] overflow-auto">
           <table className="w-full text-xs text-left">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-sky-100 shadow-sm dark:bg-slate-800">
               <tr className="border-b border-border text-muted-foreground uppercase tracking-wider">
                 <th className="py-2.5 px-3">Período</th>
                 <th className="py-2.5 px-3 text-right">Entradas (R$)</th>

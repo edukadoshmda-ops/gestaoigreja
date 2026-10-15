@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { FileText, Send, Users, Loader2, Download, Trash2, CreditCard, Search, Plus, Minus, FileSpreadsheet, Upload, Church } from 'lucide-react';
+import { Award, FileText, Send, Users, Loader2, Download, Trash2, CreditCard, Search, Plus, Minus, FileSpreadsheet, Upload, Church } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,7 @@ import { MemberIdCard } from '@/components/MemberIdCard';
 import { extractExtendedFields } from '@/lib/memberUtils';
 import { useTenant, globalChurchLogo, globalChurchName } from '@/hooks/useTenant';
 import { churchesService } from '@/services/churches.service';
+import { CertificateBuilder } from '@/components/CertificateBuilder';
 
 export default function Secretariat() {
     useDocumentTitle('Secretaria');
@@ -231,7 +232,7 @@ export default function Secretariat() {
                 )}
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 space-y-4">
                 <TabsList className="flex w-full justify-start overflow-x-auto overflow-y-hidden h-auto gap-2 p-1 scrollbar-hide snap-x print:hidden" translate="no">
                     <TabsTrigger value="minutes" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-sm shrink-0 snap-start">
                         <FileText className="h-5 w-5 shrink-0 md:h-5 md:w-5" />
@@ -248,6 +249,10 @@ export default function Secretariat() {
                     <TabsTrigger value="idcard" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-sm shrink-0 snap-start">
                         <CreditCard className="h-5 w-5 shrink-0 md:h-5 md:w-5" />
                         <span className="truncate min-w-0">Carteirinha</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="certificates" className="gap-1.5 sm:gap-2 py-2.5 sm:py-3 text-sm shrink-0 snap-start">
+                        <Award className="h-5 w-5 shrink-0" />
+                        <span className="truncate min-w-0">Certificados</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -268,7 +273,7 @@ export default function Secretariat() {
                     }
                 `}} />
 
-                <div className="bg-white dark:bg-card p-8 rounded-xl shadow-sm print:shadow-none min-h-[600px] print:p-0 text-foreground print-content">
+                <div className="min-w-0 bg-white dark:bg-card p-3 sm:p-8 rounded-xl shadow-sm print:shadow-none min-h-[600px] print:p-0 text-foreground print-content">
                     <TabsContent value="minutes" className="mt-0 space-y-6">
                         <MinutesTemplate canEdit={canEdit} churchName={churchData.name} churchLogo={churchData.logoUrl} />
                     </TabsContent>
@@ -287,8 +292,16 @@ export default function Secretariat() {
                         )}
                     </TabsContent>
 
-                    <TabsContent value="idcard" className="mt-0 space-y-6">
+                    <TabsContent value="idcard" className="mt-0 min-w-0 space-y-6">
                         <MemberIdCardTemplate members={members} canEdit={canEdit} defaultChurchData={churchData} />
+                    </TabsContent>
+
+                    <TabsContent value="certificates" className="mt-0 min-w-0 space-y-6">
+                        <CertificateBuilder
+                            churchName={churchData.name}
+                            churchLogo={churchData.logoUrl}
+                            pastorName={churchData.presidentName}
+                        />
                     </TabsContent>
                 </div>
             </Tabs>

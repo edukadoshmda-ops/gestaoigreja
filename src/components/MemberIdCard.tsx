@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, type PointerEvent as ReactPointerEvent } from 'react';
 import { format } from 'date-fns';
 import {
   Printer,
@@ -22,6 +22,7 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
+  Hand,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,6 +86,10 @@ export function MemberIdCard({
   });
 
   const [activeSide, setActiveSide] = useState<'both' | 'front' | 'back'>('both');
+  const [cardScale, setCardScale] = useState(1);
+  const [previewZoom, setPreviewZoom] = useState(1);
+  const [panMode, setPanMode] = useState(false);
+  const [isDraggingPreview, setIsDraggingPreview] = useState(false);
   const [customName, setCustomName] = useState(member.name || '');
   const [customRole, setCustomRole] = useState(member.role || 'Membro');
   const [customCpf, setCustomCpf] = useState(member.cpf ? maskCPF(member.cpf) : '');
@@ -92,6 +97,7 @@ export function MemberIdCard({
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const printAreaRef = useRef<HTMLDivElement>(null);
+  const previewPointerRef = useRef<{ x: number; y: number } | null>(null);
 
   // Sincroniza se o membro mudar
   useEffect(() => {
@@ -327,8 +333,53 @@ export function MemberIdCard({
 
   const frameInfo = getFrameStyles(config.frameStyle);
 
+  const handlePreviewPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!panMode || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    previewPointerRef.current = { x: event.clientX, y: event.clientY };
+    setIsDraggingPreview(true);
+  };
+
+  const handlePreviewPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const previous = previewPointerRef.current;
+    if (!previous) return;
+
+    event.currentTarget.scrollLeft -= event.clientX - previous.x;
+    event.currentTarget.scrollTop -= event.clientY - previous.y;
+    previewPointerRef.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const handlePreviewPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    previewPointerRef.current = null;
+    setIsDraggingPreview(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  useLayoutEffect(() => {
+    const preview = printAreaRef.current;
+    if (!preview) return;
+
+    const updateScale = () => {
+      const styles = window.getComputedStyle(preview);
+      const horizontalPadding =
+        Number.parseFloat(styles.paddingLeft) + Number.parseFloat(styles.paddingRight);
+      const availableWidth = preview.clientWidth - horizontalPadding;
+      if (availableWidth > 0) {
+        setCardScale(Math.min(1, availableWidth / 380));
+      }
+    };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(preview);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* CSS Específico para Impressão Perfeita de Carteirinha (Formato CR-80 8.6cm x 5.4cm) */}
       <style
         dangerouslySetInnerHTML={{
@@ -356,11 +407,14 @@ export function MemberIdCard({
             align-items: center !important;
             gap: 15mm !important;
             padding-top: 15mm !important;
+            max-height: none !important;
+            overflow: visible !important;
             background: white !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           .carteirinha-card-box {
+            zoom: 1 !important;
             width: 86mm !important;
             height: 54mm !important;
             min-width: 86mm !important;
@@ -374,13 +428,19 @@ export function MemberIdCard({
             print-color-adjust: exact !important;
           }
         }
+        .carteirinha-preview-viewport {
+          scrollbar-width: none;
+        }
+        .carteirinha-preview-viewport::-webkit-scrollbar {
+          display: none;
+        }
       `,
         }}
       />
 
       {/* Header com botões principais */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
-        <div>
+        <div className="min-w-0">
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-amber-500" />
             Carteirinha de Membro
@@ -389,7 +449,7 @@ export function MemberIdCard({
             Personalize cores, tipografia e moldura com visualização em tempo real e impressão oficial.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -419,9 +479,9 @@ export function MemberIdCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid min-w-0 grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Painel de Customização à Esquerda (5 colunas) */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="min-w-0 lg:col-span-5 space-y-6">
           <Tabs defaultValue="cores" className="w-full">
             <TabsList className="grid grid-cols-3 w-full">
               <TabsTrigger value="cores" className="gap-1 text-xs sm:text-sm">
@@ -1243,7 +1303,7 @@ export function MemberIdCard({
         </div>
 
         {/* Pré-visualização da Carteirinha à Direita (7 colunas) */}
-        <div className="lg:col-span-7 flex flex-col items-center gap-6">
+        <div className="min-w-0 w-full lg:col-span-7 flex flex-col items-center gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3 w-full max-w-xl">
             <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border text-xs">
               <Button
@@ -1272,6 +1332,51 @@ export function MemberIdCard({
                 className="h-7 text-xs"
               >
                 Apenas Verso
+              </Button>
+            </div>
+            <div className="flex items-center gap-1 rounded-lg border bg-muted/60 p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={panMode ? 'default' : 'ghost'}
+                aria-pressed={panMode}
+                onClick={() => setPanMode((enabled) => !enabled)}
+                className="h-7 gap-1.5 px-2 text-xs"
+                title={panMode ? 'Desativar arraste da pré-visualização' : 'Ativar arraste da pré-visualização'}
+              >
+                <Hand className="h-3.5 w-3.5" />
+                <span>{panMode ? 'Arraste ativo' : 'Arrastar'}</span>
+              </Button>
+              <span className="h-5 w-px bg-border" aria-hidden="true" />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label="Diminuir zoom da pré-visualização"
+                className="h-7 w-7"
+                disabled={previewZoom <= 1}
+                onClick={() => setPreviewZoom((zoom) => Math.max(1, zoom - 0.25))}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <button
+                type="button"
+                className="min-w-10 text-center text-xs tabular-nums"
+                aria-label="Restaurar zoom da pré-visualização"
+                onClick={() => setPreviewZoom(1)}
+              >
+                {Math.round(previewZoom * 100)}%
+              </button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label="Aumentar zoom da pré-visualização"
+                className="h-7 w-7"
+                disabled={previewZoom >= 2}
+                onClick={() => setPreviewZoom((zoom) => Math.min(2, zoom + 0.25))}
+              >
+                <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
 
@@ -1311,7 +1416,17 @@ export function MemberIdCard({
           {/* Área Renderizada das Carteirinhas (Frente e Verso) */}
           <div
             ref={printAreaRef}
-            className="carteirinha-print-root flex flex-col md:flex-row items-center justify-center gap-6 p-4 rounded-2xl bg-muted/30 border border-dashed border-primary/20 w-full"
+            role="region"
+            aria-label="Pré-visualização da carteirinha"
+            tabIndex={0}
+            onPointerDown={handlePreviewPointerDown}
+            onPointerMove={handlePreviewPointerMove}
+            onPointerUp={handlePreviewPointerEnd}
+            onPointerCancel={handlePreviewPointerEnd}
+            className={`carteirinha-print-root carteirinha-preview-viewport flex max-h-[70vh] flex-col items-center justify-start gap-6 overflow-auto p-3 sm:p-4 rounded-2xl bg-muted/30 border border-dashed border-primary/20 w-full min-w-0 ${
+              panMode ? (isDraggingPreview ? 'cursor-grabbing' : 'cursor-grab') : ''
+            }`}
+            style={{ touchAction: panMode ? 'none' : 'auto' }}
           >
             {/* ================= FRENTE DO CARTÃO ================= */}
             {(activeSide === 'both' || activeSide === 'front') && (
@@ -1322,6 +1437,7 @@ export function MemberIdCard({
                 style={{
                   width: '380px',
                   height: '240px',
+                  zoom: cardScale * previewZoom,
                   backgroundColor: config.backgroundColor,
                   color: config.textColor,
                   borderRadius: '14px',
@@ -1634,6 +1750,7 @@ export function MemberIdCard({
                 style={{
                   width: '380px',
                   height: '240px',
+                  zoom: cardScale * previewZoom,
                   backgroundColor: config.backgroundColor,
                   color: config.textColor,
                   borderRadius: '14px',
