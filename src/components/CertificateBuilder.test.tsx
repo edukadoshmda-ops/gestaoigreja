@@ -82,6 +82,18 @@ describe('CertificateBuilder', () => {
     expect(printStyles).toContain('page-break-inside: avoid !important;');
   });
 
+  it('lets the certificate preview grow naturally on narrow screens', () => {
+    const { container } = render(
+      <CertificateBuilder churchName="Igreja Teste" pastorName="Pastor Teste" />
+    );
+    const previewStyles = container.querySelector('style')?.textContent ?? '';
+
+    expect(previewStyles).toContain('@media screen and (max-width: 640px)');
+    expect(previewStyles).toContain('aspect-ratio: auto;');
+    expect(previewStyles).toContain('grid-template-rows: auto auto auto;');
+    expect(previewStyles).toContain('min-height: auto;');
+  });
+
   it('applies the card color palettes to the certificate theme', () => {
     const { container } = render(
       <CertificateBuilder churchName="Igreja Teste" pastorName="Pastor Teste" />

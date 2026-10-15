@@ -462,9 +462,15 @@ export function CertificateBuilder({
         .certificate-page .certificate-second-signature {
           color: var(--certificate-default-color);
         }
-        @media (max-width: 640px) {
+        @media screen and (max-width: 640px) {
           .certificate-page {
-            min-height: 70cqw;
+            aspect-ratio: auto;
+            min-height: 0;
+            grid-template-rows: auto auto auto;
+            gap: 0.75rem;
+          }
+          .certificate-page .certificate-document-content {
+            min-height: auto;
           }
         }
         @media print {
