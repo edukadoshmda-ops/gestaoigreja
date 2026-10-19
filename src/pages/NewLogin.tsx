@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Shield, User, Users, Briefcase, MapPin, Church, Mail, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,7 @@ export default function NewLogin() {
     useDocumentTitle('Login');
 
     const { tenant } = useTenant();
+    const navigate = useNavigate();
 
     // Força o tema oceano nas páginas públicas
     useEffect(() => {
@@ -62,7 +63,7 @@ export default function NewLogin() {
         return () => {
             // Só restaura se não estiver indo para outra página pública
             const path = window.location.pathname;
-            const publicPages = ['/', '/login', '/checkout', '/hotmart-success'];
+            const publicPages = ['/', '/vendas', '/oferta', '/login', '/checkout', '/hotmart-success'];
             if (!publicPages.includes(path)) {
                 const savedTheme = localStorage.getItem('church_theme_v2') || 'ceu-azul';
                 document.documentElement.setAttribute('data-theme', savedTheme);
@@ -288,31 +289,32 @@ export default function NewLogin() {
                                 <Button type="submit" className="w-full h-11 text-sm font-semibold rounded-2xl shadow-md shadow-primary/25 hover:shadow-lg transition-all" size="default">
                                     Próximo
                                 </Button>
-                                
-                                <div className="flex flex-col items-center gap-1.5 pt-2">
-                                    <Link
-                                        to="/vendas"
-                                        className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 text-amber-700 hover:bg-amber-500/25 font-bold text-xs text-center transition-all"
-                                    >
-                                        🔥 Ver Página de Vendas e Super Oferta
-                                    </Link>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setForgotEmail(formData.email); setForgotOpen(true); }}
-                                        className="text-[11px] text-muted-foreground hover:text-primary transition-colors"
-                                    >
-                                        Esqueci minha senha
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleConnectionTest}
-                                        disabled={connectionTestLoading}
-                                        className="text-[9px] text-muted-foreground/50 hover:text-primary transition-colors uppercase"
-                                    >
-                                        {connectionTestLoading ? 'Verificando...' : 'Status da Conexão'}
-                                    </button>
-                                </div>
                             </form>
+
+                            <div className="flex flex-col items-center gap-1.5 pt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/oferta')}
+                                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 text-amber-700 hover:bg-amber-500/25 font-bold text-xs text-center transition-all cursor-pointer"
+                                >
+                                    🔥 Ver Página de Vendas e Super Oferta
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setForgotEmail(formData.email); setForgotOpen(true); }}
+                                    className="text-[11px] text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                    Esqueci minha senha
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleConnectionTest}
+                                    disabled={connectionTestLoading}
+                                    className="text-[9px] text-muted-foreground/50 hover:text-primary transition-colors uppercase"
+                                >
+                                    {connectionTestLoading ? 'Verificando...' : 'Status da Conexão'}
+                                </button>
+                            </div>
                         </div>
                     </Card>
                 )}

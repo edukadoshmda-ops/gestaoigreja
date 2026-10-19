@@ -117,12 +117,13 @@ const plans = [
   }
 ];
 
-const SuperOfferBanner = ({ timeLeft }: { timeLeft: number }) => (
+const SuperOfferBanner = ({ timeLeft, id }: { timeLeft: number; id?: string }) => (
   <motion.div
+    id={id}
     initial={{ opacity: 0, y: 24 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    className="max-w-5xl mx-auto mb-20 p-1.5 rounded-[2.5rem] bg-gradient-to-r from-amber-400 via-orange-500 to-rose-600 shadow-2xl shadow-orange-500/20"
+    className="max-w-5xl mx-auto mb-20 p-1.5 rounded-[2.5rem] bg-gradient-to-r from-amber-400 via-orange-500 to-rose-600 shadow-2xl shadow-orange-500/20 scroll-mt-28"
   >
     <div className="bg-slate-950 text-white rounded-[2.2rem] p-6 sm:p-10 md:p-12 relative overflow-hidden">
       {/* Glow decorativo */}
@@ -236,6 +237,16 @@ export default function Landing() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (window.location.pathname === '/oferta' || window.location.hash === '#super-oferta') {
+      setTimeout(() => {
+        document.getElementById('super-oferta')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background selection:bg-primary/20" data-theme="ceu-azul">
       {/* Header Premium */}
@@ -301,7 +312,7 @@ export default function Landing() {
             </div>
 
             {/* Super Oferta por Tempo Limitado em Destaque logo na Entrada */}
-            <SuperOfferBanner timeLeft={timeLeft} />
+            <SuperOfferBanner timeLeft={timeLeft} id="super-oferta" />
           </motion.div>
         </div>
         
