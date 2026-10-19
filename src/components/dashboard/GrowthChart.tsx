@@ -68,7 +68,7 @@ export function GrowthChart() {
 
   if (loading) {
     return (
-      <Card className="bg-white border-primary/10 h-[350px]">
+      <Card className="bg-card border-primary/10 h-[350px]">
         <CardContent className="flex items-center justify-center h-full">
           <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
         </CardContent>
@@ -77,13 +77,13 @@ export function GrowthChart() {
   }
 
   return (
-    <Card className="bg-white border-primary/10 shadow-lg">
+    <Card className="bg-card border-primary/10 shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base font-bold flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-primary" />
           Crescimento da Igreja
         </CardTitle>
-        <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-primary" />
             <span>Total</span>
@@ -100,28 +100,34 @@ export function GrowthChart() {
             <AreaChart data={data}>
               <defs>
                 <linearGradient id="colorMembros" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
                 </linearGradient>
                 <linearGradient id="colorNovos" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.1}/>
+                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.25}/>
                   <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis 
                 dataKey="name" 
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#666' }}
+                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               />
               <YAxis 
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#666' }}
+                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               />
               <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                contentStyle={{
+                  borderRadius: '12px',
+                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: 'hsl(var(--card))',
+                  color: 'hsl(var(--foreground))',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)',
+                }}
               />
               <Area 
                 type="monotone" 

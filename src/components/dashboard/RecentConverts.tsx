@@ -70,7 +70,7 @@ export function RecentConverts() {
 
   if (loading) {
     return (
-      <Card className="bg-white border-primary/10 h-full">
+      <Card className="bg-card border-primary/10 h-full">
         <CardContent className="flex items-center justify-center p-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </CardContent>
@@ -80,7 +80,7 @@ export function RecentConverts() {
 
   if (converts.length === 0) {
     return (
-      <Card className="bg-white border-primary/10 h-full">
+      <Card className="bg-card border-primary/10 h-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
@@ -106,7 +106,7 @@ export function RecentConverts() {
   }
 
   return (
-    <Card className="bg-white border-primary/10 h-full">
+    <Card className="bg-card border-primary/10 h-full">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -131,8 +131,8 @@ export function RecentConverts() {
             onClick={() => navigate('/consolidacao')}
             className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-primary/5 cursor-pointer transition-colors group"
           >
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-              <UserPlus className="h-5 w-5 text-orange-600" />
+            <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-950/60 flex items-center justify-center shrink-0">
+              <UserPlus className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">

@@ -256,7 +256,7 @@ export default function Cells() {
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header Premium */}
-      <div className="bg-white p-8 rounded-3xl border border-primary/20 overflow-hidden relative group shadow-sm">
+      <div className="bg-card p-8 rounded-3xl border border-primary/20 overflow-hidden relative group shadow-sm">
         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-primary/5 rounded-full blur-3xl transition-colors duration-500" />
         <div className="relative">
           <h1 className="text-4xl font-extrabold tracking-tight text-primary">Multiplicação & Células</h1>
@@ -298,7 +298,7 @@ export default function Cells() {
       <div className="flex flex-col gap-4 px-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-white border border-primary/20 p-2 rounded-xl shadow-sm">
+            <div className="bg-card border border-primary/20 p-2 rounded-xl shadow-sm">
               <Home className="h-5 w-5 text-primary" />
             </div>
             <p className="font-semibold text-lg">{cells.length} Células Ativas</p>

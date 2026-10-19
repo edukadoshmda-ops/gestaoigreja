@@ -455,19 +455,19 @@ export default function Events() {
             {/* Main Content Tabs */}
             <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
                 <TabsList className="flex w-full justify-start overflow-x-auto overflow-y-hidden bg-primary/5 p-1 rounded-2xl scrollbar-hide snap-x">
-                        <TabsTrigger value="calendario" className="gap-1.5 sm:gap-2 px-4 py-2.5 sm:py-3 text-sm data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all shrink-0 snap-start">
+                        <TabsTrigger value="calendario" className="gap-1.5 sm:gap-2 px-4 py-2.5 sm:py-3 text-sm data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md rounded-xl transition-all shrink-0 snap-start">
                             <Calendar className="h-5 w-5" />
                             <span>Calendário</span>
                         </TabsTrigger>
-                        <TabsTrigger value="eventos" className="gap-1.5 sm:gap-2 px-4 py-2.5 sm:py-3 text-sm data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all shrink-0 snap-start">
+                        <TabsTrigger value="eventos" className="gap-1.5 sm:gap-2 px-4 py-2.5 sm:py-3 text-sm data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md rounded-xl transition-all shrink-0 snap-start">
                             <Tag className="h-5 w-5" />
                             <span>Eventos</span>
                         </TabsTrigger>
-                        <TabsTrigger value="escalas" className="gap-1.5 sm:gap-2 px-4 py-2.5 sm:py-3 text-sm data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all shrink-0 snap-start">
+                        <TabsTrigger value="escalas" className="gap-1.5 sm:gap-2 px-4 py-2.5 sm:py-3 text-sm data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md rounded-xl transition-all shrink-0 snap-start">
                             <Users className="h-5 w-5" />
                             <span>Escalas</span>
                         </TabsTrigger>
-                        <TabsTrigger value="checklists" className="gap-1.5 sm:gap-2 px-4 py-2.5 sm:py-3 text-sm data-[state=active]:bg-white data-[state=active]:shadow-md rounded-xl transition-all shrink-0 snap-start">
+                        <TabsTrigger value="checklists" className="gap-1.5 sm:gap-2 px-4 py-2.5 sm:py-3 text-sm data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md rounded-xl transition-all shrink-0 snap-start">
                             <ListChecks className="h-5 w-5" />
                             <span>Checklists</span>
                         </TabsTrigger>

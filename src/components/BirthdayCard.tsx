@@ -35,7 +35,7 @@ export function BirthdayCard() {
 
   if (loading) {
     return (
-      <Card className="bg-white border-primary/10 shadow-lg h-full">
+      <Card className="bg-card border-primary/10 shadow-lg h-full">
         <CardContent className="flex items-center justify-center p-6">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </CardContent>
@@ -45,7 +45,7 @@ export function BirthdayCard() {
 
   if (birthdays.length === 0) {
     return (
-      <Card className="bg-white border-primary/10 shadow-lg h-full">
+      <Card className="bg-card border-primary/10 shadow-lg h-full">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Cake className="h-5 w-5 text-primary" />
@@ -60,7 +60,7 @@ export function BirthdayCard() {
   }
 
   return (
-    <Card className="bg-white border-primary/20 shadow-lg border-l-4 border-l-primary animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <Card className="bg-card border-primary/20 shadow-lg border-l-4 border-l-primary animate-in fade-in slide-in-from-bottom-2 duration-500">
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, ArrowLeft, Info, Copy } from 'lucide-react';
+import { Menu, ArrowLeft, Info, Copy, Moon, Sun } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SUBSCRIPTION_PIX } from '@/lib/subscriptionConfig';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +12,7 @@ import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Logo } from './Logo';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { useTheme } from '@/contexts/ThemeContext';
 import { GlobalSearch } from './GlobalSearch';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     const [open, setOpen] = useState(false);
     const navigate = useNavigate();
     const { user, viewingChurch, exitChurchView } = useAuth();
+    const { isDarkMode, toggleDarkMode } = useTheme();
     const { toast } = useToast();
     const showRootBanner = user?.role === 'superadmin' && viewingChurch;
     const showNetworkBanner = user?.role === 'pastor_admin' && viewingChurch;
@@ -49,6 +51,15 @@ export function MainLayout({ children }: MainLayoutProps) {
                     <div className="flex items-center gap-2 sm:gap-3 relative z-50">
                         <GlobalSearch />
                         <NotificationCenter />
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={toggleDarkMode}
+                            title={isDarkMode ? "Mudar para Modo Claro" : "Ativar Modo Escuro"}
+                            className="h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-sm"
+                        >
+                            {isDarkMode ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5" />}
+                        </Button>
                         <div className="relative z-50 min-h-[48px] min-w-[48px] flex items-center justify-center" data-onboarding-themes>
                             <ThemeSwitcher collapsed={true} direction="down" />
                         </div>
@@ -67,9 +78,28 @@ export function MainLayout({ children }: MainLayoutProps) {
                     </div>
                 </header>
 
-                {/* Barra superior desktop: busca + notificações */}
+                {/* Barra superior desktop: busca + modo escuro + notificações */}
                 <header className="hidden md:flex items-center justify-end gap-2 px-4 py-2 border-b border-border bg-card/50 print:hidden">
                     <GlobalSearch />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={toggleDarkMode}
+                        title={isDarkMode ? "Mudar para Modo Claro" : "Ativar Modo Escuro"}
+                        className="gap-2 rounded-xl border border-border/60 hover:bg-primary/10 text-foreground font-semibold text-xs h-9 px-3"
+                    >
+                        {isDarkMode ? (
+                            <>
+                                <Sun className="h-4 w-4 text-amber-400" />
+                                <span>Modo Claro</span>
+                            </>
+                        ) : (
+                            <>
+                                <Moon className="h-4 w-4 text-primary" />
+                                <span>Modo Escuro</span>
+                            </>
+                        )}
+                    </Button>
                     <NotificationCenter />
                 </header>
 

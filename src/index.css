@@ -500,12 +500,19 @@
     --foreground: 210 40% 98%;
     --card: 222 47% 12%;
     --card-foreground: 210 40% 98%;
+    --popover: 222 47% 12%;
+    --popover-foreground: 210 40% 98%;
     --primary: 217 91% 60%;
-    --secondary: 222 47% 30%;
-    --accent: 217 19% 27%;
-    --muted: 217 19% 20%;
-    --muted-foreground: 215 20% 65%;
-    --border: 217 19% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 47% 24%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 217 28% 22%;
+    --accent-foreground: 210 40% 98%;
+    --muted: 217 24% 18%;
+    --muted-foreground: 214 32% 78%;
+    --border: 217 24% 24%;
+    --input: 217 24% 24%;
+    --ring: 217 91% 60%;
   }
 
   /* ═══════════════════════════════════════════════
@@ -530,15 +537,23 @@
   }
 
   .dark[data-theme="soberania-preto"] {
-    --background: 0 0% 3%;
+    --background: 240 10% 5%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 6%;
+    --card: 240 10% 9%;
     --card-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --secondary: 0 0% 15%;
-    --accent: 0 0% 12%;
-    --muted: 0 0% 10%;
-    --border: 0 0% 12%;
+    --popover: 240 10% 9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 205 95% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 8% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --accent: 240 8% 16%;
+    --accent-foreground: 0 0% 98%;
+    --muted: 240 8% 14%;
+    --muted-foreground: 215 25% 76%;
+    --border: 240 8% 20%;
+    --input: 240 8% 20%;
+    --ring: 205 95% 52%;
   }
 
   /* ═══════════════════════════════════════════════
@@ -909,6 +924,100 @@
     --chart-5: 180 60% 50%;
     --sidebar: 185 35% 8%;
     --shadow-hsl: 185 91% 45%;
+  }
+
+  /* ═══════════════════════════════════════════════
+     🌙 TEMA 13: MODO ESCURO - Slate Noturno Premium
+     Fundo profundo confortável e fontes de alta nitidez
+     ═══════════════════════════════════════════════ */
+  [data-theme="modo-escuro"],
+  .dark[data-theme="modo-escuro"] {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+    --card: 222 38% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 40% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 205 95% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 217 33% 18%;
+    --accent-foreground: 199 95% 74%;
+    --muted: 217 32% 16%;
+    --muted-foreground: 214 32% 78%;
+    --destructive: 0 84% 64%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 28% 22%;
+    --input: 217 28% 22%;
+    --ring: 199 95% 58%;
+    --radius: 1rem;
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 205 95% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 15%;
+    --sidebar-accent-foreground: 199 95% 72%;
+    --sidebar-border: 217 28% 16%;
+    --sidebar-ring: 199 95% 58%;
+    --sidebar: 222 47% 5%;
+    --chart-1: 199 95% 60%;
+    --chart-2: 160 84% 48%;
+    --chart-3: 38 95% 60%;
+    --chart-4: 258 90% 72%;
+    --chart-5: 350 89% 65%;
+    --shadow-hsl: 199 95% 50%;
+    --shadow-2xs: 0 1px 2px 0px rgba(0, 0, 0, 0.4);
+    --shadow-xs: 0 2px 4px 0px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 0 2px 8px 0px rgba(0, 0, 0, 0.5);
+    --shadow: 0 4px 12px 0px rgba(0, 0, 0, 0.55);
+    --shadow-md: 0 6px 16px 0px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 10px 24px 0px rgba(0, 0, 0, 0.65);
+    --shadow-xl: 0 16px 32px 0px rgba(0, 0, 0, 0.7);
+    --shadow-2xl: 0 24px 48px 0px rgba(0, 0, 0, 0.75);
+  }
+
+  /* Refino global de contraste das fontes para todos os temas no Modo Escuro (.dark) */
+  .dark {
+    color-scheme: dark;
+    --muted-foreground: 214 32% 78%;
+  }
+
+  .dark body {
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Garante que títulos, labels, células de tabela e textos fiquem super nítidos no escuro */
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6,
+  .dark label,
+  .dark th,
+  .dark td {
+    color: hsl(var(--foreground));
+  }
+
+  /* No Modo Escuro, Noite Estrelada e Soberania, destaca ícones e textos primários com azul celeste brilhante */
+  [data-theme="modo-escuro"] .text-primary:not(.bg-primary),
+  .dark[data-theme="noite-estrelada"] .text-primary:not(.bg-primary),
+  .dark[data-theme="soberania-preto"] .text-primary:not(.bg-primary) {
+    color: hsl(199 95% 66%);
+  }
+
+  .dark input,
+  .dark textarea,
+  .dark select {
+    color: hsl(var(--foreground));
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: hsl(214 25% 66%);
   }
 
   /* ═══════════════════════════════════════════════

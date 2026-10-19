@@ -70,32 +70,32 @@ export function StatsOverview() {
       label: 'Total de Membros',
       value: stats.totalMembers,
       color: 'bg-blue-500',
-      lightColor: 'bg-blue-50',
-      textColor: 'text-blue-600',
+      lightColor: 'bg-blue-50 dark:bg-blue-950/60',
+      textColor: 'text-blue-600 dark:text-blue-400',
     },
     {
       icon: MapPin,
       label: 'Células Ativas',
       value: stats.totalCells,
       color: 'bg-green-500',
-      lightColor: 'bg-green-50',
-      textColor: 'text-green-600',
+      lightColor: 'bg-green-50 dark:bg-green-950/60',
+      textColor: 'text-green-600 dark:text-green-400',
     },
     {
       icon: Calendar,
       label: 'Eventos Próximos',
       value: stats.upcomingEvents,
       color: 'bg-purple-500',
-      lightColor: 'bg-purple-50',
-      textColor: 'text-purple-600',
+      lightColor: 'bg-purple-50 dark:bg-purple-950/60',
+      textColor: 'text-purple-600 dark:text-purple-400',
     },
     {
       icon: UserPlus,
       label: 'Novos Convertidos',
       value: stats.newConverts,
       color: 'bg-orange-500',
-      lightColor: 'bg-orange-50',
-      textColor: 'text-orange-600',
+      lightColor: 'bg-orange-50 dark:bg-orange-950/60',
+      textColor: 'text-orange-600 dark:text-orange-400',
     },
   ];
 
@@ -103,7 +103,7 @@ export function StatsOverview() {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="bg-white border-primary/10">
+          <Card key={i} className="bg-card border-primary/10">
             <CardContent className="p-6 flex items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </CardContent>
@@ -118,7 +118,7 @@ export function StatsOverview() {
       {statCards.map((stat) => (
         <Card
           key={stat.label}
-          className="bg-white border-primary/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+          className="bg-card border-primary/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
         >
           <CardContent className="p-5">
             <div className="flex items-start justify-between">

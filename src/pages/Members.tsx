@@ -402,7 +402,7 @@ export default function Members() {
               if (!m.birthDate) return false;
               return (new Date(m.birthDate).getMonth() + 1) === (new Date().getMonth() + 1);
             }).length === 0 && (
-                <div className="text-center py-12 bg-white rounded-xl border border-dashed">
+                <div className="text-center py-12 bg-card rounded-xl border border-dashed">
                   <Cake className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
                   <p className="text-muted-foreground">Nenhum aniversariante neste mês.</p>
                 </div>

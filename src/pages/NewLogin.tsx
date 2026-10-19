@@ -49,9 +49,11 @@ export default function NewLogin() {
 
     // Força o tema oceano nas páginas públicas
     useEffect(() => {
-        // Aplica imediatamente o tema
+        // Aplica imediatamente o tema claro na tela de login
         document.documentElement.setAttribute('data-theme', 'ceu-azul');
         document.body.setAttribute('data-theme', 'ceu-azul');
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
 
         // Se ?trial=1, marcar para signup trial
         const params = new URLSearchParams(window.location.search);
@@ -59,15 +61,23 @@ export default function NewLogin() {
             try { sessionStorage.setItem('trial_signup', '1'); } catch {}
         }
 
-        // Cleanup: restaura o tema do usuário apenas se estiver navegando para área autenticada
+        // Cleanup: restaura o tema do usuário (incluindo Modo Escuro) ao entrar na área autenticada
         return () => {
-            // Só restaura se não estiver indo para outra página pública
             const path = window.location.pathname;
             const publicPages = ['/', '/vendas', '/oferta', '/login', '/checkout', '/hotmart-success'];
             if (!publicPages.includes(path)) {
                 const savedTheme = localStorage.getItem('church_theme_v2') || 'ceu-azul';
+                const darkThemes = ['modo-escuro', 'noite-estrelada', 'soberania-preto'];
+                const isDark = localStorage.getItem('church_dark_mode') === 'true' || darkThemes.includes(savedTheme);
                 document.documentElement.setAttribute('data-theme', savedTheme);
                 document.body.setAttribute('data-theme', savedTheme);
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.body.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.body.classList.remove('dark');
+                }
             }
         };
     }, []);

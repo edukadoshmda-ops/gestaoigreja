@@ -180,7 +180,7 @@ export default function Ministries() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="bg-white p-8 rounded-3xl border border-primary/20 mb-8 overflow-hidden relative group shadow-sm w-full">
+        <div className="bg-card p-8 rounded-3xl border border-primary/20 mb-8 overflow-hidden relative group shadow-sm w-full">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-primary/5 rounded-full blur-3xl transition-colors duration-500" />
           <div className="relative">
             <h1 className="text-4xl font-extrabold tracking-tight text-primary">Ministérios</h1>

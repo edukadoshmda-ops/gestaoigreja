@@ -80,7 +80,7 @@ export function UpcomingEvents() {
 
   if (loading) {
     return (
-      <Card className="bg-white border-primary/10 h-full">
+      <Card className="bg-card border-primary/10 h-full">
         <CardContent className="flex items-center justify-center p-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </CardContent>
@@ -90,7 +90,7 @@ export function UpcomingEvents() {
 
   if (events.length === 0) {
     return (
-      <Card className="bg-white border-primary/10 h-full">
+      <Card className="bg-card border-primary/10 h-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
@@ -116,7 +116,7 @@ export function UpcomingEvents() {
   }
 
   return (
-    <Card className="bg-white border-primary/10 h-full">
+    <Card className="bg-card border-primary/10 h-full">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2">

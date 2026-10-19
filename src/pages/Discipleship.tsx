@@ -208,7 +208,7 @@ export default function Discipleship() {
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-12">
             {/* Header Premium */}
-            <div className="bg-white p-8 rounded-3xl border border-primary/20 overflow-hidden relative group shadow-sm">
+            <div className="bg-card p-8 rounded-3xl border border-primary/20 overflow-hidden relative group shadow-sm">
                 <div className="absolute top-0 right-0 -mt-4 -mr-4 w-40 h-40 bg-primary/5 rounded-full blur-3xl transition-colors duration-500" />
                 <div className="relative">
                     <h1 className="text-4xl font-extrabold tracking-tight text-primary">Cuidado & Discipulado</h1>
@@ -378,7 +378,7 @@ export default function Discipleship() {
                                 </div>
 
                                 {/* Growth Track Section */}
-                                <div className="px-6 py-4 bg-white border-t border-b">
+                                <div className="px-6 py-4 bg-card/60 border-t border-b">
                                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Trilha de Crescimento</p>
                                     <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide snap-x">
                                         {GROWTH_STAGES.map((stage) => {
