@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 import { useToast } from '@/hooks/use-toast';
 import { UserCircle, Camera, Loader2 } from 'lucide-react';
 import {
@@ -133,12 +134,16 @@ export function Sidebar() {
 
     try {
       setUploadingAvatar(true);
-      const fileExt = file.name.split('.').pop();
+      const optimized = await compressImageFile(file, { maxWidth: 400, maxHeight: 400, quality: 0.78 });
+      const fileExt = (optimized instanceof File ? optimized.name : file.name).split('.').pop();
       const filePath = `avatars/${user.id}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('church-documents')
-        .upload(filePath, file);
+        .upload(filePath, optimized, {
+          cacheControl: STORAGE_CACHE_CONTROL,
+          contentType: optimized.type || file.type,
+        });
 
       if (uploadError) throw uploadError;
 

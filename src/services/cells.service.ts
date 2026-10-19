@@ -78,10 +78,14 @@ export const cellsService = {
     },
 
     /**
-     * Get active cells only (filtrado por igreja para multi-tenant)
+     * Get active cells only (filtrado por igreja para multi-tenant, reaproveitando cache)
      */
     async getActive(churchId?: string | null) {
         if (!churchId) return [];
+        if (CACHE_TTL_MS > 0) {
+            const all = await this.getAll(churchId);
+            return (all || []).filter((c: any) => c.active !== false);
+        }
         const { data, error } = await supabase
             .from('cells')
             .select(`

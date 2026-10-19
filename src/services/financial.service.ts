@@ -88,8 +88,17 @@ function removeLocalTransaction(id: string) {
   }
 }
 
+const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+const FIN_CACHE_TTL_MS = isTestEnv ? 0 : 60 * 1000;
+const financialListCache = new Map<string, { data: Transaction[]; timestamp: number }>();
+
+export function clearFinancialCache() {
+  financialListCache.clear();
+}
+
 async function create(data: CreateFinancialTransactionDTO, churchId: string): Promise<Transaction> {
   console.log('Criando transação:', { data, churchId });
+  clearFinancialCache();
 
   const hasValidUUID = isValidUUID(churchId);
   if (data.requireRemote && !hasValidUUID) {
@@ -150,6 +159,17 @@ async function create(data: CreateFinancialTransactionDTO, churchId: string): Pr
 }
 
 async function list(startDate?: Date, endDate?: Date, churchId?: string | null): Promise<Transaction[]> {
+  const sKey = startDate ? startDate.toISOString().split('T')[0] : '';
+  const eKey = endDate ? endDate.toISOString().split('T')[0] : '';
+  const cacheKey = `${churchId || 'default'}:${sKey}:${eKey}`;
+
+  if (FIN_CACHE_TTL_MS > 0) {
+    const cached = financialListCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < FIN_CACHE_TTL_MS) {
+      return cached.data;
+    }
+  }
+
   const localList = getLocalTransactions(churchId);
   const hasValidUUID = isValidUUID(churchId);
 
@@ -192,16 +212,22 @@ async function list(startDate?: Date, endDate?: Date, churchId?: string | null):
 
   const merged = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
+  let result = merged;
   if (startDate && endDate) {
     const sStr = startDate.toISOString().split('T')[0];
     const eStr = endDate.toISOString().split('T')[0];
-    return merged.filter((t) => t.date >= sStr && t.date <= eStr);
+    result = merged.filter((t) => t.date >= sStr && t.date <= eStr);
   }
 
-  return merged;
+  if (FIN_CACHE_TTL_MS > 0) {
+    financialListCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  }
+
+  return result;
 }
 
 async function remove(id: string) {
+  clearFinancialCache();
   removeLocalTransaction(id);
 
   if (!id.startsWith('tx-')) {
@@ -221,6 +247,7 @@ async function remove(id: string) {
 }
 
 async function update(id: string, data: Partial<CreateFinancialTransactionDTO>, churchId?: string | null) {
+  clearFinancialCache();
   const updatingReceipt = data.receipt_url !== undefined || data.receipt_filename !== undefined;
   const persistRemote = async () => {
     const updates: Record<string, unknown> = {};

@@ -33,6 +33,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { maskPhone, maskCPF, unmask } from '@/lib/masks';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 
 export interface MemberFormData {
   name: string;
@@ -68,12 +69,13 @@ export interface MemberFormData {
 
 interface MemberFormProps {
   onSubmit: (data: MemberFormData) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   initialData?: Partial<MemberFormData>;
   churchName?: string;
   pastorName?: string;
   isSubmitting?: boolean;
   disabled?: boolean;
+  isPublicForm?: boolean;
 }
 
 export function MemberForm({
@@ -84,6 +86,7 @@ export function MemberForm({
   pastorName,
   isSubmitting,
   disabled,
+  isPublicForm = false,
 }: MemberFormProps) {
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -120,7 +123,7 @@ export function MemberForm({
   });
 
   const [uploading, setUploading] = useState(false);
-  const [showExtraDetails, setShowExtraDetails] = useState(false);
+  const [showExtraDetails, setShowExtraDetails] = useState(Boolean(isPublicForm));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -130,23 +133,36 @@ export function MemberForm({
 
     try {
       setUploading(true);
-      const fileExt = file.name.split('.').pop();
+      const optimized = await compressImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.78 });
+      const fileExt = (optimized instanceof File ? optimized.name : file.name).split('.').pop();
       const filePath = `members/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('church-documents')
-        .upload(filePath, file);
+        .upload(filePath, optimized, {
+          cacheControl: STORAGE_CACHE_CONTROL,
+          contentType: optimized.type || file.type,
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        // Fallback para formulário público (sem sessão autenticada): converte imagem já comprimida para Data URL
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Falha ao processar foto'));
+          reader.readAsDataURL(optimized);
+        });
+        setFormData((prev) => ({ ...prev, photoUrl: dataUrl }));
+      } else {
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('church-documents').getPublicUrl(filePath);
+        setFormData((prev) => ({ ...prev, photoUrl: publicUrl }));
+      }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('church-documents').getPublicUrl(filePath);
-
-      setFormData((prev) => ({ ...prev, photoUrl: publicUrl }));
       toast({
         title: 'Foto carregada!',
-        description: 'A foto do membro foi processada com sucesso.',
+        description: 'A foto foi processada com sucesso.',
       });
     } catch (error: any) {
       toast({
@@ -191,13 +207,17 @@ export function MemberForm({
           <div className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
             <span className="text-xl font-bold">
-              {initialData?.name ? 'Editar Cadastro de Membro' : 'Novo Cadastro de Membro'}
+              {isPublicForm
+                ? 'Ficha Cadastral de Membro'
+                : initialData?.name
+                  ? 'Editar Cadastro de Membro'
+                  : 'Novo Cadastro de Membro'}
             </span>
           </div>
-          {formData.churchName && (
+          {(churchName || formData.churchName) && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-background px-3 py-1 rounded-full border">
               <Church className="h-3.5 w-3.5 text-primary" />
-              <span className="font-medium">{formData.churchName}</span>
+              <span className="font-medium">{churchName || formData.churchName}</span>
             </div>
           )}
         </CardTitle>
@@ -219,41 +239,43 @@ export function MemberForm({
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
             {/* ================= COLUNA ESQUERDA: FOTO E STATUS (3 colunas) ================= */}
             <div className="md:col-span-4 lg:col-span-3 flex flex-col items-center gap-4">
-              {/* Badges de Ação do Topo (Conforme referência visual: 🔔 6, 🔄 1, 🔗 3, 📁 3) */}
-              <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-lg border w-full justify-between">
-                <button
-                  type="button"
-                  title="Notificações"
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-background text-[11px] font-semibold border hover:bg-muted text-amber-600 transition"
-                >
-                  <Bell className="h-3 w-3" />
-                  <span>6</span>
-                </button>
-                <button
-                  type="button"
-                  title="Atualizações"
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-background text-[11px] font-semibold border hover:bg-muted text-blue-600 transition"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  <span>1</span>
-                </button>
-                <button
-                  type="button"
-                  title="Vínculos"
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-background text-[11px] font-semibold border hover:bg-muted text-emerald-600 transition"
-                >
-                  <Share2 className="h-3 w-3" />
-                  <span>3</span>
-                </button>
-                <button
-                  type="button"
-                  title="Documentos"
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-background text-[11px] font-semibold border hover:bg-muted text-purple-600 transition"
-                >
-                  <Folder className="h-3 w-3" />
-                  <span>3</span>
-                </button>
-              </div>
+              {/* Badges de Ação do Topo (Ocultos no formulário público enviado aos membros) */}
+              {!isPublicForm && (
+                <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-lg border w-full justify-between">
+                  <button
+                    type="button"
+                    title="Notificações"
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-background text-[11px] font-semibold border hover:bg-muted text-amber-600 transition"
+                  >
+                    <Bell className="h-3 w-3" />
+                    <span>6</span>
+                  </button>
+                  <button
+                    type="button"
+                    title="Atualizações"
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-background text-[11px] font-semibold border hover:bg-muted text-blue-600 transition"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    <span>1</span>
+                  </button>
+                  <button
+                    type="button"
+                    title="Vínculos"
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-background text-[11px] font-semibold border hover:bg-muted text-emerald-600 transition"
+                  >
+                    <Share2 className="h-3 w-3" />
+                    <span>3</span>
+                  </button>
+                  <button
+                    type="button"
+                    title="Documentos"
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-background text-[11px] font-semibold border hover:bg-muted text-purple-600 transition"
+                  >
+                    <Folder className="h-3 w-3" />
+                    <span>3</span>
+                  </button>
+                </div>
+              )}
 
               {/* Card da Foto Principal */}
               <div className="w-full aspect-[4/5] max-w-[220px] rounded-2xl border-2 border-border/80 bg-muted/30 relative overflow-hidden shadow-md flex items-center justify-center group">
@@ -806,24 +828,28 @@ export function MemberForm({
 
           {/* Botões de Ação no Rodapé */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
+            {onCancel && !isPublicForm && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={isSubmitting || disabled}
-              className="bg-primary hover:bg-primary/90 text-white min-w-[130px]"
+              className={`bg-primary hover:bg-primary/90 text-white ${isPublicForm ? 'w-full sm:w-auto min-w-[220px] h-11 text-base font-bold' : 'min-w-[130px]'}`}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Salvando...
+                  Enviando dados...
                 </>
+              ) : isPublicForm ? (
+                'Enviar Meu Cadastro'
               ) : initialData?.name ? (
                 'Salvar Alterações'
               ) : (

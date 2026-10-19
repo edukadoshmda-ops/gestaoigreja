@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { churchesService } from '@/services/churches.service';
 import { invalidateTenantCache } from '@/hooks/useTenant';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 
 /**
  * Faz upload da logo da igreja para o Supabase Storage (bucket 'logos'),
@@ -10,12 +11,17 @@ export async function uploadChurchLogo(churchId: string, slug: string, file: Fil
     // Garante que o bucket existe
     await supabase.storage.createBucket('logos', { public: true }).catch(() => {});
 
-    const ext = file.name.split('.').pop();
+    const optimized = await compressImageFile(file, { maxWidth: 512, maxHeight: 512, quality: 0.82 });
+    const ext = optimized instanceof File ? optimized.name.split('.').pop() : file.name.split('.').pop();
     const fileName = `${slug}-logo-${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
         .from('logos')
-        .upload(fileName, file, { upsert: true, contentType: file.type });
+        .upload(fileName, optimized, {
+            upsert: true,
+            contentType: optimized.type || file.type,
+            cacheControl: STORAGE_CACHE_CONTROL,
+        });
 
     if (uploadError) throw uploadError;
 
@@ -40,12 +46,17 @@ export async function uploadChurchBanner(churchId: string, slug: string, file: F
     // Garante que o bucket existe
     await supabase.storage.createBucket('banners', { public: true }).catch(() => {});
 
-    const ext = file.name.split('.').pop();
+    const optimized = await compressImageFile(file, { maxWidth: 1400, maxHeight: 800, quality: 0.80 });
+    const ext = optimized instanceof File ? optimized.name.split('.').pop() : file.name.split('.').pop();
     const fileName = `${slug}-banner-${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
         .from('banners')
-        .upload(fileName, file, { upsert: true, contentType: file.type });
+        .upload(fileName, optimized, {
+            upsert: true,
+            contentType: optimized.type || file.type,
+            cacheControl: STORAGE_CACHE_CONTROL,
+        });
 
     if (uploadError) throw uploadError;
 

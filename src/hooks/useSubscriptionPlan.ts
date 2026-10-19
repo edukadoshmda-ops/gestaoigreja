@@ -34,23 +34,40 @@ function detectPlanByAmount(amount: number | null, status: string): PlanType {
   return 'enterprise';
 }
 
+const planCache = new Map<string, { data: PlanInfo; timestamp: number }>();
+const PLAN_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutos
+
 export function useSubscriptionPlan(): PlanInfo {
   const { churchId } = useAuth();
-  const [info, setInfo] = useState<PlanInfo>({
-    plan: 'starter',
-    label: 'Starter',
-    maxMembers: 100,
-    price: 199,
-    currentMembers: 0,
-    isLimitReached: false,
-    percentUsed: 0,
-    status: null,
-    loading: true,
+  const [info, setInfo] = useState<PlanInfo>(() => {
+    if (churchId) {
+      const cached = planCache.get(churchId);
+      if (cached && Date.now() - cached.timestamp < PLAN_CACHE_TTL_MS) {
+        return cached.data;
+      }
+    }
+    return {
+      plan: 'starter',
+      label: 'Starter',
+      maxMembers: 100,
+      price: 199,
+      currentMembers: 0,
+      isLimitReached: false,
+      percentUsed: 0,
+      status: null,
+      loading: true,
+    };
   });
 
   useEffect(() => {
     if (!churchId) {
       setInfo(prev => ({ ...prev, loading: false }));
+      return;
+    }
+
+    const cached = planCache.get(churchId);
+    if (cached && Date.now() - cached.timestamp < PLAN_CACHE_TTL_MS) {
+      setInfo(cached.data);
       return;
     }
 
@@ -84,7 +101,7 @@ export function useSubscriptionPlan(): PlanInfo {
         const current = memberCount ?? 0;
         const percentUsed = Math.min(100, Math.round((current / config.maxMembers) * 100));
 
-        setInfo({
+        const nextInfo: PlanInfo = {
           plan,
           label: config.label,
           maxMembers: config.maxMembers,
@@ -94,7 +111,9 @@ export function useSubscriptionPlan(): PlanInfo {
           percentUsed,
           status,
           loading: false,
-        });
+        };
+        planCache.set(churchId, { data: nextInfo, timestamp: Date.now() });
+        setInfo(nextInfo);
       } catch {
         setInfo(prev => ({ ...prev, loading: false }));
       }

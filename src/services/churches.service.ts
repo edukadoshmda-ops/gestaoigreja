@@ -5,6 +5,16 @@ export type Church = Database['public']['Tables']['churches']['Row'];
 export type ChurchInsert = Database['public']['Tables']['churches']['Insert'];
 export type ChurchUpdate = Database['public']['Tables']['churches']['Update'];
 
+const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+const CHURCH_CACHE_TTL_MS = isTestEnv ? 0 : 2 * 60 * 1000;
+const churchByIdCache = new Map<string, { data: Church | null; timestamp: number }>();
+const churchBySlugCache = new Map<string, { data: Church | null; timestamp: number }>();
+
+export function clearChurchesCache() {
+    churchByIdCache.clear();
+    churchBySlugCache.clear();
+}
+
 export const churchesService = {
     /**
      * Lista todas as igrejas da plataforma (Acesso SuperAdmin)
@@ -23,6 +33,13 @@ export const churchesService = {
      * Obtém detalhes de uma igreja específica
      */
     async getById(id: string) {
+        if (CHURCH_CACHE_TTL_MS > 0) {
+            const cached = churchByIdCache.get(id);
+            if (cached && Date.now() - cached.timestamp < CHURCH_CACHE_TTL_MS) {
+                return cached.data;
+            }
+        }
+
         const { data, error } = await supabase
             .from('churches')
             .select('*')
@@ -30,6 +47,9 @@ export const churchesService = {
             .maybeSingle();
 
         if (error) throw error;
+        if (CHURCH_CACHE_TTL_MS > 0 && data) {
+            churchByIdCache.set(id, { data, timestamp: Date.now() });
+        }
         return data;
     },
 
@@ -38,6 +58,13 @@ export const churchesService = {
      */
     async getBySlug(slug: string) {
         const decoded = decodeURIComponent(slug).trim();
+        if (CHURCH_CACHE_TTL_MS > 0) {
+            const cached = churchBySlugCache.get(decoded);
+            if (cached && Date.now() - cached.timestamp < CHURCH_CACHE_TTL_MS) {
+                return cached.data;
+            }
+        }
+
         const { data, error } = await supabase
             .from('churches')
             .select('*')
@@ -52,11 +79,21 @@ export const churchesService = {
                     .select('*')
                     .eq('id', decoded)
                     .maybeSingle();
-                if (byId) return byId;
+                if (byId) {
+                    if (CHURCH_CACHE_TTL_MS > 0) {
+                        churchBySlugCache.set(decoded, { data: byId, timestamp: Date.now() });
+                        churchByIdCache.set(byId.id, { data: byId, timestamp: Date.now() });
+                    }
+                    return byId;
+                }
             } catch {}
         }
 
         if (error && !data) throw error;
+        if (CHURCH_CACHE_TTL_MS > 0 && data) {
+            churchBySlugCache.set(decoded, { data, timestamp: Date.now() });
+            churchByIdCache.set(data.id, { data, timestamp: Date.now() });
+        }
         return data;
     },
 
@@ -77,6 +114,7 @@ export const churchesService = {
             });
             if (!error && data) {
                 const { data: created } = await supabase.from('churches').select('*').eq('id', data).single();
+                clearChurchesCache();
                 return created;
             }
             throw error;
@@ -99,7 +137,10 @@ export const churchesService = {
                 church_slug: church.slug,
                 admin_email: church.adminEmail.trim()
             });
-            if (!error) return data;
+            if (!error) {
+                clearChurchesCache();
+                return data;
+            }
             // Se RPC falhar (ex: função não existe ou profiles.email inexistente),
             // tenta inserir só a igreja para não bloquear o cadastro
             console.warn('create_church_with_admin falhou, tentando insert direto:', error.message);
@@ -117,6 +158,7 @@ export const churchesService = {
             if (error.message) throw new Error(error.message);
             throw error;
         }
+        clearChurchesCache();
         return data;
     },
 
@@ -131,6 +173,7 @@ export const churchesService = {
             .single();
 
         if (error) throw error;
+        clearChurchesCache();
         return data;
     },
 
@@ -144,6 +187,7 @@ export const churchesService = {
             .eq('id', id);
 
         if (error) throw error;
+        clearChurchesCache();
     },
 
     /**

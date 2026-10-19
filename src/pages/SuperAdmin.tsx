@@ -72,6 +72,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { churchesService, Church } from '@/services/churches.service';
 import { SUBSCRIPTION_PIX } from '@/lib/subscriptionConfig';
 import { supabase } from '@/lib/supabaseClient';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -249,13 +250,18 @@ export default function SuperAdmin() {
             // Garante que o bucket 'logos' existe (ignora erro se já existir)
             await supabase.storage.createBucket('logos', { public: true }).catch(() => {});
 
-            const ext = file.name.split('.').pop();
+            const optimized = await compressImageFile(file, { maxWidth: 512, maxHeight: 512, quality: 0.82 });
+            const ext = (optimized instanceof File ? optimized.name : file.name).split('.').pop();
             const slug = formData.slug || `church-${Date.now()}`;
             const fileName = `${slug}-${Date.now()}.${ext}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('logos')
-                .upload(fileName, file, { upsert: true, contentType: file.type });
+                .upload(fileName, optimized, {
+                    upsert: true,
+                    contentType: optimized.type || file.type,
+                    cacheControl: STORAGE_CACHE_CONTROL,
+                });
 
             if (uploadError) throw uploadError;
 
@@ -282,13 +288,18 @@ export default function SuperAdmin() {
             // Garante que o bucket 'banners' existe (ignora erro se já existir)
             await supabase.storage.createBucket('banners', { public: true }).catch(() => {});
 
-            const ext = file.name.split('.').pop();
+            const optimized = await compressImageFile(file, { maxWidth: 1400, maxHeight: 800, quality: 0.80 });
+            const ext = (optimized instanceof File ? optimized.name : file.name).split('.').pop();
             const slug = formData.slug || `church-${Date.now()}`;
             const fileName = `${slug}-banner-${Date.now()}.${ext}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('banners')
-                .upload(fileName, file, { upsert: true, contentType: file.type });
+                .upload(fileName, optimized, {
+                    upsert: true,
+                    contentType: optimized.type || file.type,
+                    cacheControl: STORAGE_CACHE_CONTROL,
+                });
 
             if (uploadError) throw uploadError;
 

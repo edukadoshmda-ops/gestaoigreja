@@ -164,7 +164,7 @@ export default function PrayerRequests() {
   // Carregar membros para o select de responsável
   useEffect(() => {
     if (!effectiveChurchId) return;
-    membersService.getAll()
+    membersService.getAll(effectiveChurchId)
       .then((list: any[]) => {
         setMembers(list.map((m) => ({ id: m.id, name: m.name })).sort((a, b) => a.name.localeCompare(b.name)));
       })

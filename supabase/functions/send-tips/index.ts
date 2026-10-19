@@ -91,6 +91,8 @@ Deno.serve(async (req) => {
     }
 
     let sent = 0;
+    let failed = 0;
+    const errors: { email: string; error: unknown }[] = [];
 
     for (const row of users) {
       const { user_id, user_email, church_id } = row;
@@ -100,7 +102,8 @@ Deno.serve(async (req) => {
         .from("app_tip_deliveries")
         .select("tip_id")
         .eq("user_id", user_id)
-        .eq("channel", "email");
+        .eq("channel", "email")
+        .eq("status", "sent");
 
       const deliveredIds = new Set((delivered || []).map((d: { tip_id: string }) => d.tip_id));
       const nextTip = tips.find((t: { id: string }) => !deliveredIds.has(t.id));
@@ -126,7 +129,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Gestão Igreja <onboarding@resend.dev>",
+          from: Deno.env.get("RESEND_FROM_EMAIL") || "Gestão Igreja <onboarding@resend.dev>",
           to: user_email,
           subject: `Dica: ${nextTip.title}`,
           html,
@@ -147,10 +150,18 @@ Deno.serve(async (req) => {
         { onConflict: "tip_id,user_id,channel" }
       );
 
-      if (res.ok) sent++;
+      if (res.ok) {
+        sent++;
+      } else {
+        failed++;
+        errors.push({ email: user_email, error: result });
+      }
+
+      // Respeita o limite de 2 requisições/segundo do plano gratuito da Resend
+      await new Promise((r) => setTimeout(r, 600));
     }
 
-    return json({ ok: true, sent, total: users.length });
+    return json({ ok: true, sent, failed, total: users.length, errors: errors.length ? errors : undefined });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erro ao enviar dicas";
     return json({ error: message }, 500);

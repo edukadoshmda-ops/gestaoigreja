@@ -117,49 +117,124 @@ const plans = [
   }
 ];
 
-const PurchaseCard = ({ timeLeft }: { timeLeft: number }) => (
-  <div className="max-w-xl mx-auto p-1 rounded-3xl bg-gradient-to-br from-primary via-cyan-400 to-blue-600 shadow-2xl backdrop-blur-md">
-    <div className="bg-background/95 rounded-[1.4rem] p-8 md:p-10">
-      <div className="flex flex-col items-center text-center gap-6">
-        <div className="px-4 py-2 bg-primary/10 rounded-full text-primary font-mono text-3xl font-bold tracking-tighter">
-          {formatTime(timeLeft)}
+const SuperOfferBanner = ({ timeLeft }: { timeLeft: number }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 24 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    className="max-w-5xl mx-auto mb-20 p-1.5 rounded-[2.5rem] bg-gradient-to-r from-amber-400 via-orange-500 to-rose-600 shadow-2xl shadow-orange-500/20"
+  >
+    <div className="bg-slate-950 text-white rounded-[2.2rem] p-6 sm:p-10 md:p-12 relative overflow-hidden">
+      {/* Glow decorativo */}
+      <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/20 blur-[90px] rounded-full pointer-events-none" />
+      <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-rose-500/20 blur-[90px] rounded-full pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col items-center text-center space-y-6">
+        {/* Topo: Badge + Cronômetro */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <span className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 text-xs sm:text-sm font-black px-4 py-1.5 rounded-full uppercase tracking-wider shadow-lg">
+            🔥 Super Oferta por Tempo Limitado
+          </span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 border border-white/15 rounded-full text-amber-300 font-mono text-sm sm:text-base font-bold">
+            <span>⏱️ Expira em:</span>
+            <span>{formatTime(timeLeft)}</span>
+          </div>
         </div>
-        <div className="space-y-2">
-          <p className="text-sm font-bold text-primary uppercase tracking-[0.2em]">Oferta de Lançamento</p>
-          <h3 className="text-3xl font-black text-foreground leading-tight">
-            A partir de <br />
-            <span className="text-4xl text-primary">R$ 199/mês</span>
+
+        <div className="space-y-2 max-w-2xl">
+          <h3 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
+            Quanto mais tempo sua igreja fica,{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-orange-400">
+              menos você paga!
+            </span>
           </h3>
-          <p className="text-muted-foreground">Planos a partir de 100 membros</p>
+          <p className="text-slate-300 text-sm sm:text-base font-medium">
+            Condição especial e progressiva exclusiva para assinatura no <strong>Cartão de Crédito</strong>:
+          </p>
         </div>
-        
-        <div className="flex flex-col gap-3 w-full">
-          <Link to="/checkout">
-            <Button size="lg" className="w-full h-16 rounded-2xl font-black text-lg gap-3 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl hover:scale-[1.02] transition-all">
-              ESCOLHER MEU PLANO
-              <ArrowRight className="h-5 w-5" />
+
+        {/* 3 Cards de Progressão Anual */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full pt-2">
+          {/* 1º Ano */}
+          <div className="rounded-2xl bg-white/5 border border-white/15 p-6 flex flex-col items-center justify-center relative hover:border-amber-400/50 transition-all">
+            <span className="text-xs font-black uppercase tracking-widest text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full mb-3">
+              1º Ano
+            </span>
+            <p className="text-xs text-slate-400 font-semibold uppercase">Apenas</p>
+            <div className="my-1 flex items-baseline justify-center gap-1">
+              <span className="text-lg font-bold text-amber-300">12x de</span>
+              <span className="text-4xl sm:text-5xl font-black text-white">R$ 150</span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1 font-medium">no cartão de crédito</p>
+          </div>
+
+          {/* 2º Ano */}
+          <div className="rounded-2xl bg-white/10 border-2 border-amber-400/60 p-6 flex flex-col items-center justify-center relative shadow-xl scale-[1.02]">
+            <div className="absolute -top-3 bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider">
+              Desconto Fidelidade
+            </div>
+            <span className="text-xs font-black uppercase tracking-widest text-amber-300 bg-amber-400/15 px-3 py-1 rounded-full mb-3 mt-1">
+              2º Ano
+            </span>
+            <p className="text-xs text-slate-300 font-semibold uppercase">Cai para</p>
+            <div className="my-1 flex items-baseline justify-center gap-1">
+              <span className="text-lg font-bold text-amber-300">12x de</span>
+              <span className="text-4xl sm:text-5xl font-black text-amber-300">R$ 125</span>
+            </div>
+            <p className="text-xs text-slate-200 mt-1 font-medium">no cartão de crédito</p>
+          </div>
+
+          {/* 3º Ano em diante */}
+          <div className="rounded-2xl bg-gradient-to-b from-emerald-500/20 to-teal-600/20 border-2 border-emerald-400 p-6 flex flex-col items-center justify-center relative shadow-xl">
+            <div className="absolute -top-3 bg-emerald-400 text-slate-950 text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider">
+              Menor Preço Garantido
+            </div>
+            <span className="text-xs font-black uppercase tracking-widest text-emerald-300 bg-emerald-400/15 px-3 py-1 rounded-full mb-3 mt-1">
+              3º Ano em diante
+            </span>
+            <p className="text-xs text-emerald-200 font-semibold uppercase">Fixo em apenas</p>
+            <div className="my-1 flex items-baseline justify-center gap-1">
+              <span className="text-lg font-bold text-emerald-300">12x de</span>
+              <span className="text-4xl sm:text-5xl font-black text-emerald-400">R$ 100</span>
+            </div>
+            <p className="text-xs text-emerald-100 mt-1 font-medium">no cartão de crédito</p>
+          </div>
+        </div>
+
+        {/* Botão de Ação */}
+        <div className="pt-4 w-full max-w-md flex flex-col items-center gap-3">
+          <Link to="/checkout?plan=super-oferta" className="w-full">
+            <Button
+              size="lg"
+              className="w-full h-16 rounded-2xl font-black text-lg sm:text-xl gap-3 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 hover:opacity-95 text-slate-950 shadow-2xl shadow-orange-500/30 hover:scale-[1.02] transition-all"
+            >
+              GARANTIR SUPER OFERTA AGORA
+              <ArrowRight className="h-6 w-6" />
             </Button>
           </Link>
-          <div className="flex items-center justify-center gap-4 text-xs font-bold text-muted-foreground">
-            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> 7 DIAS GRÁTIS</span>
-            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> SEM FIDELIDADE</span>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-slate-300">
+            <span className="flex items-center gap-1.5">
+              <Check className="h-4 w-4 text-emerald-400" /> Pagamento seguro no Cartão de Crédito
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check className="h-4 w-4 text-emerald-400" /> Todos os recursos liberados
+            </span>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </motion.div>
 );
+
 export default function Landing() {
   useDocumentTitle(APP_NAME);
   const { isAuthenticated } = useAuth();
-  const [timeLeft, setTimeLeft] = useState(300);
+  const [timeLeft, setTimeLeft] = useState(900);
 
   useEffect(() => {
     const timer = setInterval(() => setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0)), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  if (isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-background selection:bg-primary/20" data-theme="ceu-azul">
@@ -169,10 +244,12 @@ export default function Landing() {
           <Logo size="sm" showText={false} />
           
           <div className="flex items-center gap-1.5 sm:gap-3">
-            <Link to="/login">
-              <Button variant="outline" size="sm" className="rounded-full px-3 sm:px-6 font-bold text-xs sm:text-sm">Entrar</Button>
+            <Link to={isAuthenticated ? "/dashboard" : "/login"}>
+              <Button variant="outline" size="sm" className="rounded-full px-3 sm:px-6 font-bold text-xs sm:text-sm">
+                {isAuthenticated ? "Meu Painel" : "Entrar"}
+              </Button>
             </Link>
-            <Link to="/checkout">
+            <Link to="/checkout?plan=super-oferta">
               <Button size="sm" className="rounded-full px-3 sm:px-6 font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 text-xs sm:text-sm">
                 <span className="hidden min-[480px]:inline">ASSINE AGORA</span>
                 <span className="min-[480px]:hidden">ASSINAR</span>
@@ -205,14 +282,14 @@ export default function Landing() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-              <Link to="/checkout">
+              <Link to="/checkout?plan=super-oferta">
                 <Button size="lg" className="h-16 px-10 rounded-2xl font-black text-xl bg-primary shadow-2xl shadow-primary/30 hover:scale-105 transition-transform">
-                  ASSINE AGORA
+                  APROVEITAR SUPER OFERTA
                 </Button>
               </Link>
               <InstallHeroButton />
             </div>
-            <div className="flex -space-x-3 justify-center mt-2">
+            <div className="flex -space-x-3 justify-center mt-4 mb-12">
               {[1, 2, 3, 4].map(i => (
                 <div key={i} className="w-10 h-10 rounded-full border-2 border-background bg-muted overflow-hidden">
                   <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="User" />
@@ -222,6 +299,9 @@ export default function Landing() {
                 +500 Igrejas Gerenciadas
               </div>
             </div>
+
+            {/* Super Oferta por Tempo Limitado em Destaque logo na Entrada */}
+            <SuperOfferBanner timeLeft={timeLeft} />
           </motion.div>
         </div>
         
@@ -269,7 +349,7 @@ export default function Landing() {
       {/* ==================== SEÇÃO DE PLANOS ==================== */}
       <section className="py-32 bg-background" id="planos">
         <div className="container max-w-6xl mx-auto px-6">
-          <div className="text-center mb-20 space-y-4">
+          <div className="text-center mb-14 space-y-4">
             <Badge variant="outline" className="mb-4 px-4 py-1.5 border-primary/30 text-primary bg-primary/5 rounded-full font-bold tracking-widest text-[10px] uppercase">
               Planos e Preços
             </Badge>
@@ -278,9 +358,11 @@ export default function Landing() {
               <span className="text-primary">Sua Igreja</span>
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Planos escaláveis conforme o crescimento da sua congregação. Comece pequeno e expanda quando precisar.
+              Aproveite a Super Oferta por Tempo Limitado no Cartão de Crédito ou escolha um plano por porte da congregação.
             </p>
           </div>
+
+          <SuperOfferBanner timeLeft={timeLeft} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {plans.map((plan, idx) => {

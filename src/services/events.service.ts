@@ -74,10 +74,17 @@ export const eventsService = {
     },
 
     /**
-     * Get upcoming events
+     * Get upcoming events (reaproveita o cache de getAll para poupar queries no Dashboard)
      */
     async getUpcoming(churchId?: string | null) {
         const today = new Date().toISOString().split('T')[0];
+
+        if (CACHE_TTL_MS > 0) {
+            const all = await this.getAll(churchId);
+            return [...(all || [])]
+                .filter((e: any) => (e.date || '') >= today)
+                .sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
+        }
 
         let query = supabase
             .from('events')

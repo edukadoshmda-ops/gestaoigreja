@@ -35,8 +35,22 @@ export interface ReadingPlanCompletion {
   completed_at: string;
 }
 
+const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+const PLANS_TTL_MS = isTestEnv ? 0 : 2 * 60 * 1000; // 2 minutos para lista de planos
+const DAYS_TTL_MS = isTestEnv ? 0 : 15 * 60 * 1000; // 15 minutos para os dias estáticos de um plano
+const plansListCache = new Map<string, { data: ReadingPlan[]; timestamp: number }>();
+const planDaysCache = new Map<string, { data: ReadingPlanDay[]; timestamp: number }>();
+
 export const readingPlansService = {
   async list(churchId: string | undefined): Promise<ReadingPlan[]> {
+    const cacheKey = churchId || '__global__';
+    if (PLANS_TTL_MS > 0) {
+      const cached = plansListCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < PLANS_TTL_MS) {
+        return cached.data;
+      }
+    }
+
     let query = supabase
       .from('reading_plans')
       .select('*')
@@ -50,7 +64,11 @@ export const readingPlansService = {
 
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []) as ReadingPlan[];
+    const list = (data || []) as ReadingPlan[];
+    if (PLANS_TTL_MS > 0) {
+      plansListCache.set(cacheKey, { data: list, timestamp: Date.now() });
+    }
+    return list;
   },
 
   async getById(id: string): Promise<ReadingPlan | null> {
@@ -65,6 +83,13 @@ export const readingPlansService = {
   },
 
   async getDays(planId: string): Promise<ReadingPlanDay[]> {
+    if (DAYS_TTL_MS > 0) {
+      const cached = planDaysCache.get(planId);
+      if (cached && Date.now() - cached.timestamp < DAYS_TTL_MS) {
+        return cached.data;
+      }
+    }
+
     const { data, error } = await supabase
       .from('reading_plan_days')
       .select('*')
@@ -72,10 +97,21 @@ export const readingPlansService = {
       .order('day_number');
 
     if (error) throw error;
-    return (data || []) as ReadingPlanDay[];
+    const days = (data || []) as ReadingPlanDay[];
+    if (DAYS_TTL_MS > 0) {
+      planDaysCache.set(planId, { data: days, timestamp: Date.now() });
+    }
+    return days;
   },
 
   async getDay(planId: string, dayNumber: number): Promise<ReadingPlanDay | null> {
+    if (DAYS_TTL_MS > 0) {
+      const cached = planDaysCache.get(planId);
+      if (cached && Date.now() - cached.timestamp < DAYS_TTL_MS) {
+        return cached.data.find((d) => d.day_number === dayNumber) || null;
+      }
+    }
+
     const { data, error } = await supabase
       .from('reading_plan_days')
       .select('*')

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { useQuery, useMutation, useQueryClient, UseQueryResult } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 
 export interface ChatProfile {
   id: string;
@@ -80,57 +81,167 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     });
   }, [user?.id]);
 
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+
+  // Limpeza automática de 30 dias para mensagens e anexos do Chat (roda em background no máx. 1x a cada 12h)
+  useEffect(() => {
+    if (!currentUser?.id || !effectiveChurchId || typeof window === 'undefined') return;
+
+    const storageKey = `ecclesia_chat_cleanup_30d_${effectiveChurchId}`;
+    const lastCleanup = Number(localStorage.getItem(storageKey) || '0');
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    if (Date.now() - lastCleanup < TWELVE_HOURS_MS) return;
+
+    localStorage.setItem(storageKey, String(Date.now()));
+    const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgoIso = new Date(thirtyDaysAgoMs).toISOString();
+
+    (async () => {
+      try {
+        // 1. Aciona a RPC global do banco (limpa chat_messages > 30d preservando fixadas/favoritas, notificações e logs)
+        await supabase.rpc('cleanup_old_ephemeral_data');
+      } catch {
+        // Fallback direto caso a RPC atualizada ainda não tenha sido rodada no SQL Editor
+        try {
+          await supabase
+            .from('chat_messages')
+            .delete()
+            .eq('church_id', effectiveChurchId)
+            .is('pinned_at', null)
+            .lt('created_at', thirtyDaysAgoIso);
+        } catch {
+          // Ignora silenciosamente
+        }
+      }
+
+      // 2. Limpa anexos de chat do próprio usuário no Storage com mais de 30 dias (economiza o 1 GB de Storage)
+      try {
+        const { data: files } = await supabase.storage
+          .from('chat_attachments')
+          .list(currentUser.id, { limit: 100, sortBy: { column: 'created_at', order: 'asc' } });
+
+        if (files && files.length > 0) {
+          const expiredPaths = files
+            .filter((f) => f.created_at && new Date(f.created_at).getTime() < thirtyDaysAgoMs)
+            .map((f) => `${currentUser.id}/${f.name}`);
+
+          if (expiredPaths.length > 0) {
+            await supabase.storage.from('chat_attachments').remove(expiredPaths);
+          }
+        }
+      } catch {
+        // Ignora silenciosamente
+      }
+    })();
+  }, [currentUser?.id, effectiveChurchId]);
+
   useEffect(() => {
     if (!currentUser || !effectiveChurchId) return;
 
-    const channel = supabase.channel(`chat-church-${effectiveChurchId}`, {
-      config: {
-        broadcast: { self: true },
-        presence: { key: currentUser.id },
-      }
-    })
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-        filter: `church_id=eq.${effectiveChurchId}`
-      }, (payload) => {
-        const newMessage = payload.new as ChatMessage;
-        
-        // Show notification if app is in background or not looking at this chat
-        if (document.hidden && newMessage.sender_id !== currentUser.id) {
-          showNotification('Nova mensagem', {
-            body: newMessage.content,
-            icon: '/logo-192.png'
-          });
-        }
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    const IDLE_TIMEOUT_MS = 75 * 1000; // 75s sem interação entra em Auto-Sleep para liberar vaga nas 200 conexões
 
-        queryClient.invalidateQueries({ queryKey: ['chat-messages', effectiveChurchId] });
-        queryClient.invalidateQueries({ queryKey: ['chat-conversations', effectiveChurchId] });
+    const disconnectChannel = () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+      setRealtimeConnected(false);
+    };
+
+    const connectChannel = () => {
+      if (channel || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) {
+        return;
+      }
+
+      channel = supabase.channel(`chat-church-${effectiveChurchId}`, {
+        config: {
+          broadcast: { self: true },
+          presence: { key: currentUser.id },
+        }
       })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'chat_messages',
-        filter: `church_id=eq.${effectiveChurchId}`
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ['chat-messages', effectiveChurchId] });
-      })
-      .subscribe();
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `church_id=eq.${effectiveChurchId}`
+        }, (payload) => {
+          const newMessage = payload.new as ChatMessage;
+          
+          if (document.hidden && newMessage.sender_id !== currentUser.id) {
+            showNotification('Nova mensagem', {
+              body: newMessage.content,
+              icon: '/logo-192.png'
+            });
+          }
+
+          queryClient.invalidateQueries({ queryKey: ['chat-messages', effectiveChurchId] });
+          queryClient.invalidateQueries({ queryKey: ['chat-conversations', effectiveChurchId] });
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `church_id=eq.${effectiveChurchId}`
+        }, () => {
+          queryClient.invalidateQueries({ queryKey: ['chat-messages', effectiveChurchId] });
+        })
+        .subscribe((status) => {
+          setRealtimeConnected(status === 'SUBSCRIBED');
+        });
+    };
+
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        if (!channel) {
+          connectChannel();
+          queryClient.invalidateQueries({ queryKey: ['chat-messages', effectiveChurchId] });
+          queryClient.invalidateQueries({ queryKey: ['chat-conversations', effectiveChurchId] });
+        }
+        idleTimer = setTimeout(() => {
+          disconnectChannel();
+        }, IDLE_TIMEOUT_MS);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (idleTimer) clearTimeout(idleTimer);
+        disconnectChannel();
+      } else {
+        resetIdleTimer();
+      }
+    };
+
+    resetIdleTimer();
+
+    window.addEventListener('pointerdown', resetIdleTimer, { passive: true });
+    window.addEventListener('keydown', resetIdleTimer, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (idleTimer) clearTimeout(idleTimer);
+      window.removeEventListener('pointerdown', resetIdleTimer);
+      window.removeEventListener('keydown', resetIdleTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      disconnectChannel();
     };
   }, [currentUser, queryClient, effectiveChurchId]);
 
   const uploadFile = async (file: File | Blob, path: string): Promise<string> => {
-    const fileExt = path.split('.').pop();
+    const optimized = await compressImageFile(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.78 });
+    const fileExt = (optimized instanceof File ? optimized.name : path).split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
     const filePath = `${currentUser!.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('chat_attachments')
-      .upload(filePath, file);
+      .upload(filePath, optimized, {
+        cacheControl: STORAGE_CACHE_CONTROL,
+        contentType: optimized.type || file.type || undefined,
+      });
 
     if (uploadError) throw uploadError;
 
@@ -158,11 +269,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           .from('chat_conversations')
           .select(`
             *,
-            participants:chat_participants(profile:profiles(*)),
-            messages:chat_messages(*)
+            participants:chat_participants(profile:profiles(id, name, full_name, avatar_url, email)),
+            messages:chat_messages(id, conversation_id, sender_id, content, type, file_url, created_at)
           `)
           .in('id', ids)
           .eq('church_id', effectiveChurchId)
+          .order('created_at', { referencedTable: 'chat_messages', ascending: false })
+          .limit(1, { referencedTable: 'chat_messages' })
           .order('updated_at', { ascending: false });
 
         if (error) throw error;
@@ -188,6 +301,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
     },
     enabled: !!currentUser && !!effectiveChurchId,
+    // Fallback HTTP automático caso as 200 conexões WebSocket estejam cheias ou em Auto-Sleep
+    refetchInterval: realtimeConnected ? false : 15000,
+    refetchIntervalInBackground: false,
   });
 
   const useMessages = (conversationId: string | null) => useQuery({
@@ -199,11 +315,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('conversation_id', conversationId)
         .eq('church_id', effectiveChurchId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(120);
       if (error) throw error;
-      return data;
+      return (data || []).reverse();
     },
     enabled: !!conversationId && !!effectiveChurchId,
+    // Fallback HTTP de 4.5s na conversa ativa se o WebSocket estiver em sleep ou acima de 200 simultâneos
+    refetchInterval: conversationId && !realtimeConnected ? 4500 : false,
+    refetchIntervalInBackground: false,
   });
 
   const sendMessageMutation = useMutation({
@@ -482,7 +602,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (!effectiveChurchId) return [];
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, name, full_name, avatar_url, email')
         .eq('church_id', effectiveChurchId)
         .order('full_name', { ascending: true });
       if (error) {
@@ -491,8 +611,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
       const myId = currentUser?.id || user?.id;
       return (data || [])
-        .filter(u => u.id !== myId)
-        .map(u => ({
+        .filter((u: any) => u.id !== myId)
+        .map((u: any) => ({
           id: u.id,
           name: u.full_name || u.name || 'Membro',
           avatar_url: u.avatar_url,
@@ -500,6 +620,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }));
     },
     enabled: !!effectiveChurchId,
+    staleTime: 1000 * 60 * 15, // 15 minutos de cache
   });
 
   const requestNotificationPermission = async () => {

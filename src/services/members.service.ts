@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import type { Database } from '@/lib/database.types';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 
 type Member = Database['public']['Tables']['members']['Row'];
 type MemberInsert = Database['public']['Tables']['members']['Insert'];
@@ -517,13 +518,17 @@ export const membersService = {
      * Upload member photo
      */
     async uploadPhoto(memberId: string, file: File) {
-        const fileExt = file.name.split('.').pop();
+        const optimized = await compressImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.78 });
+        const fileExt = (optimized instanceof File ? optimized.name : file.name).split('.').pop();
         const fileName = `${memberId}-${Date.now()}.${fileExt}`;
         const filePath = `members/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
             .from('photos')
-            .upload(filePath, file);
+            .upload(filePath, optimized, {
+                cacheControl: STORAGE_CACHE_CONTROL,
+                contentType: optimized.type || file.type,
+            });
 
         if (uploadError) throw uploadError;
 

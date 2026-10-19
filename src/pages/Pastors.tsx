@@ -11,6 +11,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/lib/supabaseClient';
 import { pastorsService, ChurchPastor } from '@/services/pastors.service';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 
 export default function Pastors() {
   useDocumentTitle('Pastores');
@@ -128,10 +129,15 @@ export default function Pastors() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const path = `pastors/${effectiveChurchId}/${Date.now()}-${file.name}`;
+      const optimized = await compressImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.78 });
+      const fileName = optimized instanceof File ? optimized.name : file.name;
+      const path = `pastors/${effectiveChurchId}/${Date.now()}-${fileName}`;
       const { error } = await supabase.storage
         .from('church-documents')
-        .upload(path, file);
+        .upload(path, optimized, {
+          cacheControl: STORAGE_CACHE_CONTROL,
+          contentType: optimized.type || file.type,
+        });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage
         .from('church-documents')

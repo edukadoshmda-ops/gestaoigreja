@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 
 const STORAGE_BUCKET = import.meta.env.VITE_STORAGE_BUCKET || 'church-documents';
 
@@ -49,7 +50,8 @@ export const documentsService = {
     },
 
     async uploadFile(file: File, category: string, churchId?: string | null, title?: string) {
-        const fileExt = file.name.split('.').pop();
+        const optimized = await compressImageFile(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.80 });
+        const fileExt = (optimized instanceof File ? optimized.name : file.name).split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const prefix = churchId || 'global';
         const filePath = `${prefix}/${category}/${fileName}`;
@@ -57,7 +59,10 @@ export const documentsService = {
         // 1. Upload file to Storage
         const { error: uploadError } = await supabase.storage
             .from(STORAGE_BUCKET)
-            .upload(filePath, file);
+            .upload(filePath, optimized, {
+                cacheControl: STORAGE_CACHE_CONTROL,
+                contentType: optimized.type || file.type,
+            });
 
         if (uploadError) throw uploadError;
 
@@ -72,8 +77,8 @@ export const documentsService = {
                 {
                     title: title || file.name,
                     file_url: publicUrl,
-                    file_type: file.type,
-                    file_size: file.size,
+                    file_type: optimized.type || file.type,
+                    file_size: optimized.size ?? file.size,
                     category: category,
                     church_id: churchId ?? null,
                 },

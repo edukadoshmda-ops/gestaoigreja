@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { churchesService } from '@/services/churches.service';
 import { trialService } from '@/services/trial.service';
 import { DEFAULT_CHURCH_NAME } from '@/lib/constants';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 
 const DEFAULT_LOGO = '/logo-app.png?v=2';
 
@@ -262,11 +263,16 @@ export default function Institutional() {
                         if (!file || !effectiveChurchId) return;
                         setUploadingLogo(true);
                         try {
-                          const ext = file.name.split('.').pop();
+                          const optimized = await compressImageFile(file, { maxWidth: 512, maxHeight: 512, quality: 0.82 });
+                          const ext = (optimized instanceof File ? optimized.name : file.name).split('.').pop();
                           const fileName = `logo-${effectiveChurchId}-${Date.now()}.${ext}`;
                           const { data, error } = await supabase.storage
                             .from('logos')
-                            .upload(fileName, file, { upsert: true, contentType: file.type });
+                            .upload(fileName, optimized, {
+                              upsert: true,
+                              contentType: optimized.type || file.type,
+                              cacheControl: STORAGE_CACHE_CONTROL,
+                            });
                           if (error) throw error;
                           const { data: { publicUrl } } = supabase.storage
                             .from('logos')
@@ -431,9 +437,14 @@ export default function Institutional() {
                       if (!file) return;
                       setUploadingBanner(true);
                       try {
+                        const optimized = await compressImageFile(file, { maxWidth: 1400, maxHeight: 800, quality: 0.80 });
+                        const fileName = optimized instanceof File ? optimized.name : file.name;
                         const { data, error } = await supabase.storage
                           .from('banners')
-                          .upload(`${effectiveChurchId}-banner-${Date.now()}-${file.name}`, file);
+                          .upload(`${effectiveChurchId}-banner-${Date.now()}-${fileName}`, optimized, {
+                            cacheControl: STORAGE_CACHE_CONTROL,
+                            contentType: optimized.type || file.type,
+                          });
                         if (error) throw error;
                         const { data: { publicUrl } } = supabase.storage
                           .from('banners')

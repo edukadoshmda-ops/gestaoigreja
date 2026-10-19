@@ -5,33 +5,79 @@ type Ministry = Database['public']['Tables']['ministries']['Row'];
 type MinistryInsert = Database['public']['Tables']['ministries']['Insert'];
 type MinistryUpdate = Database['public']['Tables']['ministries']['Update'];
 
+const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+const CACHE_TTL_MS = isTestEnv ? 0 : 60 * 1000;
+const allMinistriesCache = new Map<string, { data: any[]; timestamp: number }>();
+const inFlightMinistries = new Map<string, Promise<any[]>>();
+
+export function clearMinistriesCache(churchId?: string) {
+    if (churchId) {
+        allMinistriesCache.delete(churchId);
+        inFlightMinistries.delete(churchId);
+    } else {
+        allMinistriesCache.clear();
+        inFlightMinistries.clear();
+    }
+}
+
 export const ministriesService = {
     /**
-     * Get all ministries
+     * Get all ministries (com cache e deduplicação)
      */
-    async getAll(churchId?: string | null) {
-        let query = supabase
-            .from('ministries')
-            .select(`
+    async getAll(churchId?: string | null, options?: { forceRefresh?: boolean }) {
+        const cacheKey = churchId || '__all__';
+
+        if (!options?.forceRefresh && CACHE_TTL_MS > 0) {
+            const cached = allMinistriesCache.get(cacheKey);
+            if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+                return cached.data;
+            }
+            const inFlight = inFlightMinistries.get(cacheKey);
+            if (inFlight) return inFlight;
+        }
+
+        const fetchPromise = (async () => {
+            try {
+                let query = supabase
+                    .from('ministries')
+                    .select(`
         *,
         leader:members!ministries_leader_id_fkey(id, name, phone, email)
       `)
-            .order('name');
-        
-        if (churchId) {
-            query = query.eq('church_id', churchId);
+                    .order('name');
+                
+                if (churchId) {
+                    query = query.eq('church_id', churchId);
+                }
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+                const result = data || [];
+                if (CACHE_TTL_MS > 0) {
+                    allMinistriesCache.set(cacheKey, { data: result, timestamp: Date.now() });
+                }
+                return result;
+            } finally {
+                inFlightMinistries.delete(cacheKey);
+            }
+        })();
+
+        if (CACHE_TTL_MS > 0) {
+            inFlightMinistries.set(cacheKey, fetchPromise);
         }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-        return data;
+        return fetchPromise;
     },
 
     /**
-     * Get active ministries only
+     * Get active ministries only (reaproveita cache de getAll)
      */
     async getActive(churchId?: string | null) {
+        if (CACHE_TTL_MS > 0) {
+            const all = await this.getAll(churchId);
+            return (all || []).filter((m: any) => m.active !== false);
+        }
+
         let query = supabase
             .from('ministries')
             .select(`
@@ -78,6 +124,7 @@ export const ministriesService = {
             .single();
 
         if (error) throw error;
+        clearMinistriesCache(churchId);
         return data;
     },
 
@@ -92,6 +139,7 @@ export const ministriesService = {
             .single();
 
         if (error) throw error;
+        clearMinistriesCache();
         return data;
     },
 
@@ -105,6 +153,7 @@ export const ministriesService = {
             .eq('id', id);
 
         if (error) throw error;
+        clearMinistriesCache();
     },
 
     /**

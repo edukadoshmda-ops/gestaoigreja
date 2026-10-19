@@ -31,6 +31,26 @@ const PLAN_FEATURES = [
 
 const PLANS = [
   {
+    id: 'super-oferta',
+    icon: CreditCard,
+    name: 'Super Oferta Limitada',
+    memberRange: '1º ano 12x R$ 150 • 2º ano 12x R$ 125 • 3º ano+ 12x R$ 100 (Cartão)',
+    price: 150,
+    color: 'from-amber-500 via-orange-500 to-rose-600',
+    borderSelected: 'border-amber-500 ring-2 ring-amber-500/30',
+    borderDefault: 'border-amber-500/40',
+    textColor: 'text-amber-600 dark:text-amber-400',
+    bgSelected: 'bg-amber-50 dark:bg-amber-950/30',
+    features: [
+      '1º Ano: 12x de R$ 150 no Cartão de Crédito',
+      '2º Ano: 12x de R$ 125 no Cartão de Crédito',
+      '3º Ano em diante: 12x de R$ 100 no Cartão de Crédito',
+      ...PLAN_FEATURES,
+    ],
+    popular: true,
+    badgeLabel: '🔥 Super Oferta',
+  },
+  {
     id: 'starter',
     icon: Zap,
     name: 'Starter',
@@ -55,7 +75,6 @@ const PLANS = [
     textColor: 'text-blue-600',
     bgSelected: 'bg-blue-50 dark:bg-blue-950/30',
     features: PLAN_FEATURES,
-    popular: true,
   },
   {
     id: 'professional',
@@ -92,12 +111,12 @@ export default function Checkout() {
     const [loading, setLoading] = useState(false);
     const [showFallback, setShowFallback] = useState(false);
 
-    // Seleciona plano da URL ou padrão
-    const planFromUrl = searchParams.get('plan') || 'growth';
+    // Seleciona plano da URL ou Super Oferta por padrão
+    const planFromUrl = searchParams.get('plan') || 'super-oferta';
     const [selectedPlanId, setSelectedPlanId] = useState(
-        PLANS.find(p => p.id === planFromUrl) ? planFromUrl : 'growth'
+        PLANS.find(p => p.id === planFromUrl) ? planFromUrl : 'super-oferta'
     );
-    const selectedPlan = PLANS.find(p => p.id === selectedPlanId) || PLANS[1];
+    const selectedPlan = PLANS.find(p => p.id === selectedPlanId) || PLANS[0];
 
     const [formData, setFormData] = useState({
         churchName: '',
@@ -166,7 +185,7 @@ export default function Checkout() {
                 body: { 
                     action: 'init_checkout', 
                     ...formData,
-                    subscription_plan: selectedPlanId,
+                    subscription_plan: selectedPlanId === 'super-oferta' ? 'starter' : selectedPlanId,
                     plan_amount: selectedPlan.price,
                 }
             });
@@ -262,7 +281,7 @@ export default function Checkout() {
                 <div>
                     <h2 className="text-2xl font-black text-center mb-2">Escolha seu Plano</h2>
                     <p className="text-muted-foreground text-center text-sm mb-6">Selecione conforme o número de membros da sua igreja</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pb-4">
                         {PLANS.map(plan => {
                             const Icon = plan.icon;
                             const isSelected = selectedPlanId === plan.id;
@@ -277,8 +296,8 @@ export default function Checkout() {
                                     )}
                                 >
                                     {plan.popular && (
-                                        <span className="absolute -top-2.5 left-3 bg-blue-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                            Popular
+                                        <span className="absolute -top-2.5 left-3 bg-gradient-to-r from-amber-500 to-rose-600 text-white text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow">
+                                            {(plan as any).badgeLabel || 'Popular'}
                                         </span>
                                      )}
                                     <div className={cn('p-2 rounded-xl w-fit mb-2 bg-gradient-to-br text-white', plan.color)}>

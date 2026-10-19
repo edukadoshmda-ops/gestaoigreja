@@ -86,9 +86,13 @@ export const authService = {
     /**
      * Get the current user's profile with church data
      */
-    async getProfile() {
-        const user = await this.getUser();
-        if (!user) return null;
+    async getProfile(userId?: string) {
+        let targetUserId = userId;
+        if (!targetUserId) {
+            const user = await this.getUser();
+            if (!user) return null;
+            targetUserId = user.id;
+        }
 
         const { data, error } = await supabase
             .from('profiles')
@@ -96,7 +100,7 @@ export const authService = {
                 *,
                 church:churches(*)
             `)
-            .eq('id', user.id)
+            .eq('id', targetUserId)
             .maybeSingle();
 
         if (error) {

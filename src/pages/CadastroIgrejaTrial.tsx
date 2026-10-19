@@ -10,6 +10,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import type { TrialChurchFormData } from '@/services/trial.service';
+import { compressImageFile, STORAGE_CACHE_CONTROL } from '@/utils/imageCompression';
 
 const STORAGE_KEY = 'trial_church_form_data';
 
@@ -52,11 +53,15 @@ export default function CadastroIgrejaTrial() {
     if (!file) return;
     setUploadingLogo(true);
     try {
-      const ext = file.name.split('.').pop() || 'png';
+      const optimized = await compressImageFile(file, { maxWidth: 512, maxHeight: 512, quality: 0.82 });
+      const ext = (optimized instanceof File ? optimized.name : file.name).split('.').pop() || 'webp';
       const path = `logos/trial-${Date.now()}.${ext}`;
       const { error } = await supabase.storage
         .from('church-documents')
-        .upload(path, file);
+        .upload(path, optimized, {
+          cacheControl: STORAGE_CACHE_CONTROL,
+          contentType: optimized.type || file.type,
+        });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage
         .from('church-documents')
@@ -388,11 +393,16 @@ export default function CadastroIgrejaTrial() {
                         if (!file) return;
                         setUploadingBanner(true);
                         try {
-                          const ext = file.name.split('.').pop() || 'jpg';
+                          const optimized = await compressImageFile(file, { maxWidth: 1400, maxHeight: 800, quality: 0.80 });
+                          const ext = (optimized instanceof File ? optimized.name : file.name).split('.').pop() || 'webp';
                           const path = `banner-trial-${Date.now()}.${ext}`;
                           const { data, error } = await supabase.storage
                             .from('banners')
-                            .upload(path, file, { upsert: true, contentType: file.type });
+                            .upload(path, optimized, {
+                              upsert: true,
+                              contentType: optimized.type || file.type,
+                              cacheControl: STORAGE_CACHE_CONTROL,
+                            });
                           if (error) throw error;
                           const { data: { publicUrl } } = supabase.storage
                             .from('banners')

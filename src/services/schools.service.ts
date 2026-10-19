@@ -34,13 +34,29 @@ export interface SchoolReport {
   updated_at: string;
 }
 
+const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+const CACHE_TTL_MS = isTestEnv ? 0 : 2 * 60 * 1000;
+const schoolsCache = new Map<string, { data: School[]; timestamp: number }>();
+
 export const schoolsService = {
   async getAll(churchId?: string | null): Promise<School[]> {
+    const cacheKey = churchId || '__all__';
+    if (CACHE_TTL_MS > 0) {
+      const cached = schoolsCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return cached.data;
+      }
+    }
+
     let query = supabase.from('schools').select('*').order('name');
     if (churchId) query = query.eq('church_id', churchId);
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []) as School[];
+    const list = (data || []) as School[];
+    if (CACHE_TTL_MS > 0) {
+      schoolsCache.set(cacheKey, { data: list, timestamp: Date.now() });
+    }
+    return list;
   },
 
   async getById(id: string): Promise<School | null> {
@@ -56,6 +72,7 @@ export const schoolsService = {
       .select()
       .single();
     if (error) throw error;
+    schoolsCache.clear();
     return data as School;
   },
 
@@ -67,12 +84,14 @@ export const schoolsService = {
       .select()
       .single();
     if (error) throw error;
+    schoolsCache.clear();
     return data as School;
   },
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('schools').delete().eq('id', id);
     if (error) throw error;
+    schoolsCache.clear();
   },
 
   async getStudents(schoolId: string): Promise<SchoolStudent[]> {

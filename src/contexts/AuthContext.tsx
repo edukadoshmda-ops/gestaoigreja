@@ -374,62 +374,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const loadUserFromSession = async () => {
-      try {
-        const session = await authService.getSession();
-        if (!session?.user) {
+    let loadedUserId: string | null = null;
+    let inFlightLoad: Promise<void> | null = null;
+
+    const loadUserFromSession = async (existingSession?: any) => {
+      if (inFlightLoad) return inFlightLoad;
+
+      inFlightLoad = (async () => {
+        try {
+          const session = existingSession !== undefined ? existingSession : await authService.getSession();
+          if (!session?.user) {
+            loadedUserId = null;
+            setAuthLoading(false);
+            return;
+          }
+          const profile = await authService.getProfile(session.user.id);
+          if (!profile) {
+            setAuthLoading(false);
+            return;
+          }
+          loadedUserId = session.user.id;
+          const u: User = {
+            id: session.user.id,
+            name: (profile as any).full_name || session.user.email?.split('@')[0] || 'Usuário',
+            email: session.user.email || '',
+            role: ((profile as any).role === 'superadmin' ? 'superadmin' : (profile as any).role) as UserRole,
+            churchId: (profile as any).church_id || undefined,
+            avatar: session.user.user_metadata?.avatar_url ?? (profile as any)?.avatar_url,
+            registrationCompleted: !!(profile as any).registration_completed,
+          };
+          setUser(u);
+          const cid = (profile as any).church_id || undefined;
+          if (u.role === 'superadmin') {
+            try {
+              const viewing = sessionStorage.getItem('superadmin_viewing_church');
+              if (viewing) {
+                const parsed = JSON.parse(viewing) as { id: string; name: string };
+                setViewingChurch(parsed);
+                setChurchId(parsed.id);
+                setUser({ ...u, churchId: parsed.id });
+                return;
+              }
+            } catch {}
+            setViewingChurch(null);
+          }
+          setChurchId(cid);
+        } catch (e) {
+          console.error('AuthContext: Erro ao carregar sessão', e);
+        } finally {
+          inFlightLoad = null;
           setAuthLoading(false);
-          return;
         }
-        const profile = await authService.getProfile();
-        if (!profile) {
-          setAuthLoading(false);
-          return;
-        }
-        const u: User = {
-          id: session.user.id,
-          name: (profile as any).full_name || session.user.email?.split('@')[0] || 'Usuário',
-          email: session.user.email || '',
-          role: ((profile as any).role === 'superadmin' ? 'superadmin' : (profile as any).role) as UserRole,
-          churchId: (profile as any).church_id || undefined,
-          avatar: session.user.user_metadata?.avatar_url ?? (profile as any)?.avatar_url,
-          registrationCompleted: !!(profile as any).registration_completed,
-        };
-        setUser(u);
-        const cid = (profile as any).church_id || undefined;
-        if (u.role === 'superadmin') {
-          try {
-            const viewing = sessionStorage.getItem('superadmin_viewing_church');
-            if (viewing) {
-              const parsed = JSON.parse(viewing) as { id: string; name: string };
-              setViewingChurch(parsed);
-              setChurchId(parsed.id);
-              setUser({ ...u, churchId: parsed.id });
-              return;
-            }
-          } catch {}
-          setViewingChurch(null);
-        }
-        setChurchId(cid);
-      } catch (e) {
-        console.error('AuthContext: Erro ao carregar sessão', e);
-      } finally {
-        setAuthLoading(false);
-      }
+      })();
+
+      return inFlightLoad;
     };
 
     loadUserFromSession();
 
     const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || session === null) {
+        loadedUserId = null;
         setUser(null);
         setChurchId(undefined);
         setViewingChurch(null);
         if (window.location.pathname !== '/login' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/reset-password') && !window.location.pathname.startsWith('/confirmar/')) {
           window.location.href = '/login';
         }
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        loadUserFromSession();
+      } else if (event === 'SIGNED_IN') {
+        if (session?.user?.id && session.user.id !== loadedUserId) {
+          loadUserFromSession(session);
+        }
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Só recarrega perfil no refresh do token se ainda não estiver carregado em memória
+        if (!loadedUserId && session?.user?.id) {
+          loadUserFromSession(session);
+        }
       }
     });
     return () => subscription.unsubscribe();

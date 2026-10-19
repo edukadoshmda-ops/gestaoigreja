@@ -158,28 +158,6 @@ async function resolveTenant(): Promise<TenantContextValue> {
   _cachedSlug = slug;
 
   if (!slug) {
-    // Fallback para desenvolvimento local: prioriza Igreja Viva Global ou a primeira do banco
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocal) {
-      try {
-        const { data: vivaGlobal } = await supabase.from('churches').select('*').eq('slug', 'igreja-viva-global').maybeSingle();
-        let church = vivaGlobal;
-        if (!church) {
-          const { data: list } = await supabase.from('churches').select('*').limit(1);
-          church = list?.[0] || null;
-        }
-        if (church) {
-          _cachedTenant = church;
-          _cachedSlug = church.slug;
-          applyBranding(church);
-          _resolved = true;
-          return { tenant: _cachedTenant, loading: false, isMainDomain: false, subdomain: church.slug };
-        }
-      } catch (e) {
-        console.warn('Erro ao buscar igreja fallback local', e);
-      }
-    }
-
     _cachedIsMain = true;
     _resolved = true;
     return { tenant: null, loading: false, isMainDomain: true, subdomain: null };

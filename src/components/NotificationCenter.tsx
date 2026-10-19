@@ -28,6 +28,72 @@ interface Notification {
     link?: string;
 }
 
+const notificationsCache = new Map<string, { data: Notification[]; timestamp: number }>();
+const notificationsInFlight = new Map<string, Promise<Notification[]>>();
+const NOTIFICATIONS_TTL_MS = 60 * 1000; // 60s de cache compartilhado entre mobile/desktop e trocas de rota
+
+const CLEANUP_STORAGE_KEY = 'ecclesia_auto_cleanup_30d_ts';
+const CLEANUP_INTERVAL_MS = 12 * 60 * 60 * 1000; // 1x a cada 12h por dispositivo
+
+function triggerAutoCleanup30Days(userId: string) {
+    if (typeof window === 'undefined') return;
+    try {
+        const lastRun = Number(localStorage.getItem(CLEANUP_STORAGE_KEY) || '0');
+        if (Date.now() - lastRun < CLEANUP_INTERVAL_MS) return;
+        localStorage.setItem(CLEANUP_STORAGE_KEY, String(Date.now()));
+
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        // 1. Aciona a função global do banco (limpa notificações, chat_messages e logs > 30 dias)
+        Promise.resolve(supabase.rpc('cleanup_old_ephemeral_data')).catch(() => {});
+
+        // 2. Fallback direto para limpar notificações do usuário > 30 dias
+        Promise.resolve(
+            supabase
+                .from('notifications')
+                .delete()
+                .eq('user_id', userId)
+                .lt('created_at', thirtyDaysAgo)
+        ).catch(() => {});
+    } catch {
+        // Ignora silenciosamente
+    }
+}
+
+async function fetchUserNotifications(userId: string, force = false): Promise<Notification[]> {
+    triggerAutoCleanup30Days(userId);
+    if (!force) {
+        const cached = notificationsCache.get(userId);
+        if (cached && Date.now() - cached.timestamp < NOTIFICATIONS_TTL_MS) {
+            return cached.data;
+        }
+        const pending = notificationsInFlight.get(userId);
+        if (pending) return pending;
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const promise = (async () => {
+        try {
+            const { data } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_id', userId)
+                .gte('created_at', thirtyDaysAgo)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            const list = (data || []) as Notification[];
+            notificationsCache.set(userId, { data: list, timestamp: Date.now() });
+            return list;
+        } finally {
+            notificationsInFlight.delete(userId);
+        }
+    })();
+
+    notificationsInFlight.set(userId, promise);
+    return promise;
+}
+
 export function NotificationCenter() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [open, setOpen] = useState(false);
@@ -49,48 +115,50 @@ export function NotificationCenter() {
     }, [user]);
 
     useEffect(() => {
-        if (user) {
-            if (!isSupabaseConfigured) return;
-            loadNotifications();
+        if (!user || !isSupabaseConfigured) return;
 
-            // Subscribe to new notifications
-            let channel: ReturnType<typeof supabase.channel> | null = null;
-            try {
-                channel = supabase
-                    .channel(`user-notifications-${user.id}`)
-                    .on('postgres_changes', {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'notifications',
-                        filter: `user_id=eq.${user.id}`
-                    }, (payload) => {
-                        const n = payload.new as Notification;
-                        setNotifications(prev => [n, ...prev]);
-                        if (canUseNotificationApi && window.Notification.permission === 'granted') {
-                            showLocalNotification(n.title, n.message);
-                        }
-                    })
-                    .subscribe();
-            } catch {
-                // Se Supabase não estiver pronto/configurado, não derruba a UI
+        let isFirstLoad = true;
+        let knownIds = new Set<string>();
+
+        const checkNotifications = async (force = false) => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && !isFirstLoad) {
+                return;
+            }
+            const data = await fetchUserNotifications(user.id, force);
+
+            if (!isFirstLoad && canUseNotificationApi && window.Notification.permission === 'granted') {
+                const newlyArrived = data.filter((n: Notification) => !n.read && !knownIds.has(n.id));
+                if (newlyArrived.length > 0) {
+                    showLocalNotification(newlyArrived[0].title, newlyArrived[0].message);
+                }
             }
 
-            return () => {
-                if (channel) supabase.removeChannel(channel);
-            };
-        }
+            knownIds = new Set(data.map((n: Notification) => n.id));
+            isFirstLoad = false;
+            setNotifications(data);
+        };
+
+        checkNotifications(false);
+
+        // Verifica a cada 3 minutos apenas com a aba ativa (poupa as 200 conexões WebSocket simultâneas do plano grátis)
+        const interval = setInterval(() => checkNotifications(true), 3 * 60 * 1000);
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                checkNotifications(false);
+            }
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
     }, [user]);
 
     async function loadNotifications() {
-        if (!user) return;
-        const { data } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(20);
-
-        if (data) setNotifications(data);
+        if (!user || !isSupabaseConfigured) return;
+        const data = await fetchUserNotifications(user.id, true);
+        setNotifications(data);
     }
 
     async function markAsRead(id: string) {
@@ -99,6 +167,7 @@ export function NotificationCenter() {
             .update({ read: true })
             .eq('id', id);
 
+        if (user) notificationsCache.delete(user.id);
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     }
 
@@ -109,6 +178,7 @@ export function NotificationCenter() {
             .update({ read: true })
             .eq('user_id', user.id);
 
+        notificationsCache.delete(user.id);
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     }
 
@@ -132,7 +202,11 @@ export function NotificationCenter() {
                 size="icon"
                 aria-label={unreadCount > 0 ? `Notificações (${unreadCount} não lidas)` : 'Ver notificações'}
                 className="relative hover:bg-primary/10 h-12 w-12 min-h-[48px] min-w-[48px] md:h-10 md:w-10"
-                onClick={() => setOpen(!open)}
+                onClick={() => {
+                    const next = !open;
+                    setOpen(next);
+                    if (next) loadNotifications();
+                }}
             >
                 {unreadCount > 0 ? (
                     <>

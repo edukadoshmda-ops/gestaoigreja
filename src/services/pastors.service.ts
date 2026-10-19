@@ -29,8 +29,19 @@ export interface ChurchPastorUpdate {
   display_order?: number;
 }
 
+const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+const CACHE_TTL_MS = isTestEnv ? 0 : 2 * 60 * 1000;
+const pastorsCache = new Map<string, { data: ChurchPastor[]; timestamp: number }>();
+
 export const pastorsService = {
   async listByChurch(churchId: string): Promise<ChurchPastor[]> {
+    if (CACHE_TTL_MS > 0) {
+      const cached = pastorsCache.get(churchId);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return cached.data;
+      }
+    }
+
     const { data, error } = await supabase
       .from('church_pastors')
       .select('*')
@@ -38,7 +49,11 @@ export const pastorsService = {
       .order('display_order', { ascending: true });
 
     if (error) throw error;
-    return (data || []) as ChurchPastor[];
+    const list = (data || []) as ChurchPastor[];
+    if (CACHE_TTL_MS > 0) {
+      pastorsCache.set(churchId, { data: list, timestamp: Date.now() });
+    }
+    return list;
   },
 
   async create(pastor: ChurchPastorInsert): Promise<ChurchPastor> {
@@ -56,6 +71,7 @@ export const pastorsService = {
       .single();
 
     if (error) throw error;
+    pastorsCache.delete(pastor.church_id);
     return data as ChurchPastor;
   },
 
@@ -68,6 +84,7 @@ export const pastorsService = {
       .single();
 
     if (error) throw error;
+    pastorsCache.clear();
     return data as ChurchPastor;
   },
 
@@ -78,5 +95,6 @@ export const pastorsService = {
       .eq('id', id);
 
     if (error) throw error;
+    pastorsCache.clear();
   },
 };

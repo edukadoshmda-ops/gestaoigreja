@@ -52,6 +52,7 @@ const Blog = lazy(() => import("./pages/Blog"));
 const Artigo = lazy(() => import("./pages/Artigo"));
 const Consolidacao = lazy(() => import("./pages/Consolidacao"));
 const Chat = lazy(() => import("./pages/Chat"));
+const PublicMemberRegistration = lazy(() => import("./pages/PublicMemberRegistration"));
 
 function PageFallback() {
   return (
@@ -116,7 +117,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
     <TrialGate>
       <SubscriptionBlock>
-        <MainLayout key={window.location.pathname}>
+        <MainLayout>
           <Suspense fallback={<PageFallback />}>{children}</Suspense>
         </MainLayout>
       </SubscriptionBlock>
@@ -145,7 +146,7 @@ function RoleProtectedRoute({ children, roles }: { children: React.ReactNode; ro
   return (
     <TrialGate>
       <SubscriptionBlock>
-        <MainLayout key={window.location.pathname}>
+        <MainLayout>
           <Suspense fallback={<PageFallback />}>{children}</Suspense>
         </MainLayout>
       </SubscriptionBlock>
@@ -174,18 +175,9 @@ function AppRoutes() {
     <>
       <InstallPrompt />
       <Routes>
-        <Route 
-          path="/" 
-          element={
-            isAuthenticated ? (
-              <Navigate to={postLoginPath} replace />
-            ) : isMainDomain ? (
-              <Landing />
-            ) : (
-              <NewLogin />
-            )
-          } 
-        />
+        <Route path="/" element={<Landing />} />
+        <Route path="/vendas" element={<Landing />} />
+        <Route path="/oferta" element={<Landing />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/hotmart-success" element={<HotmartSuccess />} />
         <Route path="/cadastro-igreja-trial" element={<CadastroIgrejaTrial />} />
@@ -226,8 +218,11 @@ function AppRoutes() {
         <Route path="/superadmin" element={<RoleProtectedRoute roles={['superadmin']}><SuperAdmin /></RoleProtectedRoute>} />
         <Route path="/rede" element={<RoleProtectedRoute roles={['pastor_admin', 'superadmin']}><ChurchNetwork /></RoleProtectedRoute>} />
         <Route path="/acessos" element={<RoleProtectedRoute roles={['admin', 'pastor', 'superadmin', 'pastor_admin']}><LeadershipAccess /></RoleProtectedRoute>} />
-        <Route path="/chat" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'tesoureiro', 'superadmin', 'diretor_patrimonio']}><Chat /></RoleProtectedRoute>} />
+        <Route path="/chat" element={<RoleProtectedRoute roles={['admin', 'pastor', 'pastor_admin', 'secretario', 'membro', 'lider_celula', 'lider_ministerio', 'aluno', 'congregado', 'tesoureiro', 'superadmin', 'diretor_patrimonio']}><ChatProvider><Chat /></ChatProvider></RoleProtectedRoute>} />
         <Route path="/confirmar/:id" element={<ConfirmScale />} />
+        <Route path="/cadastro-membro/:slug" element={<Suspense fallback={<PageFallback />}><PublicMemberRegistration /></Suspense>} />
+        <Route path="/ficha-membro/:slug" element={<Suspense fallback={<PageFallback />}><PublicMemberRegistration /></Suspense>} />
+        <Route path="/cadastro-membro" element={<Suspense fallback={<PageFallback />}><PublicMemberRegistration /></Suspense>} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -248,11 +243,9 @@ function App() {
             <ThemeProvider>
               <TooltipProvider>
                 <AuthProvider>
-                  <ChatProvider>
-                    <Toaster />
-                    <Sonner />
-                    <AppRoutes />
-                  </ChatProvider>
+                  <Toaster />
+                  <Sonner />
+                  <AppRoutes />
                 </AuthProvider>
               </TooltipProvider>
             </ThemeProvider>

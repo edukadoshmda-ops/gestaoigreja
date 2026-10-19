@@ -19,16 +19,37 @@ export interface PrayerRequest {
   created_at: string;
 }
 
+const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+const CACHE_TTL_MS = isTestEnv ? 0 : 60 * 1000;
+const prayerCache = new Map<string, { data: PrayerRequest[]; timestamp: number }>();
+
+export function clearPrayerRequestsCache(churchId?: string) {
+  if (churchId) prayerCache.delete(churchId);
+  else prayerCache.clear();
+}
+
 export const prayerRequestsService = {
-  async list(churchId: string): Promise<PrayerRequest[]> {
+  async list(churchId: string, options?: { forceRefresh?: boolean }): Promise<PrayerRequest[]> {
+    if (!options?.forceRefresh && CACHE_TTL_MS > 0) {
+      const cached = prayerCache.get(churchId);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return cached.data;
+      }
+    }
+
     const { data, error } = await supabase
       .from('prayer_requests')
       .select('*')
       .eq('church_id', churchId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     if (error) throw error;
-    return (data || []) as PrayerRequest[];
+    const result = (data || []) as PrayerRequest[];
+    if (CACHE_TTL_MS > 0) {
+      prayerCache.set(churchId, { data: result, timestamp: Date.now() });
+    }
+    return result;
   },
 
   async create(
@@ -73,6 +94,7 @@ export const prayerRequestsService = {
       .single();
 
     if (error) throw error;
+    clearPrayerRequestsCache(churchId);
     return data as PrayerRequest;
   },
 
@@ -85,6 +107,7 @@ export const prayerRequestsService = {
       .single();
 
     if (error) throw error;
+    clearPrayerRequestsCache();
     return data as PrayerRequest;
   },
 
@@ -95,6 +118,7 @@ export const prayerRequestsService = {
       .eq('id', id);
 
     if (error) throw error;
+    clearPrayerRequestsCache();
   },
 
   async incrementPrayed(id: string): Promise<void> {
@@ -112,37 +136,82 @@ export const prayerRequestsService = {
       .eq('id', id);
 
     if (error) throw error;
+    clearPrayerRequestsCache();
   },
 
   subscribe(churchId: string, onInsert: (request: PrayerRequest) => void, onUpdate?: (request: PrayerRequest) => void) {
-    const channel = supabase
-      .channel(`prayer_requests:${churchId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'prayer_requests',
-          filter: `church_id=eq.${churchId}`,
-        },
-        (payload) => {
-          onInsert(payload.new as PrayerRequest);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'prayer_requests',
-          filter: `church_id=eq.${churchId}`,
-        },
-        (payload) => {
-          onUpdate?.(payload.new as PrayerRequest);
-        }
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    const IDLE_TIMEOUT_MS = 60 * 1000; // 60s sem interação desconecta o WebSocket para poupar as 200 conexões
 
-    return () => supabase.removeChannel(channel);
+    const disconnect = () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+    };
+
+    const connect = () => {
+      if (channel || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
+      channel = supabase
+        .channel(`prayer_requests:${churchId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'prayer_requests',
+            filter: `church_id=eq.${churchId}`,
+          },
+          (payload) => {
+            clearPrayerRequestsCache(churchId);
+            onInsert(payload.new as PrayerRequest);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'prayer_requests',
+            filter: `church_id=eq.${churchId}`,
+          },
+          (payload) => {
+            clearPrayerRequestsCache(churchId);
+            onUpdate?.(payload.new as PrayerRequest);
+          }
+        )
+        .subscribe();
+    };
+
+    const resetIdle = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        connect();
+        idleTimer = setTimeout(disconnect, IDLE_TIMEOUT_MS);
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (idleTimer) clearTimeout(idleTimer);
+        disconnect();
+      } else {
+        resetIdle();
+      }
+    };
+
+    resetIdle();
+    window.addEventListener('pointerdown', resetIdle, { passive: true });
+    window.addEventListener('keydown', resetIdle, { passive: true });
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      window.removeEventListener('pointerdown', resetIdle);
+      window.removeEventListener('keydown', resetIdle);
+      document.removeEventListener('visibilitychange', onVisibility);
+      disconnect();
+    };
   },
 };

@@ -35,7 +35,7 @@ export function FinanceSummary() {
         const startDate = startOfMonth(today);
         const endDate = endOfMonth(today);
 
-        const entries = await financialService.list(startDate, endDate);
+        const entries = await financialService.list(startDate, endDate, effectiveChurchId);
 
         const income = (entries || [])
           .filter((e: any) => e.type === 'income' || e.entry_type === 'income')

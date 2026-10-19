@@ -46,6 +46,10 @@ export type TrialInfo = {
   institutionalCompleted?: boolean;
 };
 
+const trialInfoCache = new Map<string, { data: TrialInfo; timestamp: number }>();
+const trialInfoInFlight = new Map<string, Promise<TrialInfo>>();
+const TRIAL_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
 export const trialService = {
   /** Quantidade de vagas restantes para trial (100 - atual) */
   TRIAL_LIMIT: 100,
@@ -62,30 +66,52 @@ export const trialService = {
     }
   },
 
-  /** Obter info do trial da igreja do usuário */
+  /** Obter info do trial da igreja do usuário (com cache de 5 min para não chamar RPC a cada rota) */
   async getTrialInfo(churchId: string | undefined): Promise<TrialInfo> {
     if (!churchId) return { isTrial: false };
-    try {
-      const { data, error } = await (supabase as any).rpc('get_trial_info', { p_church_id: churchId });
-      if (error) return { isTrial: false };
-      if (!data || typeof data !== 'object') return { isTrial: false };
-      const d = Array.isArray(data) ? data[0] : data;
-      return { isTrial: !!d?.isTrial, ...d } as TrialInfo;
-    } catch {
-      return { isTrial: false };
+
+    const cached = trialInfoCache.get(churchId);
+    if (cached && Date.now() - cached.timestamp < TRIAL_CACHE_TTL_MS) {
+      return cached.data;
     }
+    const existing = trialInfoInFlight.get(churchId);
+    if (existing) return existing;
+
+    const promise = (async (): Promise<TrialInfo> => {
+      try {
+        const { data, error } = await (supabase as any).rpc('get_trial_info', { p_church_id: churchId });
+        if (error || !data || typeof data !== 'object') {
+          const fallback: TrialInfo = { isTrial: false };
+          trialInfoCache.set(churchId, { data: fallback, timestamp: Date.now() });
+          return fallback;
+        }
+        const d = Array.isArray(data) ? data[0] : data;
+        const result = { isTrial: !!d?.isTrial, ...d } as TrialInfo;
+        trialInfoCache.set(churchId, { data: result, timestamp: Date.now() });
+        return result;
+      } catch {
+        return { isTrial: false };
+      } finally {
+        trialInfoInFlight.delete(churchId);
+      }
+    })();
+
+    trialInfoInFlight.set(churchId, promise);
+    return promise;
   },
 
   /** Marcar página institucional como preenchida */
   async setInstitutionalCompleted(churchId: string): Promise<void> {
     const { error } = await (supabase as any).rpc('set_institutional_completed', { p_church_id: churchId });
     if (error) throw error;
+    trialInfoCache.delete(churchId);
   },
 
   /** Salvar lead e expirar trial (chamado quando trial expira) */
   async saveLeadAndExpire(churchId: string): Promise<void> {
     const { error } = await (supabase as any).rpc('save_trial_lead_and_expire', { p_church_id: churchId });
     if (error) throw error;
+    trialInfoCache.delete(churchId);
   },
 
   /** Criar igreja trial e assinatura (chamado após signup de usuário trial) */

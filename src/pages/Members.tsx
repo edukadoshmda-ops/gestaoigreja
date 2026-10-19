@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, Cake, Users as UsersIcon, FileDown, Filter, Upload } from 'lucide-react';
+import { Plus, Loader2, Cake, Users as UsersIcon, FileDown, Filter, Upload, Share2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { membersService } from '@/services/members.service';
 import { ExcelMembersButton } from '@/components/ExcelMembersReport';
 import { ImportMembersModal } from '@/components/ImportMembersModal';
+import { ShareRegistrationLinkModal } from '@/components/ShareRegistrationLinkModal';
 import { churchesService } from '@/services/churches.service';
 import { pastorsService } from '@/services/pastors.service';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,9 +38,11 @@ export default function Members() {
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [selectedCardMember, setSelectedCardMember] = useState<Member | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [churchName, setChurchName] = useState<string>(tenant?.name || '');
+  const [churchSlug, setChurchSlug] = useState<string>(tenant?.slug || '');
   const [churchLogo, setChurchLogo] = useState<string>(tenant?.logo_url || '');
   const [churchCnpj, setChurchCnpj] = useState<string>((tenant as any)?.cnpj || '');
   const [churchAddress, setChurchAddress] = useState<string>(tenant?.address || '');
@@ -62,6 +65,7 @@ export default function Members() {
   useEffect(() => {
     if (tenant) {
       if (tenant.name) setChurchName(tenant.name);
+      if (tenant.slug) setChurchSlug(tenant.slug);
       if (tenant.logo_url) setChurchLogo(tenant.logo_url);
       if ((tenant as any).cnpj) setChurchCnpj((tenant as any).cnpj);
       if (tenant.address) setChurchAddress(tenant.address);
@@ -78,6 +82,7 @@ export default function Members() {
         const pastorsArr = Array.isArray(pastors) ? pastors : [];
         const firstPastor = pastorsArr[0] as { name?: string } | undefined;
         if (churchObj?.name) setChurchName(churchObj.name);
+        if (churchObj?.slug) setChurchSlug(churchObj.slug);
         if (churchObj?.logo_url) setChurchLogo(churchObj.logo_url);
         if (churchObj?.cnpj) setChurchCnpj(churchObj.cnpj);
         if (churchObj?.address) setChurchAddress(churchObj.address);
@@ -248,14 +253,24 @@ export default function Members() {
               <ExcelMembersButton />
             )}
             {(user?.role === 'superadmin' || (!['aluno', 'membro', 'congregado', 'tesoureiro'].includes(user?.role ?? ''))) && (
-              <Button
-                variant="outline"
-                onClick={() => setImportModalOpen(true)}
-                className="gap-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold"
-              >
-                <Upload className="h-4 w-4 text-emerald-600" />
-                Importar Planilha Excel
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShareModalOpen(true)}
+                  className="gap-2 border-primary/40 text-primary hover:bg-primary/10 font-semibold"
+                >
+                  <Share2 className="h-4 w-4 text-primary" />
+                  Link de Cadastro
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setImportModalOpen(true)}
+                  className="gap-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold"
+                >
+                  <Upload className="h-4 w-4 text-emerald-600" />
+                  Importar Planilha Excel
+                </Button>
+              </>
             )}
             {(user?.role === 'superadmin' || (user?.role !== 'aluno' && user?.role !== 'membro' && user?.role !== 'congregado' && user?.role !== 'tesoureiro')) && (
               <MemberLimitGuard
@@ -440,6 +455,15 @@ export default function Members() {
         onOpenChange={setImportModalOpen}
         churchId={effectiveChurchId || 'igreja-padrao'}
         onSuccess={() => loadMembers()}
+      />
+
+      {/* Modal de Compartilhamento do Link Público de Cadastro de Membros */}
+      <ShareRegistrationLinkModal
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        churchId={effectiveChurchId}
+        churchSlug={churchSlug}
+        churchName={churchName}
       />
     </div>
   );
