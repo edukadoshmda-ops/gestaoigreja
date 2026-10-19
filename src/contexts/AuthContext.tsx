@@ -432,13 +432,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     loadUserFromSession();
 
+    const isPublicPathname = (p: string) =>
+      p === '/' ||
+      p === '/vendas' ||
+      p === '/oferta' ||
+      p === '/login' ||
+      p.startsWith('/login/') ||
+      p.startsWith('/igreja/') ||
+      p === '/entrar' ||
+      p.startsWith('/entrar/') ||
+      p === '/app' ||
+      p.startsWith('/app/') ||
+      p.startsWith('/checkout') ||
+      p.startsWith('/hotmart-success') ||
+      p.startsWith('/cadastro-igreja-trial') ||
+      p.startsWith('/cadastro-membro') ||
+      p.startsWith('/ficha-membro') ||
+      p.startsWith('/blog') ||
+      p.startsWith('/reset-password') ||
+      p.startsWith('/confirmar/');
+
     const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || session === null) {
         loadedUserId = null;
         setUser(null);
         setChurchId(undefined);
         setViewingChurch(null);
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/reset-password') && !window.location.pathname.startsWith('/confirmar/')) {
+        if (event === 'SIGNED_OUT' && !isPublicPathname(window.location.pathname)) {
           window.location.href = '/login';
         }
       } else if (event === 'SIGNED_IN') {

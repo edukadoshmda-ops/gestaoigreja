@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Shield, User, Users, Briefcase, MapPin, Church, Mail, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -289,12 +290,12 @@ export default function NewLogin() {
                                 </Button>
                                 
                                 <div className="flex flex-col items-center gap-1.5 pt-2">
-                                    <a
-                                        href="/vendas"
+                                    <Link
+                                        to="/vendas"
                                         className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 text-amber-700 hover:bg-amber-500/25 font-bold text-xs text-center transition-all"
                                     >
                                         🔥 Ver Página de Vendas e Super Oferta
-                                    </a>
+                                    </Link>
                                     <button
                                         type="button"
                                         onClick={() => { setForgotEmail(formData.email); setForgotOpen(true); }}
